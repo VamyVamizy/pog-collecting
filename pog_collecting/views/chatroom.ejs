@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Trade Room</title>
+    <link rel="stylesheet" href="../static/css/chatroom.css">
+</head>
+
+<body>
+    <div id="chatroomBanner">
+        <div class="leftstuff">
+            <h1 style="margin-left: 10px;">Trade Room</h1>
+        </div>
+        <div class="rightstuff">
+            <a href="/collection" id="circleButton">&lt;</a>
+        </div>
+    </div>
+
+    <div id="messageCont"></div>
+
+    <div id="chatContainer">
+        <form id="tradeForm">
+            <select id="givingSelect" required>
+                <option value="">What I'm giving...</option>
+            </select>
+            
+            <select id="receivingSelect" required>
+                <option value="">What I want in exchange...</option>
+            </select>
+            
+            <input id="tradeMessage" placeholder="Optional message..." maxlength="200" />
+            <button id="postTrade" type="submit">Post Trade</button>
+        </form>
+    </div>
+
+    <!-- Embed data for client JS -->
+    <div id="userdata" style="display:none"><%= JSON.stringify(userdata || {}) %></div>
+    <div id="pogList" style="display:none"><%= JSON.stringify(pogList || []) %></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/static/js/chat.js"></script>
+</body>
+
+</html>

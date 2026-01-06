@@ -1,0 +1,202 @@
+/* Base Crate Style */
+.crate {
+    width: 300px;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    padding: 15px 30px;
+    font-size: 20px;
+    border: transparent;
+    color: black;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    /* Thick bottom border shadow for weight */
+    position: relative;
+    top: 0;
+    transition: all 0.1s ease;
+}
+
+.crate:disabled {
+    pointer-events: none;
+}
+
+/* Hover creates anticipation */
+.crate:hover {
+    top: -2px;
+}
+
+/* The tactile "Pressed" state */
+.crate:active {
+    top: 4px;
+    /* Depresses visually */
+    box-shadow: 0 4px #130f0c;
+    transform: scale(0.95);
+    /* Shrinks slightly to feel "caught" */
+}
+
+.buym {
+    border: transparent;
+    box-shadow: 0 0 5px black;
+    border-radius: 10px;
+    width: 50px;
+    padding: 8px;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-style: bold;
+    font-size: 15px;
+    cursor: pointer;
+    scale: 0.8;
+    transition: all 0.1s ease;
+    color: black;
+    border: transparent;
+}
+
+.buym:disabled {
+    pointer-events: none;
+}
+
+.buttonSources {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    padding: 5px;
+    gap: 5px;
+}
+
+.buymCont {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    margin-right: -260px;
+    scale: 0.75;
+    z-index: 21;
+}
+
+#openCratesBtn {
+    background-color: #ecdcdc;
+    border: transparent;
+    position: fixed;
+    border-radius: 100px;
+    padding: 20px;
+    width: 100px;
+    height: 100px;
+    bottom: 0px;
+    right: 0px;
+    cursor: pointer;
+    z-index: 1000;
+    scale: 0.6;
+    box-shadow: 0 0 5px black;
+    overflow: visible;
+    transition: all 0.1s ease;
+}
+
+#openCratesBtn:hover {
+    background-color: #d4bebe;
+    scale: 0.7;
+}
+
+#openCratesBtn:active {
+    scale: 0.65;
+}
+
+#crate1_b5:disabled,
+#crate1_b10:disabled,
+#crate2_b5:disabled,
+#crate2_b10:disabled,
+#crate3_b5:disabled,
+#crate3_b10:disabled,
+#crate4_b5:disabled,
+#crate4_b10:disabled,
+#crate5_b5:disabled,
+#crate5_b10:disabled,
+#crate1:disabled,
+#crate2:disabled,
+#crate3:disabled,
+#crate4:disabled,
+#crate5:disabled {
+    pointer-events: none;
+    cursor: not-allowed;
+    background-color: #a3a3a3;
+}
+
+#cratesCont {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    background-color: #3e1e42;
+    padding: 20px;
+    border-radius: 20px;
+    margin-right: 100px;
+    margin-bottom: 20px;
+    right: 0;
+    bottom: 0;
+    box-shadow: 0 0 5px black;
+    z-index: 900;
+}
+
+#crate1_b5 {
+    background-color: rgb(245, 88, 88);
+}
+
+#crate1_b10 {
+    background-color: rgb(245, 88, 88);
+}
+
+/* crate 1 */
+#crate1 {
+    background-color: rgb(245, 88, 88);
+}
+
+#crate2_b5 {
+    background-color: rgb(250, 250, 114);
+}
+
+#crate2_b10 {
+    background-color: rgb(250, 250, 114);
+}
+
+/* crate 2 */
+#crate2 {
+    background-color: rgb(250, 250, 114);
+}
+
+#crate3_b5 {
+    background-color: rgb(128, 255, 128);
+}
+
+#crate3_b10 {
+    background-color: rgb(128, 255, 128);
+}
+
+/* crate 3 */
+#crate3 {
+    background-color: rgb(128, 255, 128);
+}
+
+#crate4_b5 {
+    background-color: lightskyblue;
+}
+
+#crate4_b10 {
+    background-color: lightskyblue;
+}
+
+/* crate 4 */
+#crate4 {
+    background-color: lightskyblue;
+}
+
+#crate5_b5 {
+    background-color: rgb(219, 143, 255);
+}
+
+#crate5_b10 {
+    background-color: rgb(219, 143, 255);
+}
+
+/* crate 5 */
+#crate5 {
+    background-color: rgb(219, 143, 255);
+}

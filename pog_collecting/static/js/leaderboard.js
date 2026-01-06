@@ -10,33 +10,40 @@ if (userdata.theme === "light") {
     document.body.style.color = "white";
 }
 
+function hide() {
+    const info = document.getElementById("details");
+    info.style.display = "none";
+}
+
 document.querySelectorAll(".infobtn").forEach(button => {
     button.addEventListener('click', () => {
         const index = button.dataset.index;
         const player = scores[index]
         const inv = JSON.parse(player.inventory)
-        console.log(inv)
         let sortedI = inv.map((item => ` ${item.name}`));
-        displayed = sortedI.slice(0, 100);
-        if (sortedI.length > 100) {
-            displayed.push(" ...and more");
-        }
-        console.log(sortedI)
+        displayed = sortedI.slice(0, 50);
+        let experience = player.xp;
         const info = document.getElementById("details");
-        info.innerHTML = `<h2>Details for ${player.displayname}</h2>
-                          <div style="display: flex; gap: 10px; justify-content: center; text-align: center;">
+        info.style.display = "block";
+        info.innerHTML = ` <h1>Player Details</h1>
+                            <img id="pfpimg" src="${player.pfp}" style="width: 100px; height: 100px; border-radius: 50%;"><br>
+                            <h2>${player.displayname}</h2>
+                          <div style="display: flex; gap: 40px; justify-content: center;">
                             <div>
                                 <h3>Score</h3> <p>${player.score}</p>
                                 <h3>Level</h3> <p>${player.level}</p>
-                                <h3>XP</h3> <p>${player.xp}/${player.maxxp}</p>
+                                <h3>Current XP</h3> <p style="font-size: ${experience.toString().length > 9 ? "11px" : "13px"}">${player.xp}</p>
+                                <h3>Wishes</h3> <p>${player.wish}</p>
                             </div>
                             <div>
                                 <h3>Income</h3> <p>$${player.income}/s</p>
                                 <h3>Total Sold</h3> <p>${player.totalSold} pogs</p>
                                 <h3>Crates Opened</h3> <p>${player.cratesOpened} crates</p>
+                                <h3>Pogs Collected</h3> <p>${JSON.parse(player.pogamount).length} / 285</p>
                             </div>
                           </div>
                           <h3>Pogs in Inventory</h3> <p>${sortedI.length}</p>
-                          <h3>Inventory</h3> <p>${sortedI.length > 0 ? displayed : "No items"}</p>`;
+                          <button id="hideBtn" onclick="hide()" style="margin-bottom: 10px;">Hide Details</button>`;
     })
 });
+
