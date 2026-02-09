@@ -54,7 +54,7 @@ function viewCollection() {
         const name = item.name;
         const desc = item.description;
         const creator = item.creator;
-        const class_name = "Support";
+        const class_name = item.subclass;
         const elem = "Fire";
         maxBinder++
         const rarity = item.rarity;

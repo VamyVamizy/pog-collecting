@@ -12,7 +12,7 @@ const pogs = new sqlite3.Database("pogipedia/db/pog.db", (err) => {
 
 const headers = [
     'id', 'name', 'color', 'code', 'number', 'code2',
-    'description', 'type', 'rarity', 'creator'
+    'description', 'type', 'rarity', 'subclass', 'creator'
 ];
 
 function initializePogDatabase() {
@@ -20,10 +20,10 @@ function initializePogDatabase() {
     const results = [];
     fs.createReadStream('pogipedia/db/pogs.csv')
       .pipe(csv({ headers }))
-      .on('data', (row) => {
-        const { id, name, color, description, rarity, creator } = row;
-        results.push({ id, name, color, description, rarity, creator });
-      })
+            .on('data', (row) => {
+                const { id, name, color, description, rarity, subclass, creator  } = row;
+                results.push({ id, name, color, description, rarity, subclass, creator  });
+            })
       .on('end', () => {
         console.log(`Loaded ${results.length} pogs from CSV`);
         resolve(results);
