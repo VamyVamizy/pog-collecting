@@ -285,6 +285,18 @@ app.get('/', isAuthenticated, (req, res) => {
     }
 });
 
+app.post("/logout", (req, res) => {
+    const redirectAfter = encodeURIComponent(THIS_URL);
+
+    req.session.destroy(err => {
+        if (err) return res.status(500).send("Logout failed");
+        res.clearCookie("connect.sid");
+
+        // Force auth provider logout
+        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+    });
+});
+
 // patch notes page
 app.get('/patch', (req, res) => {
     res.render('patch', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
