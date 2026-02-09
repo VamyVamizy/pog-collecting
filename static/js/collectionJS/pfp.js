@@ -36,3 +36,12 @@ document.getElementById("filepfp").addEventListener("change", () => {
 document.getElementById("userCont").addEventListener("click", () => {
     document.getElementById("pfpChanger").style.display = "block";
 });
+
+document.getElementById("logout").addEventListener("click", () => {
+    // URL to take user to Formbar for authentication
+    const AUTH_URL = process.env.AUTH_URL; // ... or the address to the instance of fbjs you wish to connect to
+
+    //URL to take user back to after authentication
+    const THIS_URL = process.env.THIS_URL; // ... or whatever the address to your application is
+    fetch("")
+});
