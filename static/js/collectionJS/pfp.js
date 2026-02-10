@@ -38,6 +38,8 @@ document.getElementById("userCont").addEventListener("click", () => {
 });
 
 document.getElementById("logout").addEventListener("click", async () => {
+    const choose = confirm("Would you like to log out of your account?")
+    if (!choose) return
     await fetch("/logout", {
         method: "POST",
         credentials: "include"
