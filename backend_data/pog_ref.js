@@ -25,7 +25,6 @@ function initializePogDatabase() {
                 results.push({ id, name, color, description, rarity, creator, subclass  });
             })
       .on('end', () => {
-        console.log(`Loaded ${results.length} pogs from CSV`);
         resolve(results);
       })
       .on('error', (err) => {

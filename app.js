@@ -198,7 +198,7 @@ app.get('/', isAuthenticated, (req, res) => {
         req.session.user = {
             fid: req.session.token?.id || 0,
             displayName: req.session.token?.displayName || "guest",
-            theme: req.session.user.theme || 'dark',
+            theme: req.session.user.theme || 'black',
             score: req.session.user.score || 0,
             inventory: req.session.user.inventory || [],
             Isize: req.session.user.Isize || 3,
@@ -254,7 +254,7 @@ app.get('/', isAuthenticated, (req, res) => {
                 req.session.user = {
                     fid: id,
                     displayName: displayName,
-                    theme: 'dark',
+                    theme: 'black',
                     score: 0,
                     inventory: [],
                     Isize: 10,
@@ -283,6 +283,18 @@ app.get('/', isAuthenticated, (req, res) => {
     } catch (error) {
         res.send(error.message)
     }
+});
+
+app.post("/logout", (req, res) => {
+    const redirectAfter = encodeURIComponent(THIS_URL);
+
+    req.session.destroy(err => {
+        if (err) return res.status(500).send("Logout failed");
+        res.clearCookie("connect.sid");
+
+        // Force auth provider logout
+        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+    });
 });
 
 // patch notes page
@@ -348,7 +360,7 @@ app.get('/api/auctions/active', (req, res) => {
 // save data route
 app.post('/datasave', (req, res) => {
     const userSave = {
-        theme: req.body.lightMode ? 'dark' : 'dark',
+        theme: req.body.lightMode,
         score: req.body.money,
         inventory: req.body.inventory,
         Isize: req.body.Isize,
@@ -513,7 +525,7 @@ app.get('/login', (req, res) => {
         req.session.user = {
             displayName: tokenData.displayName,
             fid: tokenData.fid,
-            theme: tokenData.theme || 'dark',
+            theme: tokenData.theme || 'black',
             score: tokenData.score || 0,
             inventory: tokenData.inventory || [],
             Isize: tokenData.Isize || 3,
