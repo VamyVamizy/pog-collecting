@@ -51,6 +51,9 @@ document.getElementById("bigpfp").src = pfpimg;
 //selected pog
 selectedID = 0;
 
+//profile color
+let theme_col = userdata.theme || "black";
+
 // wish
 let wish = userdata.wish || 0;
 

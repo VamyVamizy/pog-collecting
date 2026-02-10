@@ -48,6 +48,11 @@ document.getElementById("logout").addEventListener("click", async () => {
     window.location.href = "/";
 });
 
+console.log(theme_col);
+document.getElementById("picker").value = theme_col;
+
 document.getElementById("picker").addEventListener("change", () => {
-    alert("Goon");
+    const col = document.getElementById("picker").value;
+    theme_col = col;
+    save();
 });
