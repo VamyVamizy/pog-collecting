@@ -47,3 +47,7 @@ document.getElementById("logout").addEventListener("click", async () => {
 
     window.location.href = "/";
 });
+
+document.getElementById("picker").addEventListener("change", () => {
+    alert("Goon");
+});

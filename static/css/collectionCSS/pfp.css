@@ -69,3 +69,19 @@
     display: flex;
     justify-content: space-between;
 }
+
+::file-selector-button {
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    padding: 5px;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#picker {
+    width: 100px;
+    height: 100px;
+    border: none;
+    border-radius: 2px;
+}
