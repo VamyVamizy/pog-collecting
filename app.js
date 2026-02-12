@@ -16,11 +16,11 @@ require('dotenv').config();
 process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
 });
-  
+
 process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
 });
-  
+
 process.on('exit', (code) => {
     console.error('PROCESS EXITED WITH CODE:', code);
 });
@@ -31,8 +31,8 @@ const crateRef = require("./modules/backend_js/crateRef.js")
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 app.get('/api/perks', (req, res) => {
-  res.json({ perks });
-  console.log("Perks API accessed");
+    res.json({ perks });
+    console.log("Perks API accessed");
 });
 const tiers = require("./modules/backend_js/tierList.js");
 

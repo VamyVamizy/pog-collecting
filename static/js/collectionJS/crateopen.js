@@ -256,16 +256,65 @@ async function createMiniExplosion() {
 function validateCrateOpening(type, cost, count) {
     if (type === "Money") {
         if (money < cost) {
-            alert(`Not enough money to open ${count} crate${count > 1 ? 's' : ''}! (Need $${abbreviateNumber(cost-money)} more)`);
+            document.getElementById("errorText").innerText = `Not enough money to open ${count} crate${count > 1 ? 's' : ''}! 
+            You need $${cost}.`;
+            // showing the element but keeping it invisible for the fade-in effect
+
+            const errorMessage = document.getElementById("errorMessage");
+            errorMessage.style.display = "block";
+            errorMessage.style.opacity = "0";
+            // small delay, then fade in
+            setTimeout(() => {
+                errorMessage.style.opacity = "1";
+            }, 10);
+
+            // the rest
+            setTimeout(() => {
+                errorMessage.style.opacity = "0";
+                setTimeout(() => {
+                    errorMessage.style.display = "none";
+                }, 1000);
+            }, 5000);
+
             return false;
         }
     }
     if (inventory.length + count > Isize) {
-        alert(`Not enough inventory space to open ${count} crate${count > 1 ? 's' : ''}!`);
+        document.getElementById("errorText").innerText = `Not enough money to open ${count} crate${count > 1 ? 's' : ''}! 
+            You need $${cost}.`;
+            // showing the element but keeping it invisible for the fade-in effect
+
+            const errorMessage = document.getElementById("errorMessage");
+            errorMessage.style.display = "block";
+            errorMessage.style.opacity = "0";
+            // small delay, then fade in
+            setTimeout(() => {
+                errorMessage.style.opacity = "1";
+            }, 10);
+
+            // the rest
+            setTimeout(() => {
+                errorMessage.style.opacity = "0";
+                setTimeout(() => {
+                    errorMessage.style.display = "none";
+                }, 1000);
+            }, 5000);
         return false;
     }
     if (inventory.length + count >= 999) {
-        alert("Inventory full! Sell some pogs to make space.");
+        document.getElementById("errorText").innerText = "Inventory full! Sell some pogs to make space.";
+        const errorMessage = document.getElementById("errorMessage");
+        errorMessage.style.display = "block";
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.opacity = "1";
+        }, 10);
+        setTimeout(() => {
+            errorMessage.style.opacity = "0";
+            setTimeout(() => {
+                errorMessage.style.display = "none";
+            }, 1000);
+        }, 5000);
         return false;
     }
     return true;
