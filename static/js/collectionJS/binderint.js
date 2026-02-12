@@ -54,7 +54,7 @@ function viewCollection() {
         const name = item.name;
         const desc = item.description;
         const creator = item.creator;
-        const class_name = "Support";
+        const class_name = item.subclass;
         const elem = "Fire";
         maxBinder++
         const rarity = item.rarity;
@@ -98,6 +98,28 @@ function viewCollection() {
     });
 }
 
+//subclass stats for stat view
+const subclassProps = {
+    shielder: { health: 2300, def: 2800, speed: 100, atk: 1000 },
+    absorber: { health: 6600, def: 1500, speed: 120, atk: 1000 },
+
+    dot: { health: 2000, def: 1500, speed: 130, atk: 3000 },
+    hunter: { health: 2500, def: 1200, speed: 140, atk: 3200 },
+    blast: { health: 3000, def: 1300, speed: 135, atk: 2700 },
+    aoe: { health: 2500, def: 1100, speed: 125, atk: 2800 },
+
+    aa: { health: 3200, def: 1600, speed: 120, atk: 1500 },
+    booster: { health: 3000, def: 1400, speed: 120, atk: 2200 },
+    zoner: { health: 3500, def: 1300, speed: 90, atk: 1500 },
+
+    weakness: { health: 3000, def: 1500, speed: 140, atk: 1800 },
+    stun: { health: 2800, def: 1600, speed: 150, atk: 1400 },
+    penetrate: { health: 2800, def: 1600, speed: 150, atk: 1400 },
+
+    hot: { health: 3800, def: 1500, speed: 100, atk: 1000 },
+    energy: { health: 4200, def: 1400, speed: 130, atk: 1200 }
+};
+
 function charView() {
     const name = this.dataset.name;
     const color = this.querySelector("h4").style.color;
@@ -140,10 +162,14 @@ function statView() {
     const atk = document.getElementById("ATK_PB");
     const def = document.getElementById("DEF_PB");
     const spd = document.getElementById("SPD_PB");
-    hp.value = Math.floor(Math.random() * 101) + 10;
-    atk.value = Math.floor(Math.random() * 101) + 5;
-    def.value = Math.floor(Math.random() * 101) + 5;
-    spd.value = Math.floor(Math.random() * 101) + 5;
+const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
+    const props = subclassProps[rawClass];
+    if (props) {
+        hp.value = props.health;
+        atk.value = props.atk;
+        def.value = props.def;
+        spd.value = props.speed;
+    }
     const descP = document.getElementById("descStat");
     descP.innerHTML = this.dataset.desc;
     const creatP = document.getElementById("creatorStat");
@@ -155,3 +181,4 @@ function statView() {
     const elemP = document.getElementById("elemStat");
     elemP.innerHTML = this.dataset.elem;
 }
+
