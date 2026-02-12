@@ -1,3 +1,10 @@
+let previousStats = null;
+
+function toIntSafe(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
 document.getElementById("binder").addEventListener("click", () => {
     const binder = document.getElementById("binderBanner");
     binder.style.display = "block";
@@ -117,7 +124,9 @@ const subclassProps = {
     penetrate: { health: 2800, def: 1600, speed: 150, atk: 1400 },
 
     hot: { health: 3800, def: 1500, speed: 100, atk: 1000 },
-    energy: { health: 4200, def: 1400, speed: 130, atk: 1200 }
+    energy: { health: 4200, def: 1400, speed: 130, atk: 1200 },
+
+    none: { health: 67, def: 67, speed: 67, atk: 67 }
 };
 
 function charView() {
@@ -176,12 +185,97 @@ function charView() {
     single.querySelector("h4").style.color = color;
 }
 
+function ensureArrowEl(id) {
+  let el = document.getElementById(id);
+  if (el) return el;
+
+  el = document.createElement('span');
+  el.id = id;
+  // ensure visible and consistent styling
+  el.style.display = 'inline-block';
+  el.style.minWidth = '18px';
+  el.style.marginLeft = '8px';
+  el.style.fontWeight = '700';
+  el.style.fontSize = '14px';
+  el.style.verticalAlign = 'middle';
+
+  // Place the arrow into the dedicated container in the EJS if present (hpAr, atkAr, defAr, spdAr)
+  // Arrow id is like 'HP_arrow' so derive stat key and container id
+  const statKey = id.replace('_arrow', ''); // e.g. 'HP'
+  const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.appendChild(el);
+    return el;
+  }
+
+  // fallback: try to insert after the progress input (e.g. HP_PB)
+  const progressId = statKey + '_PB';
+  const input = document.getElementById(progressId);
+  if (input && input.parentNode) {
+    if (input.nextSibling) input.parentNode.insertBefore(el, input.nextSibling);
+    else input.parentNode.appendChild(el);
+    return el;
+  }
+
+  // final fallback: append to statBlock or body
+  const statBlock = document.getElementById('statBlock');
+  if (statBlock) statBlock.appendChild(el);
+  else document.body.appendChild(el);
+  return el;
+}
+
+function renderStatArrows(prev, curr) {
+  const stats = ['HP','ATK','DEF','SPD'];
+  stats.forEach(stat => {
+    const prevVal = (prev && typeof prev[stat.toLowerCase()] !== 'undefined') ? prev[stat.toLowerCase()] : null;
+    const currVal = (curr && typeof curr[stat.toLowerCase()] !== 'undefined') ? curr[stat.toLowerCase()] : null;
+    const arrowEl = ensureArrowEl(stat + '_arrow');
+    if (prevVal === null || prevVal === undefined) {
+      arrowEl.textContent = '';
+      arrowEl.title = '';
+      arrowEl.style.color = '';
+      arrowEl.style.visibility = 'hidden';
+      return;
+    }
+    // make sure visible when we have a previous value
+    arrowEl.style.visibility = 'visible';
+    if (currVal > prevVal) {
+      arrowEl.textContent = '▲';
+      arrowEl.style.color = '#1aa84f'; // green
+      arrowEl.title = `${stat} ↑ (was ${prevVal})`;
+    } else if (currVal < prevVal) {
+      arrowEl.textContent = '▼';
+      arrowEl.style.color = '#e05252'; // red
+      arrowEl.title = `${stat} ↓ (was ${prevVal})`;
+    } else {
+      arrowEl.textContent = '•';
+      arrowEl.style.color = '#999';
+      arrowEl.title = `${stat} = (was ${prevVal})`;
+    }
+  });
+}
+
 function statView() {
     document.getElementById("statBlock").style.visibility = "visible";
     const hp = document.getElementById("HP_PB");
     const atk = document.getElementById("ATK_PB");
     const def = document.getElementById("DEF_PB");
     const spd = document.getElementById("SPD_PB");
+    //arrow tracking for stats bc carter hates me
+    const currentlyShownName = document.querySelector('#viewed .singleI h4')?.textContent || null;
+  if (currentlyShownName) {
+    previousStats = {
+      name: currentlyShownName,
+      hp: toIntSafe(hp.value),
+      atk: toIntSafe(atk.value),
+      def: toIntSafe(def.value),
+      spd: toIntSafe(spd.value)
+    };
+  } else {
+    previousStats = null;
+  }
+
 const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
     const props = subclassProps[rawClass];
     if (props) {
