@@ -68,6 +68,7 @@ const crateRef = [
                 name: "Uncommon",
                 chance: 0.27
             },
+
             {
                 name: "Mythic",
                 chance: 0.2
@@ -84,7 +85,7 @@ const crateRef = [
         rarities: [
             {
                 name: "Trash",
-                chance: 0.09933
+                chance: 0.1
             },
             {
                 name: "Common",
@@ -101,12 +102,7 @@ const crateRef = [
             {
                 name: "Unique",
                 chance: 0.05    // new tiny chance for Unique
-            },
-            {
-                name: "Otherwordly",
-                chance: 0.00067    // new tiny chance for Otherwordly
             }
-
         ]
     }
 ];

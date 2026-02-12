@@ -1,7 +1,6 @@
 // Add this at the very top of your file
 let debugCounter = 0;
 
-
 // ===== ANIMATION SEQUENCES =====
 async function showAnimationForRarity(rarity, pogResult) {
     if (!isAnimationRunning) return; // Check if we should continue
@@ -253,13 +252,7 @@ async function createMiniExplosion() {
     return new Promise(resolve => setTimeout(resolve, 800));
 }
 
-function validateCrateOpening(type, cost, count) {
-    if (type === "Money") {
-        if (money < cost) {
-            alert(`Not enough money to open ${count} crate${count > 1 ? 's' : ''}! (Need $${abbreviateNumber(cost-money)} more)`);
-            return false;
-        }
-    }
+function validateCrateOpening(count) {
     if (inventory.length + count > Isize) {
         alert(`Not enough inventory space to open ${count} crate${count > 1 ? 's' : ''}!`);
         return false;
@@ -272,7 +265,7 @@ function validateCrateOpening(type, cost, count) {
 }
 
 // crateopen.js (client-side)
-function calculatePogResult(cost, index) {
+function calculatePogResult(index) {
   console.log(`🎲 Attempting to calculate pog result for index ${index}`);
 
   // ensure crates is an array (coming from server-side render)
@@ -290,6 +283,7 @@ function calculatePogResult(cost, index) {
 
   // Ensure pogList exists on the client
   const localPogList = Array.isArray(window.pogList) ? window.pogList : (typeof pogList !== 'undefined' ? pogList : []);
+  console.log(localPogList);
   if (!localPogList.length) {
     console.warn("pogList empty on client — cannot open crates");
     return null;
@@ -530,15 +524,15 @@ function cleanupGachaOverlay() {
 
 
 // ===== MAIN ANIMATION FUNCTIONS =====
-async function openCrateWithAnimation(cost, index) {
+async function openCrateWithAnimation(index) {
     clearAllEventListeners();
-    if (!validateCrateOpening(cost, 1)) return;
+    if (!validateCrateOpening(1)) return;
     if (isAnimationRunning) {
         console.log('❌ Animation already running, blocking new animation');
         return;
     }
 
-    const result = calculatePogResult(cost, index);
+    const result = calculatePogResult(index);
     if (!result) return;
 
     addPogToInventory(result);
@@ -560,9 +554,9 @@ async function openCrateWithAnimation(cost, index) {
     }
 }
 
-async function openMultipleCratesWithAnimation(cost, index, count) {
+async function openMultipleCratesWithAnimation(index, count) {
     clearAllEventListeners();
-    if (!validateCrateOpening(cost, count)) return;
+    if (!validateCrateOpening(count)) return;
     if (isAnimationRunning) {
         console.log('❌ Animation already running, blocking new animation');
         return;
@@ -570,7 +564,7 @@ async function openMultipleCratesWithAnimation(cost, index, count) {
 
     const results = [];
     for (let i = 0; i < count; i++) {
-        const result = calculatePogResult(cost, index);
+        const result = calculatePogResult(index);
         if (result) results.push(result);
     }
 
