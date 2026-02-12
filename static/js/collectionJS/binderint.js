@@ -132,7 +132,7 @@ const subclassProps = {
 function charView() {
     const name = this.dataset.name;
     const color = this.querySelector("h4").style.color;
-    let notch = 0
+    let notch = 0;
     switch (color) {
         case "red":
             notch += 4;
@@ -158,9 +158,29 @@ function charView() {
     const isBronze = this.dataset.isbronze === "true";
     const single = document.querySelector("#viewed .singleI");
     const notv = document.getElementById("pognotv");
+    const rarIcon = document.getElementById("rar_back");
+    rarIcon.style.display = "block";
+    const rarity = this.dataset.rarity
+    switch (rarity) {
+        case "Trash":
+            rarIcon.src = "../static/icons/rarities/Trash_Notch.png";
+            break;
+        case "Common":
+            rarIcon.src = "../static/icons/rarities/Common_Notch.png";
+            break;
+        case "Uncommon":
+            rarIcon.src = "../static/icons/rarities/Uncommon_Notch.png";
+            break;
+        case "Mythic":
+            rarIcon.src = "../static/icons/rarities/Mythic_Notch.png";
+            break;
+        case "Unique":
+            rarIcon.src = "../static/icons/rarities/Unique_Notch.png";
+            break;
+    }
     notv.innerHTML = `${notchView}`
     single.querySelector("h4").textContent = name;
-    single.style.border = `4px solid ${unique ? "lightgray" : "black"}`;
+    single.style.border = `4px solid ${unique ? "lightgray" : color}`;
     single.style.backgroundColor = isBronze ? "#CD7F32" : "rgb(66, 51, 66)";
     single.querySelector("h4").style.color = color;
 }
@@ -264,25 +284,39 @@ const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCa
         def.value = props.def;
         spd.value = props.speed;
     }
-
-    const currentStats = {
-    name: this.dataset.name,
-    hp: toIntSafe(hp.value),
-    atk: toIntSafe(atk.value),
-    def: toIntSafe(def.value),
-    spd: toIntSafe(spd.value)
-  };
-
-   renderStatArrows(previousStats, currentStats);
-
+    const rarity = this.dataset.rarity
+    //desc text
     const descP = document.getElementById("descStat");
     descP.innerHTML = this.dataset.desc;
+    //creator text
     const creatP = document.getElementById("creatorStat");
     creatP.innerHTML = this.dataset.creator;
+    //class text
     const classP = document.getElementById("classStat");
     classP.innerHTML = this.dataset.class_name;
+    //rarity text
     const rarP = document.getElementById("rarStat");
-    rarP.innerHTML = this.dataset.rarity;
+    rarP.innerHTML = rarity;
+    //rarity icon
+    const rarIcon = document.getElementById("rar_icon");
+    switch (rarity) {
+        case "Trash":
+            rarIcon.src = "../static/icons/rarities/Trash_Notch.png";
+            break;
+        case "Common":
+            rarIcon.src = "../static/icons/rarities/Common_Notch.png";
+            break;
+        case "Uncommon":
+            rarIcon.src = "../static/icons/rarities/Uncommon_Notch.png";
+            break;
+        case "Mythic":
+            rarIcon.src = "../static/icons/rarities/Mythic_Notch.png";
+            break;
+        case "Unique":
+            rarIcon.src = "../static/icons/rarities/Unique_Notch.png";
+            break;
+    }
+    //element text
     const elemP = document.getElementById("elemStat");
     elemP.innerHTML = this.dataset.elem;
 }

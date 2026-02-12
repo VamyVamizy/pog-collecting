@@ -5,16 +5,6 @@ let defrealprice = 0
 let defamount = 0
 let defreason = ""
 
-// CRATE TRANSACTIONS
-function transferType() {
-    const balanceType = document.getElementById("balanceSelect").value;
-    if (balanceType === "money") {
-        return "Money";
-    } else if (balanceType === "digi") {
-        return "Digipogs";
-    }
-}
-
 document.getElementById("amountSelect").addEventListener("change", () => {
     const price = defprice;
     const amount = parseInt(document.getElementById("amountSelect").value);
@@ -22,29 +12,10 @@ document.getElementById("amountSelect").addEventListener("change", () => {
     defamount = amount;
 });
 
-document.getElementById("balanceSelect").addEventListener("change", () => {
-    const type = transferType();
-    if (type === "Money") {
-        document.getElementById("pin_crate").style.display = "none";
-    } else if (type === "Digipogs") {
-        document.getElementById("pin_crate").style.display = "block";
-    }
-    determineCost(defprice, defamount);
-});
-
 //price determination
 function determineCost(price, amount) {
-    const type = transferType();
-    let monies = true;
-    if (type === "Money") {
-        monies = true; 
-    } else if (type === "Digipogs") {
-        monies = false;
-    }
-    const scaling = ((1 + (cratesOpened / 20)));
-    const scaling_perc = (scaling * 100) - 100;
-    const purchaseCost = monies ? price * amount * scaling : (price * amount) / 5; // money : digipogs
-    document.getElementById("crateprice").innerText = `Price: $${abbreviateNumber(purchaseCost)} ${monies ? `(+${scaling_perc.toFixed(0)}%)` : ``}`;
+    const purchaseCost =  (price * amount) / 5; // digipogs
+    document.getElementById("crateprice").innerText = `Price: $${abbreviateNumber(purchaseCost)}`;
     defrealprice = purchaseCost;
     console.log(defrealprice);
     return purchaseCost;
@@ -65,8 +36,7 @@ function transaction(price, reason) {
 
 document.getElementById("purchaseBtn_C").addEventListener("click", () => {
     const count = parseInt(document.getElementById("amountSelect").value);
-    const type = transferType();
-    if (!validateCrateOpening(type, defrealprice, count)) return;
+    if (!validateCrateOpening(count)) return;
     const pinval = document.getElementById("pinField_crate").value;
     purchase(defrealprice, defreason, pinval, defamount);
     document.getElementById("overlay").style.display = "none";
@@ -77,25 +47,19 @@ document.getElementById("cancelBtn_C").addEventListener("click", () => {
 });
 
 // implement purchased item effect
-function implement(price, reason, amount) {
+function implement(reason, amount) {
     if (amount === 1) {
-        openCrateWithAnimation(price, reason);
+        openCrateWithAnimation(reason);
     } else if (amount === 5) {
-        openMultipleCratesWithAnimation(price, reason, 5)
+        openMultipleCratesWithAnimation(reason, 5)
     } else if (amount === 10) {
-        openMultipleCratesWithAnimation(price, reason, 10)
+        openMultipleCratesWithAnimation(reason, 10)
     }
 }
 
 //buy buttons
 function purchase(price, reason, pin, amount) {
-    const type = transferType();
     console.log(price);
-    if (type === "Money") {
-        money -= price;
-        implement(price, reason, amount);
-        save();
-    } else if (type === "Digipogs") {
     fetch('/api/digipogs/transfer', {
         // post is to use app.post with the route /api/digipogs/transfer
         method: 'POST',
@@ -113,7 +77,7 @@ function purchase(price, reason, pin, amount) {
         .then(data => {
             if (data.success) {
                 // add purchased item effect here
-                implement(price, reason, amount);
+                implement(reason, amount);
                 save();
                 alert(`Purchase successful! (-${price} Digipogs)`);
             } else {
@@ -123,9 +87,7 @@ function purchase(price, reason, pin, amount) {
         .catch(err => {
             console.error("Error during purchase:", err);
         })
-    };
 };
-
 /* !
 !
 !
