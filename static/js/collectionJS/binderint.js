@@ -262,28 +262,40 @@ function statView() {
     const atk = document.getElementById("ATK_PB");
     const def = document.getElementById("DEF_PB");
     const spd = document.getElementById("SPD_PB");
+
     //arrow tracking for stats bc carter hates me
     const currentlyShownName = document.querySelector('#viewed .singleI h4')?.textContent || null;
-  if (currentlyShownName) {
-    previousStats = {
-      name: currentlyShownName,
-      hp: toIntSafe(hp.value),
-      atk: toIntSafe(atk.value),
-      def: toIntSafe(def.value),
-      spd: toIntSafe(spd.value)
-    };
-  } else {
-    previousStats = null;
-  }
-
-const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
-    const props = subclassProps[rawClass];
-    if (props) {
-        hp.value = props.health;
-        atk.value = props.atk;
-        def.value = props.def;
-        spd.value = props.speed;
+    if (currentlyShownName) {
+        previousStats = {
+        name: currentlyShownName,
+        hp: toIntSafe(hp.value),
+        atk: toIntSafe(atk.value),
+        def: toIntSafe(def.value),
+        spd: toIntSafe(spd.value)
+        };
+    } else {
+        previousStats = null;
     }
+
+    const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
+        const props = subclassProps[rawClass];
+        if (props) {
+            hp.value = props.health;
+            atk.value = props.atk;
+            def.value = props.def;
+            spd.value = props.speed;
+        }
+
+    const currentStats = {
+        name: this.dataset.name,
+        hp: toIntSafe(hp.value),
+        atk: toIntSafe(atk.value),
+        def: toIntSafe(def.value),
+        spd: toIntSafe(spd.value)
+    };
+
+    renderStatArrows(previousStats, currentStats);
+
     const rarity = this.dataset.rarity
     //desc text
     const descP = document.getElementById("descStat");
