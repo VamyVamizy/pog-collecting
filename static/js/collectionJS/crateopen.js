@@ -283,7 +283,6 @@ function calculatePogResult(index) {
 
   // Ensure pogList exists on the client
   const localPogList = Array.isArray(window.pogList) ? window.pogList : (typeof pogList !== 'undefined' ? pogList : []);
-  console.log(localPogList);
   if (!localPogList.length) {
     console.warn("pogList empty on client — cannot open crates");
     return null;
