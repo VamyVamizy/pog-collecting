@@ -8,8 +8,19 @@ function toIntSafe(v) {
 document.getElementById("binder").addEventListener("click", () => {
     const binder = document.getElementById("binderBanner");
     binder.style.display = "block";
-    viewCollection()
+    viewCollection();
 });
+
+document.getElementById("pogsBtn").addEventListener("click", () => {
+    viewCollection();
+    setupBinderDots();
+})
+
+document.getElementById("perkBtn").addEventListener("click", () => {
+    viewPerkCollection();
+    const dots = document.getElementById("binderDots");
+    dots.style.visibility = "hidden";
+})
 
 document.getElementById("closeBinder").addEventListener("click", () => {
     const binder = document.getElementById("binderBanner");
@@ -20,6 +31,7 @@ document.getElementById("closeBinder").addEventListener("click", () => {
 function setupBinderDots() {
     const binder = document.getElementById("binderItems");
     const dots = document.getElementById("binderDots");
+    dots.style.visibility = "visible";
     dots.innerHTML = "";
     const items = [...binder.children].filter(child => {
         const style = window.getComputedStyle(child);
@@ -30,7 +42,6 @@ function setupBinderDots() {
     const colValue = gridStyles.gridTemplateColumns;
     const columns = (colValue && colValue !== 'none') ? colValue.split(" ").length : 1;
     const rowCount = Math.ceil(items.length / columns);
-    const averageRowHeight = binder.scrollHeight / rowCount;
     const maxScroll = binder.scrollHeight - binder.clientHeight;
     for (let i = 0; i < rowCount; i++) {
         const dot = document.createElement("div");
@@ -52,9 +63,63 @@ function setupActiveDotTracking(binder, dots, rowCount, maxScroll) {
     });
 }
 
+async function viewPerkCollection() {
+    const itemsHTML = document.getElementById("binderItems");
+    itemsHTML.classList.add('perkStyling');
+    try {
+        const response = await fetch('/api/perks');
+        const data = await response.json();
+        const perks = data.perks;
+        const sortedPerks = [...perks].sort((a, b) => a.notches - b.notches)
+        const itemView = sortedPerks.map((item) => {
+            const name = item.name;
+            const description = item.description;
+            const type = item.type
+            let typeIcon = ""
+            switch (type) {
+                case "attack":
+                    typeIcon += "⚔";
+                    break;
+                case "defense":
+                    typeIcon += "🛡️";
+                    break;
+                case "element":
+                    typeIcon += "🔥";
+                    break;
+                case "support":
+                    typeIcon += "💊";
+                    break;
+                case "utility":
+                    typeIcon += "⚙";
+                    break;
+            }
+            let notches = "";
+            for (let i = 0; i < item.notches; i++) {
+                notches += "⬣";
+            }
+            return `
+            <div class="perk_card">
+                <div class="inner_card">
+                    <div class="card_padding">
+                        <h3>${name}</h3>
+                        <p>${description}</p>
+                        <p>${typeIcon}</p>
+                        <p class="notches">${notches}</p>
+                    </div>
+                </div>
+            </div>
+        `
+        }).join("");
+        itemsHTML.innerHTML = itemView;
+    } catch (err) {
+        console.error("Error fetching perks:", err);
+    }
+}
+
 function viewCollection() {
     maxBinder = 0;
-    const itemsHTML = document.getElementById("binderItems")
+    const itemsHTML = document.getElementById("binderItems");
+    itemsHTML.classList.remove('perkStyling');
     const rarityOrder = { 'Unique': 6, 'Mythic': 5, 'Rare': 4, 'Uncommon': 3, 'Common': 2, 'Trash': 1 };
     const sortedResults = [...pogList].sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
     const itemView = sortedResults.map((item) => {
@@ -243,15 +308,15 @@ function renderStatArrows(prev, curr) {
     if (currVal > prevVal) {
       arrowEl.textContent = '▲';
       arrowEl.style.color = '#1aa84f'; // green
-      arrowEl.title = `${stat} ↑ (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     } else if (currVal < prevVal) {
       arrowEl.textContent = '▼';
       arrowEl.style.color = '#e05252'; // red
-      arrowEl.title = `${stat} ↓ (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     } else {
       arrowEl.textContent = '•';
       arrowEl.style.color = '#999';
-      arrowEl.title = `${stat} = (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     }
   });
 }

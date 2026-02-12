@@ -15,7 +15,7 @@ document.getElementById("amountSelect").addEventListener("change", () => {
 //price determination
 function determineCost(price, amount) {
     const purchaseCost =  (price * amount) / 5; // digipogs
-    document.getElementById("crateprice").innerText = `Price: $${abbreviateNumber(purchaseCost)}`;
+    document.getElementById("crateprice").innerText = `Price: ${abbreviateNumber(purchaseCost)} Digipogs`;
     defrealprice = purchaseCost;
     console.log(defrealprice);
     return purchaseCost;
