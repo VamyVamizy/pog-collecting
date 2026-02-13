@@ -251,43 +251,43 @@ function charView() {
 }
 
 function ensureArrowEl(id) {
-  let el = document.getElementById(id);
-  if (el) return el;
+    let el = document.getElementById(id);
+    if (el) return el;
 
-  el = document.createElement('span');
-  el.id = id;
-  // ensure visible and consistent styling
-  el.style.display = 'inline-block';
-  el.style.minWidth = '18px';
-  el.style.marginLeft = '8px';
-  el.style.fontWeight = '700';
-  el.style.fontSize = '14px';
-  el.style.verticalAlign = 'middle';
+    el = document.createElement('span');
+    el.id = id;
+    // ensure visible and consistent styling
+    el.style.display = 'inline-block';
+    el.style.minWidth = '18px';
+    el.style.marginLeft = '8px';
+    el.style.fontWeight = '700';
+    el.style.fontSize = '14px';
+    el.style.verticalAlign = 'middle';
 
-  // Place the arrow into the dedicated container in the EJS if present (hpAr, atkAr, defAr, spdAr)
-  // Arrow id is like 'HP_arrow' so derive stat key and container id
-  const statKey = id.replace('_arrow', ''); // e.g. 'HP'
-  const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
-  const container = document.getElementById(containerId);
-  if (container) {
-    container.appendChild(el);
+    // Place the arrow into the dedicated container in the EJS if present (hpAr, atkAr, defAr, spdAr)
+    // Arrow id is like 'HP_arrow' so derive stat key and container id
+    const statKey = id.replace('_arrow', ''); // e.g. 'HP'
+    const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.appendChild(el);
+        return el;
+    }
+
+    // fallback: try to insert after the progress input (e.g. HP_PB)
+    const progressId = statKey + '_PB';
+    const input = document.getElementById(progressId);
+    if (input && input.parentNode) {
+        if (input.nextSibling) input.parentNode.insertBefore(el, input.nextSibling);
+        else input.parentNode.appendChild(el);
+        return el;
+    }
+
+    // final fallback: append to statBlock or body
+    const statBlock = document.getElementById('statBlock');
+    if (statBlock) statBlock.appendChild(el);
+    else document.body.appendChild(el);
     return el;
-  }
-
-  // fallback: try to insert after the progress input (e.g. HP_PB)
-  const progressId = statKey + '_PB';
-  const input = document.getElementById(progressId);
-  if (input && input.parentNode) {
-    if (input.nextSibling) input.parentNode.insertBefore(el, input.nextSibling);
-    else input.parentNode.appendChild(el);
-    return el;
-  }
-
-  // final fallback: append to statBlock or body
-  const statBlock = document.getElementById('statBlock');
-  if (statBlock) statBlock.appendChild(el);
-  else document.body.appendChild(el);
-  return el;
 }
 
 function renderStatArrows(prev, curr) {
@@ -327,6 +327,15 @@ function statView() {
     const atk = document.getElementById("ATK_PB");
     const def = document.getElementById("DEF_PB");
     const spd = document.getElementById("SPD_PB");
+    if (this.dataset.rarity == "Trash") {
+        document.getElementById("attribs_cont").style.display = "none";
+        document.getElementById("perkCardCont").style.display = "none";
+        document.getElementById("perkHead").style.display = "none";
+    } else {
+        document.getElementById("attribs_cont").style.display = "flex";
+        document.getElementById("perkCardCont").style.display = "flex";
+        document.getElementById("perkHead").style.display = "block";
+    }
 
     //arrow tracking for stats bc carter hates me
     const currentlyShownName = document.querySelector('#viewed .singleI h4')?.textContent || null;

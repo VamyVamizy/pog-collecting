@@ -436,7 +436,6 @@
 #binderItems.perkStyling {
     grid-template-columns: repeat(auto-fit, 240px);
     gap: 60px;
-    justify-content: left;
 }
 
 #binderItems::-webkit-scrollbar {
