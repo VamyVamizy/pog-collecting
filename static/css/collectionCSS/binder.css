@@ -1,4 +1,11 @@
+@keyframes fadeBinder {
+    0% {opacity: 0;}
+    100% {opacity: 1;}
+}
+
 #binderBanner {
+    animation-name: fadeBinder;
+    animation-duration: 0.2s;
     position: fixed;
     inset: 0; /* top:0; right:0; bottom:0; left:0 */
     display: flex;
@@ -232,6 +239,10 @@
     scale: 1.1;
 }
 
+.singleI:active {
+    scale: 1.05;
+}
+
 #viewed .singleI {
     scale: 3;
     display: flex;
@@ -435,10 +446,30 @@
 
 #binderItems.perkStyling {
     grid-template-columns: repeat(auto-fit, 240px);
-    gap: 60px;
+    gap: 5px;
 }
 
 #binderItems::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 9px;
+}
+
+#binderItems::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+}
+
+#binderItems::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 214, 214, 0.4);
+}
+
+#binderItems::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#binderItems::-webkit-scrollbar-track:hover {
+    background: transparent;
+}
+
+#binderItems::-webkit-scrollbar-track:active {
+    background: transparent;
 }

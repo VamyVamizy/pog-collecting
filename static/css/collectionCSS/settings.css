@@ -18,13 +18,6 @@
     flex-shrink: 1;
 }
 
-#settings_tools_btns {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    gap: 20px;
-}
-
 .tools {
     background-color: #ecdcdc;
     border: transparent;
@@ -90,7 +83,7 @@ option {
 #searchbox {
     background-color: #ecdcdc;
     border: transparent;
-    border-radius: 10px;
+    border-radius: 40px;
     width: 400px;
     padding: 4px;
     text-align: center;

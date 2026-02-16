@@ -8,25 +8,25 @@ const rewards = {
     1: "Perk",
     2: "Perk",
     3: "Perk",
-    4: "Notch",
+    4: "Perk",
     5: "Perk",
     6: "Perk",
     7: "Perk",
     8: "Perk",
-    9: "Notch",
+    9: "Perk",
     10: "Perk",
     11: "Perk",
     12: "Perk",
     13: "Perk",
     14: "Perk",
-    15: "Notch",
+    15: "Perk",
     16: "Perk",
     17: "Perk",
     18: "Perk",
     19: "Perk",
     20: "Perk",
     21: "Perk",
-    22: "Notch"
+    22: "Perk"
 };
 
 function updateProgress(tierNum) {
