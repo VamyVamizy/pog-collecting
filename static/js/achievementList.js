@@ -262,7 +262,7 @@ window.achievementList = [
         },
         {
             name: "420",
-            description: "Sell enough pogs to gain back a TOTAL of 420 digipogs.",
+            description: "Sell enough pogs to gain back a TOTAL of $420.",
             icon: "static/icons/achievement/420.png",
             status: false,
             hidden: true,
