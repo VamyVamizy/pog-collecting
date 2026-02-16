@@ -50,6 +50,6 @@ document.getElementById("useWish").addEventListener("click", async () => {
             }
         }
     } else {
-        await customConfirm("Not enough wishes to grant a wish.")
+        await customConfirm(`Not enough wishes to grant a wish. (${wish} / 7)`)
     }
 });

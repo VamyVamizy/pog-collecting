@@ -8,25 +8,25 @@ const rewards = {
     1: "Perk",
     2: "Perk",
     3: "Perk",
-    4: "+1 ⬣",
+    4: "Perk",
     5: "Perk",
     6: "Perk",
     7: "Perk",
     8: "Perk",
-    9: "+1 ⬣",
+    9: "Perk",
     10: "Perk",
     11: "Perk",
     12: "Perk",
     13: "Perk",
     14: "Perk",
-    15: "+1 ⬣",
+    15: "Perk",
     16: "Perk",
     17: "Perk",
     18: "Perk",
     19: "Perk",
     20: "Perk",
     21: "Perk",
-    22: "+1 ⬣"
+    22: "Perk"
 };
 
 function updateProgress(tierNum) {
@@ -71,8 +71,14 @@ document.addEventListener('mousemove', (e) => {
             return;
         }
         info.style.display = 'block';
+        let rew = ""
+        if (rewards[tier] == "Perk") {
+            rew = `<img src="../static/icons/perks/Perk_Card_Icon.png" alt="Perk" width="100" height="100">`;
+        } else {
+            rew = "+1 ⬣"
+        }
         info.innerHTML = `<h4>Reward Tier ${tier}</h4>
-        <h5>${rewards[tier]}</h5>`;
+        <h5>${rew}</h5>`;
     } else {
         info.style.display = 'none';
     }
@@ -155,11 +161,6 @@ function loadServerTiers() {
 
 // attempt to load persisted tiers from server on page load
 loadServerTiers();
-
-document.getElementById('yyy').addEventListener('click', () => {
-    earned += 1;
-    setProgress(50 * earned);
-});
 
 function getReward(tier) {
     // Placeholder function to handle reward logic

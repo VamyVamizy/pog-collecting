@@ -12,6 +12,7 @@ body {
         radial-gradient(circle at center, #080b0f 0%, #090a0f 70%);
     background-repeat: no-repeat;
     background-attachment: fixed;
+    color: white;
 }
 
 img {
@@ -26,6 +27,7 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 400px;
 }
 
 #money {
