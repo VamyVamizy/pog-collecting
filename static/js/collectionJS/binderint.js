@@ -199,8 +199,6 @@ function ensureArrowEl(id) {
   el.style.fontSize = '14px';
   el.style.verticalAlign = 'middle';
 
-  // Place the arrow into the dedicated container in the EJS if present (hpAr, atkAr, defAr, spdAr)
-  // Arrow id is like 'HP_arrow' so derive stat key and container id
   const statKey = id.replace('_arrow', ''); // e.g. 'HP'
   const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
   const container = document.getElementById(containerId);
@@ -285,7 +283,6 @@ const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCa
         spd.value = props.speed;
     }
     const rarity = this.dataset.rarity
-    //desc text
     const descP = document.getElementById("descStat");
     descP.innerHTML = this.dataset.desc;
     //creator text
