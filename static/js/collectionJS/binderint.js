@@ -8,8 +8,19 @@ function toIntSafe(v) {
 document.getElementById("binder").addEventListener("click", () => {
     const binder = document.getElementById("binderBanner");
     binder.style.display = "block";
-    viewCollection()
+    viewCollection();
 });
+
+document.getElementById("pogsBtn").addEventListener("click", () => {
+    viewCollection();
+    setupBinderDots();
+})
+
+document.getElementById("perkBtn").addEventListener("click", () => {
+    viewPerkCollection();
+    const dots = document.getElementById("binderDots");
+    dots.style.visibility = "hidden";
+})
 
 document.getElementById("closeBinder").addEventListener("click", () => {
     const binder = document.getElementById("binderBanner");
@@ -20,6 +31,7 @@ document.getElementById("closeBinder").addEventListener("click", () => {
 function setupBinderDots() {
     const binder = document.getElementById("binderItems");
     const dots = document.getElementById("binderDots");
+    dots.style.visibility = "visible";
     dots.innerHTML = "";
     const items = [...binder.children].filter(child => {
         const style = window.getComputedStyle(child);
@@ -30,7 +42,6 @@ function setupBinderDots() {
     const colValue = gridStyles.gridTemplateColumns;
     const columns = (colValue && colValue !== 'none') ? colValue.split(" ").length : 1;
     const rowCount = Math.ceil(items.length / columns);
-    const averageRowHeight = binder.scrollHeight / rowCount;
     const maxScroll = binder.scrollHeight - binder.clientHeight;
     for (let i = 0; i < rowCount; i++) {
         const dot = document.createElement("div");
@@ -52,9 +63,63 @@ function setupActiveDotTracking(binder, dots, rowCount, maxScroll) {
     });
 }
 
+async function viewPerkCollection() {
+    const itemsHTML = document.getElementById("binderItems");
+    itemsHTML.classList.add('perkStyling');
+    try {
+        const response = await fetch('/api/perks');
+        const data = await response.json();
+        const perks = data.perks;
+        const sortedPerks = [...perks].sort((a, b) => a.notches - b.notches)
+        const itemView = sortedPerks.map((item) => {
+            const name = item.name;
+            const description = item.description;
+            const type = item.type
+            let typeIcon = ""
+            switch (type) {
+                case "attack":
+                    typeIcon += "⚔";
+                    break;
+                case "defense":
+                    typeIcon += "🛡️";
+                    break;
+                case "element":
+                    typeIcon += "🔥";
+                    break;
+                case "support":
+                    typeIcon += "💊";
+                    break;
+                case "utility":
+                    typeIcon += "⚙";
+                    break;
+            }
+            let notches = "";
+            for (let i = 0; i < item.notches; i++) {
+                notches += "⬣";
+            }
+            return `
+            <div class="perk_card">
+                <div class="inner_card">
+                    <div class="card_padding">
+                        <h3>${name}</h3>
+                        <p>${description}</p>
+                        <p>${typeIcon}</p>
+                        <p class="notches">${notches}</p>
+                    </div>
+                </div>
+            </div>
+        `
+        }).join("");
+        itemsHTML.innerHTML = itemView;
+    } catch (err) {
+        console.error("Error fetching perks:", err);
+    }
+}
+
 function viewCollection() {
     maxBinder = 0;
-    const itemsHTML = document.getElementById("binderItems")
+    const itemsHTML = document.getElementById("binderItems");
+    itemsHTML.classList.remove('perkStyling');
     const rarityOrder = { 'Unique': 6, 'Mythic': 5, 'Rare': 4, 'Uncommon': 3, 'Common': 2, 'Trash': 1 };
     const sortedResults = [...pogList].sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
     const itemView = sortedResults.map((item) => {
@@ -186,41 +251,43 @@ function charView() {
 }
 
 function ensureArrowEl(id) {
-  let el = document.getElementById(id);
-  if (el) return el;
+    let el = document.getElementById(id);
+    if (el) return el;
 
-  el = document.createElement('span');
-  el.id = id;
-  // ensure visible and consistent styling
-  el.style.display = 'inline-block';
-  el.style.minWidth = '18px';
-  el.style.marginLeft = '8px';
-  el.style.fontWeight = '700';
-  el.style.fontSize = '14px';
-  el.style.verticalAlign = 'middle';
+    el = document.createElement('span');
+    el.id = id;
+    // ensure visible and consistent styling
+    el.style.display = 'inline-block';
+    el.style.minWidth = '18px';
+    el.style.marginLeft = '8px';
+    el.style.fontWeight = '700';
+    el.style.fontSize = '14px';
+    el.style.verticalAlign = 'middle';
 
-  const statKey = id.replace('_arrow', ''); // e.g. 'HP'
-  const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
-  const container = document.getElementById(containerId);
-  if (container) {
-    container.appendChild(el);
+    // Place the arrow into the dedicated container in the EJS if present (hpAr, atkAr, defAr, spdAr)
+    // Arrow id is like 'HP_arrow' so derive stat key and container id
+    const statKey = id.replace('_arrow', ''); // e.g. 'HP'
+    const containerId = statKey.toLowerCase() + 'Ar'; // e.g. 'hpAr'
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.appendChild(el);
+        return el;
+    }
+
+    // fallback: try to insert after the progress input (e.g. HP_PB)
+    const progressId = statKey + '_PB';
+    const input = document.getElementById(progressId);
+    if (input && input.parentNode) {
+        if (input.nextSibling) input.parentNode.insertBefore(el, input.nextSibling);
+        else input.parentNode.appendChild(el);
+        return el;
+    }
+
+    // final fallback: append to statBlock or body
+    const statBlock = document.getElementById('statBlock');
+    if (statBlock) statBlock.appendChild(el);
+    else document.body.appendChild(el);
     return el;
-  }
-
-  // fallback: try to insert after the progress input (e.g. HP_PB)
-  const progressId = statKey + '_PB';
-  const input = document.getElementById(progressId);
-  if (input && input.parentNode) {
-    if (input.nextSibling) input.parentNode.insertBefore(el, input.nextSibling);
-    else input.parentNode.appendChild(el);
-    return el;
-  }
-
-  // final fallback: append to statBlock or body
-  const statBlock = document.getElementById('statBlock');
-  if (statBlock) statBlock.appendChild(el);
-  else document.body.appendChild(el);
-  return el;
 }
 
 function renderStatArrows(prev, curr) {
@@ -241,15 +308,15 @@ function renderStatArrows(prev, curr) {
     if (currVal > prevVal) {
       arrowEl.textContent = '▲';
       arrowEl.style.color = '#1aa84f'; // green
-      arrowEl.title = `${stat} ↑ (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     } else if (currVal < prevVal) {
       arrowEl.textContent = '▼';
       arrowEl.style.color = '#e05252'; // red
-      arrowEl.title = `${stat} ↓ (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     } else {
       arrowEl.textContent = '•';
       arrowEl.style.color = '#999';
-      arrowEl.title = `${stat} = (was ${prevVal})`;
+      arrowEl.title = `${stat}: ${currVal}`;
     }
   });
 }
@@ -260,28 +327,49 @@ function statView() {
     const atk = document.getElementById("ATK_PB");
     const def = document.getElementById("DEF_PB");
     const spd = document.getElementById("SPD_PB");
+    if (this.dataset.rarity == "Trash") {
+        document.getElementById("attribs_cont").style.display = "none";
+        document.getElementById("perkCardCont").style.display = "none";
+        document.getElementById("perkHead").style.display = "none";
+    } else {
+        document.getElementById("attribs_cont").style.display = "flex";
+        document.getElementById("perkCardCont").style.display = "flex";
+        document.getElementById("perkHead").style.display = "block";
+    }
+
     //arrow tracking for stats bc carter hates me
     const currentlyShownName = document.querySelector('#viewed .singleI h4')?.textContent || null;
-  if (currentlyShownName) {
-    previousStats = {
-      name: currentlyShownName,
-      hp: toIntSafe(hp.value),
-      atk: toIntSafe(atk.value),
-      def: toIntSafe(def.value),
-      spd: toIntSafe(spd.value)
-    };
-  } else {
-    previousStats = null;
-  }
-
-const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
-    const props = subclassProps[rawClass];
-    if (props) {
-        hp.value = props.health;
-        atk.value = props.atk;
-        def.value = props.def;
-        spd.value = props.speed;
+    if (currentlyShownName) {
+        previousStats = {
+        name: currentlyShownName,
+        hp: toIntSafe(hp.value),
+        atk: toIntSafe(atk.value),
+        def: toIntSafe(def.value),
+        spd: toIntSafe(spd.value)
+        };
+    } else {
+        previousStats = null;
     }
+
+    const rawClass = (this.dataset.class_name || this.dataset.class || '').toLowerCase().trim();
+        const props = subclassProps[rawClass];
+        if (props) {
+            hp.value = props.health;
+            atk.value = props.atk;
+            def.value = props.def;
+            spd.value = props.speed;
+        }
+
+    const currentStats = {
+        name: this.dataset.name,
+        hp: toIntSafe(hp.value),
+        atk: toIntSafe(atk.value),
+        def: toIntSafe(def.value),
+        spd: toIntSafe(spd.value)
+    };
+
+    renderStatArrows(previousStats, currentStats);
+
     const rarity = this.dataset.rarity
     const descP = document.getElementById("descStat");
     descP.innerHTML = this.dataset.desc;

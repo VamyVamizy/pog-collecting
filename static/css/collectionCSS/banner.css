@@ -47,11 +47,11 @@
 }
 
 .hidePanel {
-    animation: close_red 0.25s ease forwards
+    animation: close_red 0.15s ease forwards
 }
 
 .showPanel {
-    animation: open_red 0.25s ease forwards
+    animation: open_red 0.15s ease forwards
 }
 
 #redirect_panel {

@@ -1,4 +1,11 @@
+@keyframes fadeTeam {
+    0% {opacity: 0;}
+    100% {opacity: 1;}
+}
+
 #teamSelectOverlay {
+	animation-name: fadeTeam;
+	animation-duration: 0.2s;
 	inset: 0;
 	background:
         radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
@@ -184,7 +191,7 @@
 /* Selection window layout: left sidebar with boxed names */
 #MCselectWindow {
 	position: fixed;
-	left: 200px;
+	left: 250px;
 	top: 50%;
 	display: flex;
 	align-items: center;
@@ -192,7 +199,7 @@
 	flex-direction: column;
 	transform: translate(-50%, -50%);
 	width: 86vw;
-	max-width: 350px;
+	max-width: 500px;
 	height: 62vh;
 	background: linear-gradient(180deg, rgba(10,8,15,0.96), rgba(6,6,10,0.98));
 	border-radius: 10px;
@@ -222,10 +229,10 @@
 	max-height: 50vh;
 	flex: 0 0 220px;
 	display: grid;
-	gap: 10px;
+	gap: 15px;
 	justify-content: center;
 	place-items: center;
-	grid-template-columns: repeat(2, 1fr);
+	grid-template-columns: repeat(auto-fit, 100px);
 }
 
 .team-sidebar::-webkit-scrollbar {
@@ -236,6 +243,7 @@
 /* Each pog name in its own small box inside the sidebar */
 .team-pog-card {
 	display: flex;
+	position: relative;
 	align-items: center;
 	gap: 10px;
 	padding: 8px 10px;
@@ -244,12 +252,42 @@
 	border-radius: 6px;
 	border: 1px solid rgba(255,255,255,0.03);
 	cursor: pointer;
-	transition: transform 120ms ease, background 120ms ease;
+	transition: all 0.1s ease;
+	filter: brightness(0.9);
 }
 
 .team-pog-card:hover {
-	transform: translateX(6px);
-	background: rgba(255,255,255,0.03);
+	scale: 1.05;
+	filter: brightness(1);
+}
+
+.rarity-icon {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	opacity: 0.2;
+	filter: brightness(0);
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 0;
+}
+
+.team-pog-card > *:not(.rarity-icon):not(.notch-labels) {
+    position: relative;
+    z-index: 1;
+}
+
+.notch-labels {
+	position: absolute;
+    bottom: -10px;              /* distance from bottom */
+    left: 50%;
+    transform: translateX(-50%); /* true center */
+	text-shadow: 0 0 5px rgba(0, 0, 0, 0.473);
+    display: flex;
+    gap: 4px;
+
+    z-index: 2;
 }
 
 .team-pog-color {

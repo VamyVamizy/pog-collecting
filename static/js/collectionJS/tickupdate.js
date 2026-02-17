@@ -20,7 +20,11 @@ function update() {
     document.getElementById("pogCount").style.color = pogAmount.length >= maxBinder ? "gold" : "white";
 
     //update wish text
-    document.getElementById("useWish").innerText = `Wish \n (${wish} / 7)`;
+    let star = '';
+    for (i = 0; i < wish; i++) {
+        star += '★'
+    }
+    document.getElementById("useWish").innerText = star;
 
     //sell all button
     document.getElementById("sellAll").innerText = `Sell All ${searching ? "(Searched)" : ""}`;

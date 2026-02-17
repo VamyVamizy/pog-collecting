@@ -804,7 +804,7 @@ function uniqueFunc() {
                 if (!achievement.status) {
                     const inv = userdata.inventory;
                     const hornetCount = inv.filter(it => (it && it.name || '').toLowerCase().includes('hornet')).length;
-                    achievement.status = hornetCount >= 3 ? true : achievement.status;
+                    achievement.status = hornetCount >= 1 ? true : achievement.status;
                     achievementNotify(achievement);
                 }
                 break;
@@ -868,7 +868,7 @@ function uniqueFunc() {
                 if (!achievement.status) {
                     const inv = userdata.inventory;
                     const nkCount = inv.filter(it => (it && it.name || '').toLowerCase().includes('thomas nuke')).length;
-                    achievement.status = nkCount >= 3 ? true : achievement.status;
+                    achievement.status = nkCount >= 1 ? true : achievement.status;
                     achievementNotify(achievement);
                 }
                 break;

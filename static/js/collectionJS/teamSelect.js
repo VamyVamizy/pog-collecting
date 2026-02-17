@@ -91,9 +91,59 @@
             // last-resort: use a soft white
             if (!validBg) validBg = 'rgba(255,255,255,0.9)';
 
+            //rarity icons
+            let rarIcon = '';
+            switch (pog.rarity) {
+                case "Trash":
+                    rarIcon = "../static/icons/rarities/Trash_Notch.png";
+                    break;
+                case "Common":
+                    rarIcon = "../static/icons/rarities/Common_Notch.png";
+                    break;
+                case "Uncommon":
+                    rarIcon = "../static/icons/rarities/Uncommon_Notch.png";
+                    break;
+                case "Mythic":
+                    rarIcon = "../static/icons/rarities/Mythic_Notch.png";
+                    break;
+                case "Unique":
+                    rarIcon = "../static/icons/rarities/Unique_Notch.png";
+                    break;
+            }
             // Apply overlay + background color separately to avoid concat issues
-            div.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.12), rgba(255,255,255,0.12))';
+            const img = document.createElement("img");
+            img.src = rarIcon;
+            img.classList.add("rarity-icon");
+            div.appendChild(img);
             div.style.backgroundColor = validBg;
+            //notches for rarities
+            const meta = window.rarityColor.find(r => r.name === pog.rarity);
+            let notch = 0;
+            switch (meta.color) {
+                case "red":
+                    notch += 4;
+                    break;
+                case "yellow":
+                    notch += 5;
+                    break;
+                case "lime":
+                    notch += 6;
+                    break;
+                case "fuchsia":
+                    notch += 7;
+                    break;
+                case "lightgray":
+                    notch += 8;
+                    break;
+            }
+            let notchView = ""
+            for (i = 0; i < notch; i++){
+                notchView += "⬣"
+            }
+            const notchDiv = document.createElement('div');
+            notchDiv.innerHTML = notchView;
+            notchDiv.classList.add("notch-labels");
+            div.appendChild(notchDiv);
 
             // debugging: show the resolved color for this pog so we can trace disappearances
             try { console.debug('teamSelect: makePogCard', { pog: pog, candidate: bgColor, applied: validBg }); } catch (e) {}

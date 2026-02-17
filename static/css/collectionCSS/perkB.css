@@ -1,59 +1,8 @@
-#perkBanner {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1001;
-}
-
-.perkCont {
-    background:
-        radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
-        radial-gradient(circle at 70% 60%, rgba(165, 52, 129, 0.12), transparent 55%),
-        radial-gradient(circle at center, #080b0f 0%, #090a0f 70%);
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    padding: 20px;
-    border: transparent;
-    text-align: center;
-    color: White;
-}
-
 .overlayBan {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     padding: 10px;
-}
-
-#perkCards {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 20px;
-    gap: 20px;
-    width: 100%;
-    flex-wrap: wrap;
-    margin-top: 20px;
-    overflow-y: auto;
-    height: 80vh;
-    background: #1f1f3a;
-    box-shadow: inset 0 0 10px black;
-}
-
-#perkCards::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-}
-
-.center {
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .closeOv {
@@ -92,19 +41,21 @@
 .perk_card {
     border: 4px solid black;
     padding: 11px;
-    margin: 10px;
-    display: inline-block;
-    width: 240px;
+    width: 100%;
     height: 340px;
+    scale: 0.8;
     border-radius: 16px;
     background: var(--gold);
     transition: all 0.1s ease;
-    transform-style: preserve-3d;
     box-shadow: 0 0 5px black;
 }
 
 .perk_card:hover {
-    scale: 1.1;
+    scale: 0.9;
+}
+
+.perk_card:active {
+    scale: 0.85;
 }
 
 .inner_card {

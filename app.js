@@ -31,7 +31,6 @@ const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
 app.get('/api/perks', (req, res) => {
     res.json({ perks });
-    console.log("Perks API accessed");
 });
 const tiers = require("./modules/backend_js/tierList.js");
 const { getPogCount, getAllPogs, initializePogDatabase } = require('./backend_data/pog_ref.js');
