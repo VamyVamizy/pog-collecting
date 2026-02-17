@@ -1,0 +1,112 @@
+body, h1, h2, h3, h4, h5 {
+    font-family: 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+body {
+    user-select: none;
+    background:
+        radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
+        radial-gradient(circle at 70% 60%, rgba(165, 52, 129, 0.12), transparent 55%),
+        radial-gradient(circle at center, #080b0f 0%, #090a0f 70%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* ===== Root + Reset ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    color: whitesmoke;
+}
+
+h4 {
+    margin-top: 15px;
+}
+
+li {
+    list-style: none;
+}
+
+#leadBanner {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    height: 100px;
+    padding: 0 20px;
+
+    background: linear-gradient(90deg, #6b3df0, #9d42f7);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.leftstuff {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    margin-left: 20px;
+}
+
+/* Back button */
+#circleButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.25);
+    color: white;
+    text-decoration: none;
+    font-size: 22px;
+
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+#circleButton:hover {
+    background: rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
+}
+
+#flexcont {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 220px);
+    width: 95%;
+    margin: auto;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.568);
+    border-radius: 10px;
+    gap: 30px;
+}
+
+.playerCont {
+    background: white;
+    padding: 10px;
+    border-radius: 20px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.1s ease;
+    font-weight: bold;
+    min-width: 200px;
+}
+
+.playerCont:hover {
+    scale: 1.1;
+}
