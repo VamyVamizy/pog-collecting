@@ -95,3 +95,8 @@ document.getElementById("marketplaceButton").addEventListener("click", () => {
     save();
     window.location.href = "/marketplace";
 });
+
+document.getElementById("practice").addEventListener("click", () => {
+    save();
+    window.location.href = "/battle";
+});

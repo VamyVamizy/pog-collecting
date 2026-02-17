@@ -310,6 +310,10 @@ app.get('/achievements', (req, res) => {
     res.render('achievements', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
 });
 
+app.get('/battle', (req, res) => {
+    res.render('battle', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
 app.get('/leaderboard', (req, res) => {
     usdb.all(
         'SELECT * FROM userSettings ORDER BY score DESC LIMIT 100', [],
