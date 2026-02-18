@@ -1,4 +1,11 @@
+@keyframes fadeBinder {
+    0% {opacity: 0;}
+    100% {opacity: 1;}
+}
+
 #binderBanner {
+    animation-name: fadeBinder;
+    animation-duration: 0.2s;
     position: fixed;
     inset: 0; /* top:0; right:0; bottom:0; left:0 */
     display: flex;
@@ -106,6 +113,38 @@
     scale: 1.1;
 }
 
+#perkBtn {
+    cursor: pointer;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    padding: 7px;
+    border-radius: 10px;
+    width: 35px;
+    height: 35px;
+    transition: all 0.1s ease;
+}
+
+#perkBtn:hover {
+    scale: 1.1;
+}
+
+#pogsBtn {
+    cursor: pointer;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    padding: 7px;
+    border-radius: 10px;
+    width: 35px;
+    height: 35px;
+    transition: all 0.1s ease;
+}
+
+#pogsBtn:hover {
+    scale: 1.1;
+}
+
 #keyCont {
     position: relative;
 }
@@ -200,12 +239,28 @@
     scale: 1.1;
 }
 
+.singleI:active {
+    scale: 1.05;
+}
+
 #viewed .singleI {
     scale: 3;
     display: flex;
     justify-content: center;
     align-items: center;
     pointer-events: none;
+}
+
+#viewed h4 {
+    margin: 0;
+}
+
+#rar_back {
+    pointer-events: none;
+    position: absolute;
+    margin-top: -150px;
+    z-index: 1;
+    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.5));
 }
 
 #pognotv {
@@ -278,12 +333,28 @@
     gap: 8px;
 }
 
-.attCont img {
+.attCont #icon {
     background-color: black;
+    margin-left: -10px;
     border-radius: 50px;
     padding: 10px;
     overflow: visible;
     display: block;
+}
+
+#rari_cont {
+    background-color: black;
+    margin-left: -10px;
+    border-radius: 50px;
+    padding: 10px;
+    overflow: visible;
+    display: block;
+    width: 20;
+    height: 20;
+}
+
+#rar_icon {
+    scale: 1.7;
 }
 
 #attRow {
@@ -373,7 +444,32 @@
     box-shadow: inset 0 0 10px black;
 }
 
+#binderItems.perkStyling {
+    grid-template-columns: repeat(auto-fit, 240px);
+    gap: 5px;
+}
+
 #binderItems::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 9px;
+}
+
+#binderItems::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+}
+
+#binderItems::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 214, 214, 0.4);
+}
+
+#binderItems::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#binderItems::-webkit-scrollbar-track:hover {
+    background: transparent;
+}
+
+#binderItems::-webkit-scrollbar-track:active {
+    background: transparent;
 }

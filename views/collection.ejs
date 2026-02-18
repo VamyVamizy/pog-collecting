@@ -44,23 +44,17 @@
     <%- include("collectionEJS/shop.ejs") %>
     <!--Binder-->
     <%- include("collectionEJS/binder.ejs") %>
-    <!--Perks-->
-    <div id="perkBanner" style="display:none;">
-        <div class="perkCont">
-            <div class="overlayBan">
-                <h1 style="font-size: 60px; margin-top: -10px; margin-bottom: 0px;">Perks</h1>
-                <!--you can reference this center when you need to center something-->
-                <div class="center">
-                    <button class="closeOv" id="closePerks">X</button>
-                </div>
-            </div>
-            <div id="perkCards"></div>
-        </div>
-    </div>
     <!--Profile Pic Container-->
-    <div id="pfpChanger">
-        <h3>Choose your Profile Picture</h3>
-        <img id="bigpfp" width="100" height="100" src="static/icons/pfp/defaultpfp.png" />
+    <div id="pfpChanger" style="display: none;">
+        <div id="toppfp">
+            <h2><%= userdata.displayName %></h2>
+            <button id="logout">Log Out</button>
+        </div>
+        <h3 style="margin-top: -15px; font-weight: normal;">Choose your Profile Preferences</h3>
+        <div style="display: flex; gap: 20px;">
+            <img id="bigpfp" width="100" height="100" src="static/icons/pfp/defaultpfp.png" />
+            <input id="picker" type="color">
+        </div>
         <p id="fileSizeMessage"></p>
         <input id="filepfp" type="file" accept="image/*" />
         <button id="closePfpChanger">Close</button>
@@ -70,11 +64,10 @@
     <div id="collectBanner">
         <div class="leftstuff">
             <div id="titlecont">
-                <button id="play_btn" style="display: none;">Play
+                <button id="play_btn">Poggle!
                     <img src="../static/icons/buttons_main/play.png" width="15" height="15">
                 </button>
-                <!--Remove this logo when the play button is introduced-->
-                <h1>POGGLEBAR</h1>
+                
             </div>
             <div style="display: none" id="userdata">
                 <%- JSON.stringify(userdata) %>
@@ -88,16 +81,12 @@
         </div>
         <!--Banner Buttons-->
         <div style="right: 0; top: 0;" class="rightstuff">
-            <button id="useWish">Wish (0/7)</button>
+            <button id="useWish"></button>
             <img src="../static/icons/buttons_main/lines.png" width="40" height="40" id="burger_btn" class="imgbtn">
         </div>
     </div>
     <%- include("collectionEJS/banner_rightstuff.ejs") %>
     <div id="centerlayout" style="text-align: center;">
-        <!--Description-->
-        <div id="descPanel">
-            <span></span>
-        </div>
         <div id="invcont">
             <div id="topCont">
                 <div id="space">0/10</div>
@@ -106,7 +95,7 @@
             <div id="inventory"></div>
         </div>
         <!--Settings and Crate-->
-        <%- include("collectionEJS/leftmost.ejs") %>
+        <%- include("collectionEJS/info_right.ejs") %>
     </div>
     <!-- Gacha Animation Overlay -->
     <%- include("collectionEJS/gacha.ejs") %>
@@ -137,7 +126,6 @@
 <script src="../static/js/collectionJS/crateopen.js"></script>
 <script src="../static/js/collectionJS/shopint.js"></script>
 <script src="../static/js/collectionJS/binderint.js"></script>
-<script src="../static/js/collectionJS/perkint.js"></script>
 <script src="../static/js/collectionJS/panelint.js"></script>
 <script src="../static/js/collectionJS/wish.js"></script>
 <script src="../static/js/collectionJS/pfp.js"></script>

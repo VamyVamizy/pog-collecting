@@ -16,34 +16,62 @@
     gap: 40px;
 }
 
+@keyframes show_binder_panel {
+    0% {scale: 0;}
+    15% {scale: 1;}
+    30% {scale: 1;}
+    45% {scale: 1;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_team_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 1;}
+    45% {scale: 1;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
 @keyframes show_practice_panel {
     0% {scale: 0;}
-    25% {scale: 1;}
-    50% {scale: 1;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 1;}
+    60% {scale: 1;}
     75% {scale: 1;}
     100% {scale: 1;}
 }
 
 @keyframes show_pvp_panel {
     0% {scale: 0;}
-    25% {scale: 0;}
-    50% {scale: 1;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 1;}
     75% {scale: 1;}
     100% {scale: 1;}
 }
 
 @keyframes show_pve_panel {
     0% {scale: 0;}
-    25% {scale: 0;}
-    50% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 0;}
     75% {scale: 1;}
     100% {scale: 1;}
 }
 
 @keyframes show_custom_panel {
     0% {scale: 0;}
-    25% {scale: 0;}
-    50% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 0;}
     75% {scale: 0;}
     100% {scale: 1;}
 }
@@ -91,6 +119,24 @@
     margin-bottom: -430px;
     opacity: 0;
     transition: all 0.1s ease;
+}
+
+#binder {
+    animation-name: show_binder_panel;
+    animation-duration: 0.75s;
+}
+
+#binder:hover {
+    background: linear-gradient(135deg, rgb(51, 81, 143), rgb(29, 25, 61));
+}
+
+#teamSelectButton {
+    animation-name: show_team_panel;
+    animation-duration: 0.75s;
+}
+
+#teamSelectButton:hover {
+    background: linear-gradient(135deg, rgb(119, 67, 122), rgb(24, 13, 24));
 }
 
 #practice {
