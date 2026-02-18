@@ -280,29 +280,7 @@ function validateCrateOpening(type, cost, count) {
         }
     }
     if (inventory.length + count > Isize) {
-        document.getElementById("errorText").innerText = `Not enough money to open ${count} crate${count > 1 ? 's' : ''}! 
-            You need $${cost}.`;
-            // showing the element but keeping it invisible for the fade-in effect
-
-            const errorMessage = document.getElementById("errorMessage");
-            errorMessage.style.display = "block";
-            errorMessage.style.opacity = "0";
-            // small delay, then fade in
-            setTimeout(() => {
-                errorMessage.style.opacity = "1";
-            }, 10);
-
-            // the rest
-            setTimeout(() => {
-                errorMessage.style.opacity = "0";
-                setTimeout(() => {
-                    errorMessage.style.display = "none";
-                }, 1000);
-            }, 5000);
-        return false;
-    }
-    if (inventory.length + count >= 999) {
-        document.getElementById("errorText").innerText = "Inventory full! Sell some pogs to make space.";
+        document.getElementById("errorText").innerText = `Not enough inventory space to open ${count} crate${count > 1 ? 's' : ''}!`;
         const errorMessage = document.getElementById("errorMessage");
         errorMessage.style.display = "block";
         errorMessage.style.opacity = "0";
@@ -315,6 +293,24 @@ function validateCrateOpening(type, cost, count) {
                 errorMessage.style.display = "none";
             }, 1000);
         }, 5000);
+        
+        return false;
+    }
+    if (inventory.length + count >= 999) {
+        document.getElementById("errorText").innerText = `Inventory limit reached! Please sell or delete some pogs.`;
+        const errorMessage = document.getElementById("errorMessage");
+        errorMessage.style.display = "block";
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.opacity = "1";
+        }, 10);
+        setTimeout(() => {
+            errorMessage.style.opacity = "0";
+            setTimeout(() => {
+                errorMessage.style.display = "none";
+            }, 1000);
+        }, 5000);
+
         return false;
     }
     return true;
