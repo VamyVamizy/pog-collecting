@@ -28,23 +28,50 @@
         </div>
     </div>
     <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <div id="flexcont">
-        <% scores.forEach((score, index)=> { %>
-            <div class="playerCont">
-                <p><%= score.displayname %></p>
-                <div id="options">
-                    <button id="ban">Ban</button>
+    <div id="pageCont">
+        <div id="top_bar">
+            <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Users...">
+            <div id="filtCont">
+                <button id="filter">
+                    <img src="../static/icons/playerbase/filter.png" width="25" height="25">
+                </button>
+                <div id="filterBox" style="display: none;">
+                    <label class="boxcon" for="name">
+                        <input type="radio" name="filter" value="name" id="name">
+                        <label for="name">
+                            <p>Name</p>
+                        </label>
+                    </label>
+                    <label class="boxcon" for="score">
+                        <input type="radio" name="filter" value="score" id="score" checked>
+                        <label for="score">
+                            <p>Score</p>
+                        </label>
+                    </label>
                 </div>
             </div>
-        <% }) %>
+        </div>
+        <div id="flexcont">
+            <% scores.forEach((score, index)=> { %>
+                <div class="playerCont"
+                    data-name="<%= score.displayname %>" 
+                    data-score="<%= score.score %>" 
+                    <p><%= score.displayname %></p>
+                    <div id="options">
+                        <button id="purchases">
+                            <img src="../static/icons/playerbase/dollar.png" width="20" height="20">
+                        </button>
+                        <button id="info">
+                            <img src="../static/icons/playerbase/profile.png" width="20" height="20">
+                        </button>
+                        <button id="ban">
+                            <img src="../static/icons/playerbase/ban.png" width="20" height="20">
+                        </button>
+                    </div>
+                    <img id="pfp" src="<%= score.pfp %>" width="250" height="250">
+                </div>
+            <% }) %>
+        </div>
     </div>
 </body>
 </body>
