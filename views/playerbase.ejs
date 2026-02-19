@@ -58,17 +58,23 @@
                     data-score="<%= score.score %>" 
                     <p><%= score.displayname %></p>
                     <div id="options">
-                        <button id="purchases">
+                        <button class="purchases">
                             <img src="../static/icons/playerbase/dollar.png" width="20" height="20">
                         </button>
-                        <button id="info">
+                        <button class="info">
                             <img src="../static/icons/playerbase/profile.png" width="20" height="20">
                         </button>
-                        <button id="ban">
+                        <button class="ban">
                             <img src="../static/icons/playerbase/ban.png" width="20" height="20">
                         </button>
                     </div>
                     <img id="pfp" src="<%= score.pfp %>" width="250" height="250">
+                    <div class="banConf" style="display: none;">
+                        <h3>Ban user?</h3>
+                        <div id="buttonflex">
+                            <button class="confirm_yes">✓</button>
+                        </div>
+                    </div>
                 </div>
             <% }) %>
         </div>

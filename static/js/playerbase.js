@@ -41,3 +41,22 @@ radios.forEach(radio => {
         items.forEach(item => list.appendChild(item));
     });
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".ban").forEach(button => {
+        button.addEventListener("click", function () {
+            const playerCont = this.closest(".playerCont");
+            const confirmBox = playerCont.querySelector(".banConf");
+            document.querySelectorAll(".banConf").forEach(box => {
+                if (box !== confirmBox) {
+                    box.style.display = "none";
+                }
+            });
+            if (playerCont.querySelector(".banConf").style.display == "flex") {
+                playerCont.querySelector(".banConf").style.display = "none";
+            } else {
+                playerCont.querySelector(".banConf").style.display = "flex";
+            }
+        });
+    });
+});
