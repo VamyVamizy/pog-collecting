@@ -322,10 +322,32 @@ app.get('/leaderboard', (req, res) => {
     );
 });
 
+app.get('/playerbase', (req, res) => {
+    usdb.all(
+        'SELECT * FROM userSettings ORDER BY score DESC', [],
+        (err, rows) => {
+            if (err) {
+                console.error('DB select error:', err);
+            }
+            res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+        }
+    );
+});
+
 app.get('/api/leaderboard', (req, res) => {
     usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 100', [], (err, rows) => {
         if (err) {
             console.error('API leaderboard error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+app.get('/api/playerbase', (req, res) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC', [], (err, rows) => {
+        if (err) {
+            console.error('API playerbase error', err);
             return res.status(500).json({ error: 'db' });
         }
         res.json(rows || []);
