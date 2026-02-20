@@ -371,7 +371,6 @@ function statView() {
     renderStatArrows(previousStats, currentStats);
 
     const rarity = this.dataset.rarity
-    //desc text
     const descP = document.getElementById("descStat");
     descP.innerHTML = this.dataset.desc;
     //creator text
