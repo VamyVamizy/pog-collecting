@@ -49,7 +49,7 @@ function hidePanelAni(ele) {
 
 //Show redirect panel
 function showPanelAni(ele) {
-    ele.style.display = "flex";
+    ele.style.display = "grid";
     ele.classList.remove("hidePanel");
     ele.style.pointerEvents = "none";
     ele.classList.add("showPanel");
@@ -61,7 +61,7 @@ function showPanelAni(ele) {
 //Redirect interaction
 document.getElementById("burger_btn").addEventListener("click", () => {
     const panel = document.getElementById("redirect_panel")
-    const isVisible = panel.style.display === "flex";
+    const isVisible = panel.style.display === "grid";
     if (isVisible) {
         hidePanelAni(panel);
     } else {
