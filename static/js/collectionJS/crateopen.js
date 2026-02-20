@@ -254,11 +254,37 @@ async function createMiniExplosion() {
 
 function validateCrateOpening(count) {
     if (inventory.length + count > Isize) {
-        alert(`Not enough inventory space to open ${count} crate${count > 1 ? 's' : ''}!`);
+        document.getElementById("errorText").innerText = `Not enough inventory space to open ${count} crate${count > 1 ? 's' : ''}!`;
+        const errorMessage = document.getElementById("errorMessage");
+        errorMessage.style.display = "block";
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.opacity = "1";
+        }, 10);
+        setTimeout(() => {
+            errorMessage.style.opacity = "0";
+            setTimeout(() => {
+                errorMessage.style.display = "none";
+            }, 1000);
+        }, 5000);
+        
         return false;
     }
-    if (inventory.length + count >= 100) {
-        alert("Inventory full! Sell some pogs to make space.");
+    if (inventory.length + count >= 999) {
+        document.getElementById("errorText").innerText = `Inventory limit reached! Please sell or delete some pogs.`;
+        const errorMessage = document.getElementById("errorMessage");
+        errorMessage.style.display = "block";
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.opacity = "1";
+        }, 10);
+        setTimeout(() => {
+            errorMessage.style.opacity = "0";
+            setTimeout(() => {
+                errorMessage.style.display = "none";
+            }, 1000);
+        }, 5000);
+
         return false;
     }
     return true;
