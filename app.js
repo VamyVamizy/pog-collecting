@@ -2,7 +2,6 @@
 const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
-const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
@@ -24,8 +23,8 @@ process.on('exit', (code) => {
 });
 
 //modules
-const achievements = require("./modules/backend_js/trophyList.js")
-const crateRef = require("./modules/backend_js/crateRef.js")
+const achievements = require("./modules/backend_js/trophyList.js");
+const crateRef = require("./modules/backend_js/crateRef.js");
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
@@ -63,12 +62,16 @@ app.use(session({
 app.use((req, res, next) => {
     next();
 });
+
 //routes
 const marketplaceRouter = require('./routes/marketplace_rt.js');
 app.use('/', marketplaceRouter);
 const collectionRouter = require('./routes/collection_rt.js');
 app.use('/', collectionRouter);
-
+const authRouter = require('./routes/authenticate_rt.js');
+app.use('/', authRouter);
+const loginRouter = require('./routes/login_rt.js');
+app.use('/', loginRouter);
 
 // API key for Formbar API access
 const API_KEY = process.env.API_KEY;
@@ -105,27 +108,6 @@ socket.on('transferResponse', (response) => {
 /* It is a good idea to use a Environment Variable or a .env file that is in the .gitignore file for your SECRET.
 This will prevent it from getting out and allowing people to hack your cookies.*/
 
-// Middleware to check if user is authenticated
-function isAuthenticated(req, res, next) {
-    console.log("Authenticating...");
-    if (req.session.user) {
-        const tokenData = req.session.token;
-        try {
-            // Check if the token has expired
-            const currentTime = Math.floor(Date.now() / 1000);
-            if (tokenData.exp < currentTime) {
-                throw new Error('Token has expired');
-            }
-            next();
-        } catch (err) {
-            res.redirect(`${AUTH_URL}/oauth?refreshToken=${tokenData.refreshToken}&redirectURL=${THIS_URL}`);
-        }
-    } else {
-        res.redirect(`${AUTH_URL}/oauth?redirectURL=${THIS_URL}`);
-    }
-}
-// The following isAuthenticated function checks when the access token expires and promptly retrieves a new one using the user's refresh token.
-
 //set
 app.set('view engine', 'ejs');
 app.set('trust proxy', true);
@@ -144,147 +126,8 @@ runMigrations(usdb).catch(err => {
     process.exit(1);
 });
 
-// login route
-app.get('/', isAuthenticated, (req, res) => {
-    try {
-        function insertUser() {
 
-            const displayName = req.session.user.displayName;
-
-            const id = req.session.token.id;
-
-            usdb.get(`SELECT uid FROM userSettings WHERE displayname = ?`, [displayName], [id], (err, row) => {
-                if (err) {
-                    return console.error("Error querying user:", err.message);
-                }
-                if (row) {
-                    console.log(`User '${displayName}' already exists with uid ${row.uid} and fid ${id}`);
-                    return;
-                } else {
-                    usdb.run(`INSERT INTO userSettings (fid, theme, score, inventory, Isize, xp, maxxp, level, income, totalSold, cratesOpened, pogamount, achievements, tiers, mergeCount, highestCombo, wish, crates, pfp, displayname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [
-                            id,
-                            req.session.user.theme,
-                            req.session.user.score,
-                            JSON.stringify(req.session.user.inventory),
-                            req.session.user.Isize,
-                            req.session.user.xp,
-                            req.session.user.maxxp,
-                            req.session.user.level,
-                            req.session.user.income,
-                            req.session.user.totalSold,
-                            req.session.user.cratesOpened,
-                            JSON.stringify(req.session.user.pogamount),
-                            JSON.stringify(req.session.user.achievements),
-                            JSON.stringify(req.session.user.tiers),
-                            req.session.user.mergeCount,
-                            req.session.user.highestCombo,
-                            req.session.user.wish,
-                            JSON.stringify(req.session.user.crates),
-                            req.session.user.pfp,
-                            displayName
-                        ],
-                        function (err) {
-                            if (err) {
-                                return console.error("Error inserting user:", err.message);
-                            }
-                            console.log(`User '${displayName}' inserted with rowid ${this.lastID} and fid ${id}`);
-                        });
-                }
-            });
-        }
-
-        // add variable references here
-        req.session.user = {
-            fid: req.session.token?.id || 0,
-            displayName: req.session.token?.displayName || "guest",
-            theme: req.session.user.theme || 'black',
-            score: req.session.user.score || 0,
-            inventory: req.session.user.inventory || [],
-            Isize: req.session.user.Isize || 3,
-            xp: req.session.user.xp || 0,
-            maxxp: req.session.user.maxxp || 15,
-            level: req.session.user.level || 1,
-            income: req.session.user.income || 0,
-            totalSold: req.session.user.totalSold || 0,
-            cratesOpened: req.session.user.cratesOpened || 0,
-            pogamount: req.session.user.pogamount || [],
-            achievements: req.session.user.achievements || achievements,
-            tiers: req.session.user.tiers || tiers,
-            mergeCount: req.session.user.mergeCount || 0,
-            highestCombo: req.session.user.highestCombo || 0,
-            wish: req.session.user.wish || 0,
-            crates: req.session.user.crates || crateRef,
-            pfp: req.session.user.pfp || "static/icons/pfp/defaultpfp.png"
-        };
-
-        // load user data from database
-        const displayName = req.session.token?.displayName || "guest";
-        const id = req.session.token?.id || 0;
-        usdb.get(`SELECT * FROM userSettings WHERE displayname = ?`, [displayName], [id], (err, row) => {
-            if (err) {
-                return console.error("Error querying user:", err.message);
-            }
-            if (row) {
-                req.session.user = {
-                    fid: id,
-                    displayName: displayName,
-                    theme: row.theme,
-                    score: row.score,
-                    inventory: JSON.parse(row.inventory),
-                    Isize: row.Isize,
-                    xp: row.xp,
-                    maxxp: row.maxxp,
-                    level: row.level,
-                    income: row.income,
-                    totalSold: row.totalSold,
-                    cratesOpened: row.cratesOpened,
-                    pogamount: JSON.parse(row.pogamount),
-                    achievements: JSON.parse(row.achievements),
-                    tiers: JSON.parse(row.tiers),
-                    mergeCount: row.mergeCount,
-                    highestCombo: row.comboHigh,
-                    wish: row.wish,
-                    crates: JSON.parse(row.crates),
-                    pfp: row.pfp
-                };
-                console.log(`User data loaded for '${displayName}'`);
-            } else {
-                // all starting values are HERE
-                req.session.user = {
-                    fid: id,
-                    displayName: displayName,
-                    theme: 'black',
-                    score: 0,
-                    inventory: [],
-                    Isize: 10,
-                    xp: 0,
-                    maxxp: 30,
-                    level: 1,
-                    income: 0,
-                    totalSold: 0,
-                    cratesOpened: 0,
-                    pogamount: [],
-                    achievements: achievements,
-                    tiers: tiers,
-                    mergeCount: 0,
-                    highestCombo: 0,
-                    wish: 0,
-                    crates: crateRef,
-                    pfp: "static/icons/pfp/defaultpfp.png"
-                };
-
-                console.log(`No existing user data for '${displayName}', using defaults.`);
-            }
-            // Call insertUser and handle callback
-            insertUser();
-            res.render('collection.ejs', { userdata: req.session.user, token: req.session.token, maxPogs: pogCount, pogList: results });
-        });
-    } catch (error) {
-        res.send(error.message)
-    }
-});
-
+//logout
 app.post("/logout", (req, res) => {
     const redirectAfter = encodeURIComponent(THIS_URL);
 
@@ -541,39 +384,6 @@ app.post('/api/user/team', express.json(), (req, res) => {
             return res.json({ ok: true });
         }
     );
-});
-
-// login page
-app.get('/login', (req, res) => {
-    if (req.query.token) {
-        let tokenData = jwt.decode(req.query.token);
-        req.session.token = tokenData;
-        req.session.user = {
-            displayName: tokenData.displayName,
-            fid: tokenData.fid,
-            theme: tokenData.theme || 'black',
-            score: tokenData.score || 0,
-            inventory: tokenData.inventory || [],
-            Isize: tokenData.Isize || 3,
-            xp: tokenData.xp || 0,
-            maxxp: tokenData.maxxp || 100,
-            level: tokenData.level || 1,
-            income: tokenData.income || 0,
-            totalSold: tokenData.totalSold || 0,
-            cratesOpened: tokenData.cratesOpened || 0,
-            pogamount: tokenData.pogamount || [],
-            achievements: tokenData.achievements || achievements,
-            tiers: tokenData.tiers || tiers,
-            mergeCount: tokenData.mergeCount || 0,
-            highestCombo: tokenData.highestCombo || 0,
-            wish: tokenData.wish || 0,
-            crates: tokenData.crates || crateRef,
-            pfp: tokenData.pfp || "static/icons/pfp/defaultpfp.png"
-        };
-        res.redirect('/');
-    } else {
-        res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-    };
 });
 
 app.post('/api/user/sync-inventory', express.json(), (req, res) => {
