@@ -13,11 +13,11 @@ require('dotenv').config();
 process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
 });
-  
+
 process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
 });
-  
+
 process.on('exit', (code) => {
     console.error('PROCESS EXITED WITH CODE:', code);
 });
@@ -30,6 +30,7 @@ const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
 app.get('/api/perks', (req, res) => {
     res.json({ perks });
+    console.log("Perks API accessed");
 });
 const tiers = require("./modules/backend_js/tierList.js");
 const { getPogCount, getAllPogs, initializePogDatabase } = require('./backend_data/pog_ref.js');
@@ -151,6 +152,10 @@ app.get('/chatroom', (req, res) => {
 
 app.get('/achievements', (req, res) => {
     res.render('achievements', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/battle', (req, res) => {
+    res.render('battle', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
 });
 
 app.get('/leaderboard', (req, res) => {

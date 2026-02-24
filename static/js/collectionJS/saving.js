@@ -96,6 +96,11 @@ document.getElementById("marketplaceButton").addEventListener("click", () => {
     window.location.href = "/marketplace";
 });
 
+document.getElementById("practice").addEventListener("click", () => {
+    save();
+    //window.location.href = "/battle";
+});
+
 document.getElementById("playerBtn").addEventListener("click", () => {
     save();
     window.location.href = "/playerbase";
