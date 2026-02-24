@@ -56,6 +56,7 @@
                 <div class="playerCont"
                     data-name="<%= score.displayname %>" 
                     data-score="<%= score.score %>" 
+                    data-fid="<%= score.fid %>"
                     <p><%= score.displayname %></p>
                     <div id="options">
                         <button class="purchases">
@@ -64,7 +65,7 @@
                         <button class="info">
                             <img src="../static/icons/playerbase/profile.png" width="20" height="20">
                         </button>
-                        <button class="ban">
+                        <button class="ban" style="display: none;">
                             <img src="../static/icons/playerbase/ban.png" width="20" height="20">
                         </button>
                     </div>
