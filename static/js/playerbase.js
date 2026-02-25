@@ -60,17 +60,3 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
-if (userdata.fid === 73 || userdata.fid === 87) {
-    document.querySelectorAll(".ban").forEach(button => {
-        button.style.display = "flex";
-    });
-    document.querySelectorAll(".confirm_yes").forEach(button => {
-        button.addEventListener("click", function () {
-            const playerCont = this.closest(".playerCont");
-            const fid = playerCont.getAttribute("data-fid");
-
-        });
-    });
-}
-
