@@ -5,7 +5,12 @@ function customConfirm(message) {
         const confirmMessage = document.getElementById("confirmMessage");
         const confirmYes = document.getElementById("customConfirmYes");
         const confirmNo = document.getElementById("customConfirmNo");
-
+        
+        const confirmContent = document.querySelector('.confirm-content');
+        confirmContent.style.transform = 'translateY(-200px)';
+        setTimeout(() => {
+            confirmContent.style.transform = 'translateY(0)';
+        }, 10);
         confirmMessage.textContent = message;
         confirmBox.style.display = "block";
 
