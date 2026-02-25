@@ -23,16 +23,12 @@ process.on('exit', (code) => {
 });
 
 //modules
-const achievements = require("./modules/backend_js/trophyList.js");
-const crateRef = require("./modules/backend_js/crateRef.js");
-const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
 app.get('/api/perks', (req, res) => {
     res.json({ perks });
     console.log("Perks API accessed");
 });
-const tiers = require("./modules/backend_js/tierList.js");
 const { getPogCount, getAllPogs, initializePogDatabase } = require('./backend_data/pog_ref.js');
 let pogCount = 0;
 let results = [];
@@ -97,7 +93,7 @@ socket.on('connect', () => {
 
 socket.on('connect_error',
     (err) => {
-        //console.error('Connection error:', err);
+        console.error('Connection error:', err);
     }
 );
 
@@ -119,6 +115,10 @@ app.use(express.json({limit: '50mb'}));
 const { runMigrations } = require('./data/migrations.js');
 
 const usdb = new sqlite3.Database('./data/usersettings.sqlite');
+
+//data saving must come after the express.urlencoded
+const datasave = require('./backend_data/datasave.js');
+datasave(app);
 
 // Run migrations on startup
 runMigrations(usdb).catch(err => {
@@ -225,280 +225,17 @@ app.get('/api/auctions/active', (req, res) => {
     });
 });
 
+//digipog transfer
+const transfer = require('./backend_data/digipog_transfer.js');
+transfer(app);
 
-// save data route
-app.post('/datasave', (req, res) => {
-    const userSave = {
-        theme: req.body.lightMode,
-        score: req.body.money,
-        inventory: req.body.inventory,
-        Isize: req.body.Isize,
-        xp: req.body.xp,
-        maxxp: req.body.maxXP,
-        level: req.body.level,
-        income: req.body.income,
-        totalSold: req.body.totalSold,
-        cratesOpened: req.body.cratesOpened,
-        pogamount: req.body.pogAmount,
-        tiers: req.body.tiers,
-        achievements: req.body.achievements,
-        mergeCount: req.body.mergeCount,
-        highestCombo: req.body.highestCombo,
-        wish: req.body.wish,
-        crates: req.body.crates,
-        pfp: req.body.pfp
-    }
+//team build
+const teamBuild = require('./backend_data/claim_perks.js');
+teamBuild(app);
 
-    // save to session
-    req.session.save(err => {
-        if (err) {
-            console.error('Error saving session:', err);
-            return res.status(500).json({ message: 'Error saving session' });
-        } else {
-                const params = [
-                req.session.user.fid,
-                userSave.theme,
-                userSave.score,
-                JSON.stringify(userSave.inventory),
-                userSave.Isize,
-                userSave.xp,
-                userSave.maxxp,
-                userSave.level,
-                userSave.income,
-                userSave.totalSold,
-                userSave.cratesOpened,
-                JSON.stringify(userSave.pogamount),
-                JSON.stringify(userSave.achievements),
-                JSON.stringify(userSave.tiers),
-                userSave.mergeCount,
-                req.session.user.highestCombo,
-                userSave.wish,
-                JSON.stringify(userSave.crates),
-                userSave.pfp,
-                req.session.user.displayName
-            ]
-            usdb.run(`UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`, params, function (err) {
-                if (err) {
-                    console.error('Error updating user settings:', err);
-                    return res.status(500).json({ message: 'Error updating user settings' });
-                }
-                req.session.user = { ...req.session.user, ...userSave };
-                return res.json({ message: 'Data saved successfully' });
-            });
-        }
-    });
-});
-
-// Express route to handle digipog transfer requests
-// the URL for the post must be the same as the one in the fetch request
-app.post('/api/digipogs/transfer', (req, res) => {
-    // req.body gets the information sent from the client
-    const cost = req.body.price;
-    const payload = req.body;
-    const reason = payload.reason;
-    const pin = payload.pin;
-    const id = req.session.user.fid; // Formbar user ID of payer from session
-    
-    // carter and vincent ids for testing respectively
-    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87;
-    
-    if (isAdmin) {
-        // For admins, return success without processing actual transaction
-        console.log('Admin transaction bypassed cost deduction.');
-        return res.json({ success: true, message: 'Admin transaction (no cost)', amount: 0 });
-    }
-    
-    console.log(cost, reason, pin, id);
-    const paydesc = {
-        from: id, // Formbar user ID of payer
-        to: 30,    // Formbar user ID of payee (e.g., pog collecting's account)
-        amount: cost,
-        reason: reason,
-        // security pin for the payer's account
-        pin: pin,
-        pool: true
-    };
-    // make a direct transfer request using fetch
-    fetch(`${AUTH_URL}/api/digipogs/transfer`, {
-        method: 'POST',
-        // headers to specify json content
-        headers: { 'Content-Type': 'application/json' },
-        // stringify the paydesc object to send as JSON
-        body: JSON.stringify(paydesc),
-    }).then((transferResult) => {
-        return transferResult.json();
-    }).then((responseData) => {
-        console.log("Transfer Response:", responseData);
-        //res.JSON must be here to send the response back to the client
-        res.json(responseData);
-    }).catch(err => {
-        console.error("Error during digipog transfer:", err);
-        res.status(500).json({ message: 'Error during digipog transfer' });
-    });
-});
-
-// API endpoints to persist user team/loadouts server-side
-app.get('/api/user/team', (req, res) => {
-    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
-    if (!displayName) return res.status(401).json({ error: 'not_authenticated' });
-
-    usdb.get('SELECT selected_team, loadout_1, loadout_2, loadout_3, loadout_4 FROM team WHERE displayname = ?', [displayName], (err, row) => {
-        if (err) return res.status(500).json({ error: 'db_error', detail: err.message });
-        if (!row) {
-            // return default empty shape
-            return res.json({ selected: null, loadouts: [null, null, null, null] });
-        }
-
-        const parseOrNull = (txt) => {
-            if (!txt) return null;
-            try { return JSON.parse(txt); } catch (e) { return null; }
-        };
-
-        const loadouts = [parseOrNull(row.loadout_1), parseOrNull(row.loadout_2), parseOrNull(row.loadout_3), parseOrNull(row.loadout_4)];
-        const selected = row.selected_team ? parseInt(row.selected_team, 10) : null;
-        return res.json({ selected: isNaN(selected) ? null : selected, loadouts });
-    });
-});
-
-// Save entire loadout array (array of 4 entries) and selected index
-app.post('/api/user/team', express.json(), (req, res) => {
-    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
-    if (!displayName) return res.status(401).json({ error: 'not_authenticated' });
-
-    const body = req.body || {};
-    const loadouts = Array.isArray(body.loadouts) ? body.loadouts : null;
-    const selected = typeof body.selected === 'number' ? body.selected : (body.selected == null ? null : Number(body.selected));
-
-    if (!loadouts || loadouts.length !== 4) return res.status(400).json({ error: 'invalid_loadouts' });
-
-    // store each loadout as JSON text (or null)
-    const vals = loadouts.map(l => l ? JSON.stringify(l) : null);
-    const selectedTxt = (selected == null || isNaN(selected)) ? null : String(selected);
-
-    usdb.run(
-        `INSERT OR REPLACE INTO team (displayname, selected_team, loadout_1, loadout_2, loadout_3, loadout_4)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [displayName, selectedTxt, vals[0], vals[1], vals[2], vals[3]],
-        function(err) {
-            if (err) return res.status(500).json({ error: 'db_error', detail: err.message });
-            return res.json({ ok: true });
-        }
-    );
-});
-
-app.post('/api/user/sync-inventory', express.json(), (req, res) => {
-    const inventory = req.body && req.body.inventory ? req.body.inventory : null;
-    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
-    if (!displayName || !Array.isArray(inventory)) {
-        return res.status(400).json({ ok: false, message: 'Missing user or inventory' });
-    }
-
-    const invJson = JSON.stringify(inventory);
-    usdb.run('UPDATE userSettings SET inventory = ? WHERE displayname = ?', [invJson, displayName], function(err) {
-        if (err) {
-            console.error('Failed to sync inventory to DB for', displayName, err);
-            return res.status(500).json({ ok: false, error: err.message });
-        }
-        // update session object too
-        req.session.user = req.session.user || {};
-        req.session.user.inventory = inventory;
-        // optionally update other derived session fields here
-        return res.json({ ok: true, changes: this.changes });
-    });
-});
-
-// API route to get user state
-app.get('/api/user-state', (req, res) => {
-  const displayName = req.session.user.displayName;
-  usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-    if (err || !row) return res.status(500).json({ error: 'User not found' });
-    
-    const userState = initializeUserState(row);
-    res.json({ userState, rarityColors: RARITY_COLORS });
-  });
-});
-
-// API to claim or update a single perk tier status
-app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
-    console.log('POST /api/perk-tiers/claim called');
-    if (!req.session || !req.session.user) {
-        console.log('No session or user for claim');
-        return res.status(401).json({ error: 'Not authenticated' });
-    }
-    const { tier: tierNum, status } = req.body || {};
-    if (typeof tierNum === 'undefined' || !status) {
-        console.log('Missing tier or status in body', req.body);
-        return res.status(400).json({ error: 'Missing tier or status' });
-    }
-
-    // ensure session tiers exist
-    req.session.user.tiers = Array.isArray(req.session.user.tiers) ? req.session.user.tiers : JSON.parse(JSON.stringify(tiers));
-
-    const idx = req.session.user.tiers.findIndex(t => Number(t.tier) === Number(tierNum));
-    if (idx === -1) return res.status(404).json({ error: 'Tier not found' });
-
-    req.session.user.tiers[idx].status = status;
-
-    // persist to DB
-    const tiersJson = JSON.stringify(req.session.user.tiers);
-    const displayName = req.session.user.displayName;
-    console.log('Saving tiers for', displayName, req.session.user.tiers);
-    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err) {
-        if (err) {
-            console.error('Error saving tiers for', displayName, err);
-            // try to add the column if it doesn't exist, then retry once
-            if (err.message && err.message.toLowerCase().includes('no such column')) {
-                usdb.run("ALTER TABLE userSettings ADD COLUMN tiers TEXT DEFAULT '[]'", [], function(altErr) {
-                    if (altErr) {
-                        console.error('Failed to add tiers column:', altErr);
-                        return res.status(500).json({ error: 'db' });
-                    }
-                    // retry update
-                    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err2) {
-                        if (err2) {
-                            console.error('Error saving tiers after adding column for', displayName, err2);
-                            return res.status(500).json({ error: 'db' });
-                        }
-                        // ensure session is saved before responding
-                        req.session.save(saveErr => {
-                            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-                            console.log('Tiers saved and session saved (after ALTER) for', displayName);
-                            return res.json({ tiers: req.session.user.tiers });
-                        });
-                    });
-                });
-                return;
-            }
-            return res.status(500).json({ error: 'db' });
-        }
-        // ensure session is saved before responding
-        req.session.save(saveErr => {
-            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-            console.log('Tiers saved and session saved for', displayName);
-            return res.json({ tiers: req.session.user.tiers });
-        });
-    });
-});
-
-// GET saved tiers (reads DB to confirm persisted data)
-app.get('/api/perk-tiers', (req, res) => {
-    if (!req.session || !req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-    const displayName = req.session.user.displayName || req.session.user.displayname;
-    const tiers = (req.session.user.tiers);
-    if (!displayName) return res.status(400).json({ error: 'Missing displayName in session' });
-    usdb.get('SELECT tiers FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-        if (err) {
-            console.error('Error reading tiers from DB for', displayName, err);
-            return res.status(500).json({ error: 'db' });
-        }
-        try {
-            return res.json({ tiers });
-        } catch (e) {
-            console.error('Failed to parse tiers JSON from DB for', displayName, e);
-            return res.json({ tiers: req.session.user.tiers || [] });
-        }
-    });
-});
+//perk tiers claim
+const claim = require('./backend_data/claim_perks.js');
+claim(app);
 
 //listens
 http.listen(process.env.PORT || 3000, () => {
