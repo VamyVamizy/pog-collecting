@@ -90,5 +90,5 @@ document.querySelectorAll(".infobtn").forEach(button => {
                                 <h3>Pogs in Inventory</h3> <p>${sortedI.length}</p>
                             </div>
                             <button id="hideBtn" onclick="hide()" style="margin-bottom: 10px;">Hide Details</button>`;
-    })
+    });
 });
