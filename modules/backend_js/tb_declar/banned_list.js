@@ -67,6 +67,7 @@ function _findIndex(user) {
     return bannedList.indexOf(user);
 }
 
+// initialize load
 _loadFromDb();
 
 module.exports = {
