@@ -60,6 +60,12 @@ function hide() {
     info.style.display = "none";
 }
 
+// number abbreviation function
+function abbreviateNumber(value) {
+    const formatter = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'short' });
+    return formatter.format(value);
+}
+
 document.querySelectorAll(".infobtn").forEach(button => {
     button.addEventListener('click', () => {
         const player = scores[button.closest(".playerCont").dataset.index];
@@ -74,13 +80,13 @@ document.querySelectorAll(".infobtn").forEach(button => {
                             <img id="pfpimg" src="${player.pfp}" style="width: 100px; height: 100px; border-radius: 50%; margin-top: 20px;"><br>
                             <h2 style="margin-top: 20px;">${player.displayname}</h2>
                             <div class="details-column">
-                                <h3>Score</h3> <p>${player.score}</p>
+                                <h3>Score</h3> <p>${abbreviateNumber(player.score)}</p>
                                 <h3>Level</h3> <p>${player.level}</p>
-                                <h3>Current XP</h3> <p style="font-size: ${experience.toString().length > 9 ? "11px" : "13px"}">${player.xp}</p>
+                                <h3>Current XP</h3> <p style="font-size: ${experience.toString().length > 9 ? "11px" : "13px"}">${abbreviateNumber(player.xp)}</p>
                                 <h3>Wishes</h3> <p>${player.wish}</p>
-                                <h3>Income</h3> <p>$${player.income}/s</p>
-                                <h3>Total Sold</h3> <p>${player.totalSold} pogs</p>
-                                <h3>Crates Opened</h3> <p>${player.cratesOpened} crates</p>
+                                <h3>Income</h3> <p>$${abbreviateNumber(player.income)}/s</p>
+                                <h3>Total Sold</h3> <p>${abbreviateNumber(player.totalSold)} pogs</p>
+                                <h3>Crates Opened</h3> <p>${abbreviateNumber(player.cratesOpened)} crates</p>
                                 <h3>Pogs in Inventory</h3> <p>${sortedI.length}</p>
                             </div>
                             <button id="hideBtn" onclick="hide()" style="margin-bottom: 10px;">Hide Details</button>`;
