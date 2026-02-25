@@ -2,13 +2,19 @@ var userdata = JSON.parse(document.getElementById("userdata").textContent);
 var scores = JSON.parse(document.getElementById("scores").textContent);
 
 function searchResources() {
-    const filter = document.getElementById('searchBox').value.toLowerCase();
-    const items = document.querySelectorAll(".playerCont");
+    const input = document.getElementById('searchBox');
+    const filter = input.value.toLowerCase();
+    const li = document.querySelectorAll(".playerCont")
 
-    items.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        item.style.display = text.includes(filter) ? "" : "none";
-    });
+    for (let i = 0; i < li.length; i++) {
+        const title = li[i].getElementsByTagName('p')[0];
+        const titleText = title ? (title.textContent || title.innerText) : '';
+        if (titleText.toLowerCase().indexOf(filter) > -1) {
+            li[i].style.display = '';
+        } else {
+            li[i].style.display = 'none';
+        }
+    }
 }
 
 document.getElementById("filter").addEventListener('click', () => {
