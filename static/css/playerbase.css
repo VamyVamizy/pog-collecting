@@ -156,7 +156,7 @@ li {
     background: linear-gradient(130deg, rgb(81, 214, 81), rgb(83, 133, 83));
 }
 
-.playerCont .info {
+.playerCont .infobtn {
     background: linear-gradient(130deg, rgb(255, 230, 86), rgb(126, 120, 74));
 }
 
@@ -278,4 +278,51 @@ li {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.details-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    gap: 10px;
+}
+
+#details {
+    color: rgb(255, 255, 255);
+    padding: 20px;
+    width: 300px;
+    height: 100%;
+    z-index: 9;
+    text-align: left;
+    font-size: 13px;
+    position: fixed;
+    left: 0;
+    box-shadow: 0 0 5px black;
+}
+
+#details p {
+    font-size: 16px;
+    margin: 5px 0;
+    color: rgba(255, 255, 255, 0.562);
+}
+
+#hideBtn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    color: white;
+    height: 40px;
+    font-size: 16px;
+    background-color: transparent;
+    border: 1px solid white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#hideBtn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+#pfpimg {
+    border: 2px solid white;
+    margin-bottom: -10px;
 }
