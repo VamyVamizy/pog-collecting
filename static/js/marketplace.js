@@ -133,10 +133,12 @@ function renderAuction(auction) {
     const currentBid = auction.winner_bid || auction.startPrice;
     const isFirstBid = !auction.winner_bid;
     
-    // Can user interact with this auction?
-    const canBid = auction.AuctionStatus === 'active' && 
-                   timeLeft > 0 && 
-                   auction.user_id !== userdata.fid;
+    // Determine if this auction belongs to the current user (support fid or displayname/displayName)
+    const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+    const isSeller = myIds.includes(String(auction.user_id));
+
+    // Can user interact with this auction? (not if you're the seller)
+    const canBid = auction.AuctionStatus === 'active' && timeLeft > 0 && !isSeller;
     
     // TODO: Build the HTML content
     wrapper.innerHTML = `
@@ -174,6 +176,16 @@ function renderAuction(auction) {
 }
 
 function placeBid(sellerId, pogName, currentBid, minIncrement) {
+    // Prevent seller from bidding on their own auction (client-side guard)
+    try {
+        const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+        if (myIds.includes(String(sellerId))) {
+            alert("You can't bid on your own auction.");
+            return;
+        }
+    } catch (e) {
+        // ignore and proceed with normal validation
+    }
     const minimumBid = currentBid + minIncrement;
     
     // Create popup asking for bid amount
@@ -222,6 +234,16 @@ function placeBid(sellerId, pogName, currentBid, minIncrement) {
 }
 
 function buyItNow(sellerId, pogName, price) {
+    // Prevent seller from buying their own auction (client-side guard)
+    try {
+        const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+        if (myIds.includes(String(sellerId))) {
+            alert("You can't buy your own auction.");
+            return;
+        }
+    } catch (e) {
+        // ignore and proceed with normal validation
+    }
     // Check if user has enough money
     if (price > userdata.score) {
         alert(`You don't have enough money. You need $${price} but only have $${userdata.score}`);
@@ -322,17 +344,24 @@ socket.on('auction completed', (completedAuction) => {
     const sellerId = completedAuction.user_id != null ? String(completedAuction.user_id) : null;
     const myId = userdata && (userdata.fid != null ? String(userdata.fid) : String(userdata.displayName || userdata.displayname || ''));
 
-    // If I'm the winner, add pog to my inventory and deduct money
+    // If I'm the winner, apply authoritative snapshot when available
     if (winnerId && myId && winnerId === myId) {
-        userdata.score = (typeof userdata.score === 'number') ? userdata.score - (completedAuction.winner_bid || 0) : userdata.score;
-
-        if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
-        let pogDetails = pogList.find(pog => pog.name === completedAuction.pog);
-        if (!pogDetails) {
-            // fallback minimal pog structure
-            pogDetails = { name: completedAuction.pog };
+        if (Array.isArray(completedAuction.updatedWinnerInventory)) {
+            userdata.inventory = completedAuction.updatedWinnerInventory;
+        } else if (completedAuction.pogData) {
+            if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
+            userdata.inventory.push(completedAuction.pogData);
+        } else {
+            if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
+            const pogDetails = pogList.find(pog => pog.name === completedAuction.pog) || { name: completedAuction.pog };
+            userdata.inventory.push(pogDetails);
         }
-        userdata.inventory.push(pogDetails);
+
+        if (typeof completedAuction.updatedWinnerScore === 'number') {
+            userdata.score = completedAuction.updatedWinnerScore;
+        } else {
+            userdata.score = (typeof userdata.score === 'number') ? userdata.score - (completedAuction.winner_bid || 0) : userdata.score;
+        }
 
         alert(`Congratulations! You won ${completedAuction.pog} for $${completedAuction.winner_bid}!`);
 
@@ -342,12 +371,24 @@ socket.on('auction completed', (completedAuction) => {
         });
     }
 
-    // If I'm the seller, credit money and ensure my state is saved
+    // If I'm the seller, apply authoritative snapshot when available
     if (sellerId && myId && sellerId === myId) {
-        userdata.score = (typeof userdata.score === 'number') ? userdata.score + (completedAuction.winner_bid || 0) : userdata.score;
+        if (Array.isArray(completedAuction.updatedSellerInventory)) {
+            userdata.inventory = completedAuction.updatedSellerInventory;
+        } else {
+            const idx = userdata.inventory.findIndex(i => i && i.name === completedAuction.pog);
+            if (idx !== -1) userdata.inventory.splice(idx, 1);
+        }
+
+        if (typeof completedAuction.updatedSellerScore === 'number') {
+            userdata.score = completedAuction.updatedSellerScore;
+        } else {
+            userdata.score = (typeof userdata.score === 'number') ? userdata.score + (completedAuction.winner_bid || 0) : userdata.score;
+        }
+
         alert(`Your ${completedAuction.pog} sold for $${completedAuction.winner_bid}!`);
 
-        // Persist seller inventory/state to server (auction creation likely removed the pog earlier, but persist any state changes)
+        // Persist seller inventory/state to server
         syncInventoryToServer().then(() => {
             if (typeof save === 'function') save();
         });
@@ -544,6 +585,19 @@ function submitAuction() {
         // server expects a display name (userSettings.displayname) when checking inventory
         sellerId: userdata.displayName || userdata.displayname || userdata.fid
     };
+
+    // Include exact pog instance data (so server can transfer the correct instance)
+    try {
+        const inv = Array.isArray(userdata.inventory) ? userdata.inventory : [];
+        const selectedIdx = inv.findIndex(item => item && item.name === pogName);
+        if (selectedIdx !== -1) {
+            auctionData.pogData = inv[selectedIdx];
+        } else {
+            auctionData.pogData = null;
+        }
+    } catch (e) {
+        auctionData.pogData = null;
+    }
 
     console.log('Sending auction data:', auctionData);
     socket.emit('create auction', auctionData);

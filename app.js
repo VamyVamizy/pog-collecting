@@ -28,6 +28,8 @@ const crateRef = require("./modules/backend_js/crateRef.js");
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
+// banned list helper (used to print/inspect banned users)
+const bannedListModule = require('./modules/backend_js/tb_declar/banned_list.js');
 app.get('/api/perks', (req, res) => {
     res.json({ perks });
     console.log("Perks API accessed");
@@ -177,6 +179,17 @@ app.get('/playerbase', (req, res) => {
             if (err) {
                 console.error('DB select error:', err);
             }
+            // If current user is an admin, print the banned list to server console for debugging
+            try {
+                const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+                const adminIds = [73,84,44,87];
+                if (currentId && adminIds.includes(currentId)) {
+                    console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
+                }
+            } catch (e) {
+                console.error('Error while printing banned list for admin:', e);
+            }
+
             res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
         }
     );
@@ -405,6 +418,36 @@ app.post('/api/user/sync-inventory', express.json(), (req, res) => {
         // optionally update other derived session fields here
         return res.json({ ok: true, changes: this.changes });
     });
+});
+
+// Admin: ban a user (add to banned list)
+app.post('/api/ban', express.json(), (req, res) => {
+    // Simple admin check (same test used elsewhere)
+    const adminIds = [73,44,87];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    // Protect certain internal/admin FIDs from being banned.
+    const PROTECTED_FIDS = [73, 44, 87];
+    if (fid && PROTECTED_FIDS.includes(fid)) {
+        return res.status(400).json({ ok: false, message: 'cannot ban this user' });
+    }
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.addBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
 });
 
 // API route to get user state

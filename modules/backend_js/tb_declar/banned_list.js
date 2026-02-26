@@ -5,6 +5,7 @@ const dbPath = path.join(__dirname, '..', '..', '..', 'data', 'usersettings.sqli
 const usdb = new sqlite3.Database(dbPath);
 
 let bannedList = [];
+const PROTECTED_FIDS = [73, 44, 87];
 
 function _saveToDb() {
     const txt = JSON.stringify(bannedList || []);
@@ -77,6 +78,14 @@ module.exports = {
 
     addBannedUser: (user) => {
         if (!user) return;
+        // If user object contains a fid, prevent banning protected IDs.
+        if (user && typeof user === 'object' && 'fid' in user) {
+            const fid = Number(user.fid);
+            if (PROTECTED_FIDS.includes(fid)) {
+                console.warn(`Attempt to ban protected fid ${fid} ignored.`);
+                return;
+            }
+        }
         const idx = _findIndex(user);
         if (idx !== -1) return;
         bannedList.push(user);
