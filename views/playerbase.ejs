@@ -27,6 +27,7 @@
                 < </a>
         </div>
     </div>
+    <div id="details" style="display: none;"></div>
     <br>
     <div id="pageCont">
         <div id="top_bar">
@@ -54,14 +55,12 @@
         <div id="flexcont">
             <% scores.forEach((score, index)=> { %>
                 <div class="playerCont"
+                    data-index="<%= index %>"
                     data-name="<%= score.displayname %>" 
                     data-score="<%= score.score %>" 
                     <p><%= score.displayname %></p>
                     <div id="options">
-                        <button class="purchases">
-                            <img src="../static/icons/playerbase/dollar.png" width="20" height="20">
-                        </button>
-                        <button class="info">
+                        <button class="infobtn">
                             <img src="../static/icons/playerbase/profile.png" width="20" height="20">
                         </button>
                         <button class="ban">

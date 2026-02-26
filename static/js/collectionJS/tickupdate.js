@@ -51,7 +51,10 @@ function update() {
 setInterval(updateMoney, 100);
 function updateMoney() {
     const abbreviatedMoney = abbreviateNumber(money);
-    document.getElementById("money").innerText = `$${abbreviatedMoney}`;
+    document.getElementById("money").innerText = `$${abbreviatedMoney}`
+    if (isNaN(money)) {
+        money = 300;
+    }
 }
 
 //update progress bar

@@ -111,7 +111,6 @@ li {
     padding: 10px;
     border-radius: 25px;
     font-size: 20px;
-    cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -156,7 +155,7 @@ li {
     background: linear-gradient(130deg, rgb(81, 214, 81), rgb(83, 133, 83));
 }
 
-.playerCont .info {
+.playerCont .infobtn {
     background: linear-gradient(130deg, rgb(255, 230, 86), rgb(126, 120, 74));
 }
 
@@ -278,4 +277,114 @@ li {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.details-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 10px;
+    overflow-y: auto;
+    height: 50%;
+    overflow-x: hidden;
+}
+
+.details-column::-webkit-scrollbar {
+    width: 8px;
+}
+
+.details-column::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.details-column::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.details-column div {
+    background: #1a1d2e;
+    padding: 8px;
+    border-radius: 10px;
+    transition: all 0.1s ease;
+    width: 95%;
+}
+
+#details {
+    color: rgb(255, 255, 255);
+    background: black;
+    padding: 20px;
+    width: 300px;
+    height: 100%;
+    z-index: 9;
+    text-align: left;
+    font-size: 13px;
+    position: fixed;
+    left: 0;
+    box-shadow: 0 0 5px black;
+    overflow-y: visible
+}
+
+#topWrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 20px;
+}
+
+#details p {
+    font-size: 16px;
+    margin: 5px 0;
+    color: rgba(255, 255, 255, 0.562);
+}
+
+#hideBtn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    color: white;
+    height: 30px;
+    width: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background-color: transparent;
+    border: transparent;
+    cursor: pointer;
+}
+
+#hideBtn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+#pfpimg {
+    border: 2px solid white;
+    margin-bottom: -10px;
+}
+
+.tag {
+    background: rgb(122, 122, 122);
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    gap: 3px;
+}
+
+.tag img {
+    filter: invert(1);
+}
+
+.tagCont {
+    display: flex;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+    align-items: center;
+    gap: 5px;
 }

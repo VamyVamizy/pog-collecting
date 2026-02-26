@@ -10,7 +10,7 @@ module.exports = function(app) {
         const id = req.session.user.fid; // Formbar user ID of payer from session
         
         // carter and vincent ids for testing respectively
-        const isAdmin = id === 73 || id === 44 || id === 87;
+        const isAdmin = id === 73 || id === 44 || id === 87 || id === 26 || id === 43 || id === 1; // Add any other admin IDs as needed
         
         if (isAdmin) {
             // For admins, return success without processing actual transaction

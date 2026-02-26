@@ -107,64 +107,7 @@ li {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.board tr:hover {
-    background: rgba(255, 255, 255, 0.08);
-}
-
 #flexcont {
     display: flex;
     justify-content: center;
-}
-
-.details-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-#details {
-    color: rgb(255, 255, 255);
-    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
-    border: 1px solid rgba(255, 255, 255, 0.094);
-    border-radius: 12px;
-    padding: 20px;
-    width: 500px;
-    min-height: 600px;
-    height: auto;
-    text-align: center;
-    margin-right: auto;
-    margin-left: auto;
-    font-size: 13px;
-    position: fixed;
-    top: 50%; /* Place the top edge at 50% of the parent's height */
-    left: 50%; /* Place the left edge at 50% of the parent's width (for horizontal centering) */
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 5px black;
-}
-
-#details p {
-    font-size: 16px;
-    margin: 5px 0;
-    color: rgba(255, 255, 255, 0.562);
-}
-
-#hideBtn {
-    margin-top: 20px;
-    padding: 10px 20px;
-    color: white;
-    font-size: 16px;
-    background-color: transparent;
-    border: 1px solid white;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-#hideBtn:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#pfpimg {
-    border: 2px solid white;
-    margin-bottom: -10px;
 }
