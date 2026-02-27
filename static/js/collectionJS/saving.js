@@ -105,3 +105,8 @@ document.getElementById("playerBtn").addEventListener("click", () => {
     save();
     window.location.href = "/playerbase";
 });
+
+document.getElementById("pediaBtn").addEventListener("click", () => {
+    save();
+    window.location.href = "/pogipedia";
+});
