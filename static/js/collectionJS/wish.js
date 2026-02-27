@@ -29,9 +29,11 @@ function customConfirm(message) {
 
 document.getElementById("useWish").addEventListener("click", async () => {
     if (wish >= 7) {
-        let wealth = await customConfirm("Wish of Wealth: Use wish to gain a large amount of money?");
+        let wealth = await customConfirm("Wish of Wealth: Use wish to increase your income for 5 minutes?");
         if (wealth) {
-            money += Math.floor(money * 3.5);
+            // start a 5 minute timer that increases income by 30%
+            incomeWishActive = true;
+            incomeWishEndTime = Date.now() + WISH_DURATION;
             wish -= 7;
             save();
         } else {

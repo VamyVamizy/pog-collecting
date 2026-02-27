@@ -57,6 +57,34 @@ let theme_col = userdata.theme || "black";
 // wish
 let wish = userdata.wish || 0;
 
+// new timer variables for income wish
+let incomeWishActive = false;
+let incomeWishEndTime = 0;
+let dropRateWishActive = false;
+let dropRateWishEndTime = 0;
+const WISH_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// checking if wishes have expired 
+function checkWishTimers() {
+    const now = Date.now();
+
+    //checking income wish
+    if (incomeWishActive && now >= incomeWishEndTime) {
+        incomeWishActive = false;
+        console.log("Income wish has expired.");
+        
+    }
+
+    //checking drop rate wish
+    if (dropRateWishActive && now >= dropRateWishEndTime) {
+        dropRateWishActive = false;
+        console.log("Drop rate wish has expired.");
+    }
+}
+
+//check timers every second
+setInterval(checkWishTimers, 1000);
+
 // money upgrade
 let moneyTick = 1000;
 
