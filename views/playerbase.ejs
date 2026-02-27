@@ -65,9 +65,13 @@
                         <button class="info">
                             <img src="../static/icons/playerbase/profile.png" width="20" height="20">
                         </button>
+                        <% const adminFids = [73,84,44,87]; %>
+                        <% const currentFid = (userdata && (userdata.fid || userdata.FID)) ? Number(userdata.fid || userdata.FID) : null; %>
+                        <% if (currentFid && adminFids.includes(currentFid)) { %>
                         <button class="ban">
                             <img src="../static/icons/playerbase/ban.png" width="20" height="20">
                         </button>
+                        <% } %>
                     </div>
                     <img id="pfp" src="<%= score.pfp %>" width="250" height="250">
                     <div class="banConf" style="display: none;">
