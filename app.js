@@ -117,6 +117,23 @@ app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
 
+app.use((req, res, next) => {
+    try {
+        const banned = bannedListModule && typeof bannedListModule.getBannedList === 'function'
+            ? bannedListModule.getBannedList()
+            : [];
+        const fid = req.session && req.session.user && (req.session.user.fid || req.session.user.FID) ? Number(req.session.user.fid || req.session.user.FID) : null;
+        const isBanned = fid != null && banned.some(b => (b && b.fid && Number(b.fid) === fid) || (typeof b === 'number' && b === fid));
+        // attach to session and locals for templates and client scripts
+        if (!req.session.user) req.session.user = req.session.user || {};
+        req.session.user.isBanned = !!isBanned;
+        res.locals.userBanned = !!isBanned;
+    } catch (e) {
+        console.error('Failed to evaluate banned status for session user:', e);
+    }
+    next();
+});
+
 // user settings database (use repo-root `data` folder)
 const { runMigrations } = require('./data/migrations.js');
 
