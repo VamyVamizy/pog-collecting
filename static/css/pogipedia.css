@@ -17,6 +17,7 @@ body {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    color: white;
 }
 
 h1 {
@@ -80,29 +81,82 @@ li {
 
 /* Table Container */
 .board {
+    padding: 20px;
+    width: 40%;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.board div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    min-width: 120px;
+    min-height: 120px;
+    border-radius: 4px;
     background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
     border: 1px solid rgba(255, 255, 255, 0.094);
+    box-shadow: 0 0 5px black;
+    margin: 10px;
+    color: white;
+    transition: all 0.1s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Table Header */
-.board thead {
-    background: rgba(255, 255, 255, 0.15);
+.board div:hover {
+    scale: 1.1;
 }
 
-.board th {
-    padding: 15px;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-    text-transform: uppercase;
+.board div:active {
+    scale: 0.95;
 }
 
-/* Table Rows */
-.board td {
-    padding: 12px;
-    text-align: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.codeTxt {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: left;
+    opacity: 0.2;
+    font-size: 10px;
+    padding: 2px;
+}
+
+#horizontalLine {
+    width: 100px;
+    height: 1px;
+    background: rgb(255, 255, 255);
+    margin: 20px 0 0 0;
+}
+
+#numCont {
+    margin-left: 30px;
+}
+
+#rarityBanner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+    transform: rotate(45deg);
+    transform-origin: bottom right;
+    margin-top: 130px;
+    pointer-events: none;
+    opacity: 0.6;
 }
 
 #flexcont {
     display: flex;
-    justify-content: center;
+    justify-content: left;
+    flex-direction: column;
+    margin-left: 20px;
 }

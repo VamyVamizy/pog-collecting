@@ -15,7 +15,7 @@
             <div style="display: none" id="userdata">
                 <%= JSON.stringify(userdata) %>
             </div>
-            <div style="display: none" id="scores">
+            <div style="display: none" id="pogList">
                 <%= JSON.stringify(pogList) %>
             </div>
             <h1 style="margin-left: 10px;">Pogipedia</h1>
@@ -31,50 +31,21 @@
     </div>
     <br>
     <div id="flexcont">
-    <table class="board" style="width: 90%; border-collapse: collapse; color: white;">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Serial</th>
-                <th>Name</th>
-                <th>Color</th>
-                <th>Lore</th>
-                <th>Rarity</th>
-                <th>Type</th>
-                <th>Creator</th>
-            </tr>
-        </thead>
-        <tbody>
+        <div id="numCont">
+            <h4><%= pogList.length %> Pogs</h4>
+            <div id="horizontalLine"></div>
+        </div>
+        <div class="board">
             <% pogList.forEach((pog, index)=> { %>
-                <tr class="infobtn" data-index="<%= index %>">
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.id %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.code %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
+                <div class="pogCont" data-index="<%= index %>" data-rarity="<%= pog.rarity %>">
+                    <p style="padding: 8px; text-align: center;">
                         <%= pog.name %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.color %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.description %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.rarity %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.type %>
-                    </td>
-                    <td style="padding: 8px; text-align: center;">
-                        <%= pog.creator %>
-                    </td>
-                </tr>
+                    </p>
+                    <p class="codeTxt"><%= pog.code %></p>
+                    <div id="rarityBanner"></div>
+                </div>
                 <% }) %>
-        </tbody>
-    </table>
+        </div>
     </div>
 </body>
-<script src="../static/js/leaderboard.js"></script>
+<script src="../static/js/pogipedia.js"></script>
