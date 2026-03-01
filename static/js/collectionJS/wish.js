@@ -29,34 +29,24 @@ function customConfirm(message) {
 
 document.getElementById("useWish").addEventListener("click", async () => {
     if (wish >= 7) {
-        let wealth = await customConfirm("Wish of Wealth: Use wish to increase your income for 5 minutes?");
-        if (wealth) {
-            // start a 5 minute timer that increases income by 30%
+        // Show the circular wish interface
+        document.getElementById('wishCarousel').style.display = 'flex';
+        
+        // Handle click on the circle to activate the wish
+        document.querySelector('.wish-circle').onclick = () => {
+            // Start 5-minute income boost
             incomeWishActive = true;
             incomeWishEndTime = Date.now() + WISH_DURATION;
             wish -= 7;
             save();
-        } else {
-            let power = await customConfirm("Wish of Power: Use wish to gain decreased crate costs?");
-            if (power) {
-                for (let crate in crates) {
-                    crates[crate].price = Math.floor(crates[crate].price * 0.95);
-                }
-                wish -= 7;
-                save();
-            } else {
-                let wisdom = await customConfirm("Wish of Wisdom: Use wish to gain a large amount of XP?");
-                if (wisdom) {
-                    xp += Math.floor(maxXP * 1.5);
-                    levelup();
-                    wish -= 7;
-                    save();
-                } else {
-                    await customConfirm("No wish was used.");
-                }
-            }
-        }
+            
+            // Hide the carousel
+            document.getElementById('wishCarousel').style.display = 'none';
+            
+            // Maybe show a confirmation message
+            console.log("Income boost activated for 5 minutes!");
+        };
     } else {
-        await customConfirm(`Not enough wishes to grant a wish. (${wish} / 7)`)
+        await customConfirm(`Not enough wishes to grant a wish. (${wish} / 7)`);
     }
 });
