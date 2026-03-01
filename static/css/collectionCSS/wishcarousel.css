@@ -120,3 +120,7 @@
 .wish-circle, .wish-info {
     transition: transform 0.4s ease, opacity 0.4s ease;
 }
+#wishCarousel[style*="display: none"] {
+    pointer-events: none;
+    visibility: hidden;
+}
