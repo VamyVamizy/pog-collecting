@@ -40,15 +40,25 @@
         </div>
     </div>
     <!--Wish Carousel-->
-    <div id="wishCarousel" style="display: none;">
-        <div class="wish-circle">
-            <img id="wishIcon" src="/static/icons/wishes/incomewish.png" alt="Income Boost">
-            <div class="wish-info">
-                <h3>Wish of Wealth</h3>
-                <p>30% more income for 5 mins</p>
+    <div id="wishCarousel" style="display:none;">
+        <div class="wish-container">
+            <button class="wish-cursor" id="leftCursor">←</button>
+        
+            <div class="wish-display">
+                <div class="wish-circle">
+                    <img id="wishIcon" src="../static/icons/wishes/incomewish.png" alt="Current Wish">
+                </div>
+                <div class="wish-info">
+                    <h3 id="wishName">Wish of Wealth</h3>
+                    <p id="wishDescription">+30% income for 5 minutes</p>
+                </div>
             </div>
+        
+            <button class="wish-cursor" id="rightCursor">→</button>
         </div>
     </div>
+
+
     <!--Team Select-->
     <%- include("collectionEJS/teamSelect.ejs") %>
     <!--Shop-->

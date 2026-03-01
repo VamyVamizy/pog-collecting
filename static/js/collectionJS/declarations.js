@@ -1,5 +1,6 @@
 // reference userdata from ejs
 // Parse server-injected JSON safely. If parsing fails or content is empty,
+
 // fall back to an empty object so downstream code doesn't blow up.
 try {
     const el = document.getElementById("userdata");
@@ -67,20 +68,34 @@ const WISH_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 // checking if wishes have expired 
 function checkWishTimers() {
     const now = Date.now();
-
-    //checking income wish
+    
+    // check income wish
     if (incomeWishActive && now >= incomeWishEndTime) {
         incomeWishActive = false;
-        console.log("Income wish has expired.");
         
+        document.getElementById("errorText").innerText = "Income Boost Expired! Your +30% income bonus has ended.";
+        const errorMessage = document.getElementById("errorMessage");
+        errorMessage.style.display = "block";
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.opacity = "1";
+        }, 10);
+        setTimeout(() => {
+            errorMessage.style.opacity = "0";
+            setTimeout(() => {
+                errorMessage.style.display = "none";
+            }, 1000);
+        }, 5000);
+        
+        console.log("Income boost expired!");
     }
-
-    //checking drop rate wish
+    // Check drop rate wish  
     if (dropRateWishActive && now >= dropRateWishEndTime) {
         dropRateWishActive = false;
-        console.log("Drop rate wish has expired.");
+        console.log("Drop rate boost expired!");
     }
 }
+
 
 //check timers every second
 setInterval(checkWishTimers, 1000);
@@ -182,3 +197,43 @@ function abbreviateNumber(value) {
     const formatter = Intl.NumberFormat('en', { notation: 'compact', compactDisplay: 'short' });
     return formatter.format(value);
 }
+
+// alerts for when something good happens to the user
+function showSuccessMessage(message) {
+    document.getElementById("errorText").innerText = message;
+    const errorMessage = document.getElementById("errorMessage");
+    
+    errorMessage.style.backgroundColor = "#4CAF50";
+    errorMessage.style.borderColor = "#45a049";
+    
+    errorMessage.style.display = "block";
+    errorMessage.style.opacity = "0";
+    setTimeout(() => {
+        errorMessage.style.opacity = "1";
+    }, 10);
+    setTimeout(() => {
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.display = "none";
+            errorMessage.style.backgroundColor = ""; 
+            errorMessage.style.borderColor = "";
+        }, 1000);
+    }, 5000);
+}
+
+// wish carousel data
+let currentWishIndex = 0;
+const wishTypes = [
+    {
+        name: "Wish of Wealth",
+        description: "+30% income for 5 mins",
+        icon: "../static/icons/wishes/incomewish.png",
+        type: "income"
+    },
+    {
+        name: "Wish of Fortune", 
+        description: "Better drop rates for 5 mins",
+        icon: "../static/icons/wishes/dropratewish.png", // Update this path to your clover icon
+        type: "droprate"
+    }
+];

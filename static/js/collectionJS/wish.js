@@ -1,4 +1,3 @@
-
 function customConfirm(message) {
     return new Promise((resolve) => {
         const confirmBox = document.getElementById("customConfirm");
@@ -29,24 +28,78 @@ function customConfirm(message) {
 
 document.getElementById("useWish").addEventListener("click", async () => {
     if (wish >= 7) {
-        // Show the circular wish interface
         document.getElementById('wishCarousel').style.display = 'flex';
-        
-        // Handle click on the circle to activate the wish
-        document.querySelector('.wish-circle').onclick = () => {
-            // Start 5-minute income boost
-            incomeWishActive = true;
-            incomeWishEndTime = Date.now() + WISH_DURATION;
+
+        document.querySelector('.wish-container').onclick = () => {
+            // Check which wish is currently selected
+            const currentWish = wishTypes[currentWishIndex];
+            
+            if (currentWish.type === "income") {
+                // Income boost
+                incomeWishActive = true;
+                incomeWishEndTime = Date.now() + WISH_DURATION;
+                showSuccessMessage("Income Boost Activated! +30% income for 5 minutes");
+            } else if (currentWish.type === "droprate") {
+                // Drop rate boost (for future implementation)
+                dropRateWishActive = true;
+                dropRateWishEndTime = Date.now() + WISH_DURATION;
+                showSuccessMessage("Drop Rate Boost Activated! Better luck for 5 minutes");
+            }
+            
             wish -= 7;
             save();
-            
-            // Hide the carousel
             document.getElementById('wishCarousel').style.display = 'none';
-            
-            // Maybe show a confirmation message
-            console.log("Income boost activated for 5 minutes!");
         };
     } else {
         await customConfirm(`Not enough wishes to grant a wish. (${wish} / 7)`);
     }
+});
+
+function updateWishDisplay() {
+    const currentWish = wishTypes[currentWishIndex]; // Fixed: changed wishData to wishTypes
+    document.getElementById('wishIcon').src = currentWish.icon;
+    document.getElementById('wishName').textContent = currentWish.name;
+    document.getElementById('wishDescription').textContent = currentWish.description;
+}
+
+function slideToWish(direction) {
+    const circle = document.querySelector('.wish-circle');
+    const info = document.querySelector('.wish-info');
+    
+    circle.classList.add('slide-out-left');
+    info.classList.add('slide-out-left');
+    
+    setTimeout(() => {
+        if (direction === 'right') {
+            currentWishIndex = (currentWishIndex + 1) % wishTypes.length;
+        } else {
+            currentWishIndex = (currentWishIndex - 1 + wishTypes.length) % wishTypes.length;
+        }
+        
+        updateWishDisplay();
+        
+        circle.classList.remove('slide-out-left');
+        info.classList.remove('slide-out-left');
+        circle.classList.add('slide-in-right');
+        info.classList.add('slide-in-right');
+        
+        setTimeout(() => {
+            circle.classList.remove('slide-in-right');
+            info.classList.remove('slide-in-right');
+            circle.classList.add('slide-in-center');
+            info.classList.add('slide-in-center');
+        }, 50);
+    }, 250);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('leftCursor').addEventListener('click', (e) => {
+        e.stopPropagation();
+        slideToWish('left');
+    });
+    
+    document.getElementById('rightCursor').addEventListener('click', (e) => {
+        e.stopPropagation();
+        slideToWish('right');
+    });
 });
