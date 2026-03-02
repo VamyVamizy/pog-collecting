@@ -99,9 +99,8 @@
                     data-type="<%= pog.type %>"
                     data-number="<%= pog.number %>"
                     >
-                        <p style="padding: 8px; text-align: center;">
-                            <%= pog.name %>
-                        </p>
+                        <p class="nameTxt" style="display: none"><%= pog.name %></p>
+                        <img class="thumbnail" src="../static/icons/images/pogs/<%= pog.code2 %>.webp" width="100%" height="100%">
                         <p class="codeTxt"><%= pog.code %></p>
                         <div id="rarityBanner"></div>
                         <div id="indexTxt"><%= index + 1 %></div>

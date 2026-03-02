@@ -65,6 +65,9 @@ document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".pogCont").forEach(pog => {
         const rarity = pog.dataset.rarity;
         pog.querySelector("#rarityBanner").style.backgroundColor = getRarityColor(rarity);
+        if (pog.dataset.name === "Upper Endermen") {
+            pog.querySelector(".thumbnail").style.transform = "rotate(180deg)";
+        }
     });
 
     //sort by rarity
@@ -99,6 +102,10 @@ document.querySelectorAll(".pogCont").forEach(pog => {
             <p>Number: ${number}</p>
             <img src="../static/icons/images/pogs/${code2}.webp" width="200" height="200" alt="image doesn't exist" style="margin-top: 20px;">
         `;
+
+        if (name === "Upper Endermen") {
+            det.querySelector("img").style.transform = "rotate(180deg)";
+        }
 
         det.style.display = 'flex';
     });
