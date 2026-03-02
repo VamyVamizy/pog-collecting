@@ -159,7 +159,7 @@ app.get('/battle', (req, res) => {
 });
 
 app.get('/pogipedia', (req, res) => {
-            res.render('pogipedia', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+    res.render('pogipedia', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
 });
 
 app.get('/leaderboard', (req, res) => {
