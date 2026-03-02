@@ -30,70 +30,88 @@
         </div>
     </div>
     <br>
-    <div id="flexcont">
-        <div id="numCont">
-            <div id="rowTop">
-                <h4><%= pogList.length %> Pogs</h4>
-                <div id="sortCont">
-                    <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Pogs...">
-                    <div id="filtCont">
-                        <button id="filter">
-                            <img src="../static/icons/playerbase/filter.png" width="25" height="25">
-                        </button>
-                        <div id="filterBox" style="display: none;">
-                            <label class="boxcon" for="none">
-                                <input type="radio" name="filter" value="none" id="none" checked>
-                                <label for="none">
-                                    <p>None</p>
+    <div id="pageFlex">
+        <div id="flexcont">
+            <div id="numCont">
+                <div id="rowTop">
+                    <h4><%= pogList.length %> Pogs</h4>
+                    <div id="sortCont">
+                        <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Pogs...">
+                        <div id="filtCont">
+                            <button id="filter">
+                                <img src="../static/icons/playerbase/filter.png" width="25" height="25">
+                            </button>
+                            <div id="filterBox" style="display: none;">
+                                <label class="boxcon" for="none">
+                                    <input type="radio" name="filter" value="none" id="none" checked>
+                                    <label for="none">
+                                        <p>None</p>
+                                    </label>
                                 </label>
-                            </label>
-                            <label class="boxcon" for="trash">
-                                <input type="radio" name="filter" value="trash" id="trash">
-                                <label for="trash">
-                                    <p>Trash</p>
+                                <label class="boxcon" for="trash">
+                                    <input type="radio" name="filter" value="trash" id="trash">
+                                    <label for="trash">
+                                        <p>Trash</p>
+                                    </label>
                                 </label>
-                            </label>
-                            <label class="boxcon" for="common">
-                                <input type="radio" name="filter" value="common" id="common">
-                                <label for="common">
-                                    <p>Common</p>
+                                <label class="boxcon" for="common">
+                                    <input type="radio" name="filter" value="common" id="common">
+                                    <label for="common">
+                                        <p>Common</p>
+                                    </label>
                                 </label>
-                            </label>
-                            <label class="boxcon" for="uncommon">
-                                <input type="radio" name="filter" value="uncommon" id="uncommon">
-                                <label for="uncommon">
-                                    <p>Uncommon</p>
+                                <label class="boxcon" for="uncommon">
+                                    <input type="radio" name="filter" value="uncommon" id="uncommon">
+                                    <label for="uncommon">
+                                        <p>Uncommon</p>
+                                    </label>
                                 </label>
-                            </label>
-                            <label class="boxcon" for="mythic">
-                                <input type="radio" name="filter" value="mythic" id="mythic">
-                                <label for="mythic">
-                                    <p>Mythic</p>
+                                <label class="boxcon" for="mythic">
+                                    <input type="radio" name="filter" value="mythic" id="mythic">
+                                    <label for="mythic">
+                                        <p>Mythic</p>
+                                    </label>
                                 </label>
-                            </label>
-                            <label class="boxcon" for="unique">
-                                <input type="radio" name="filter" value="unique" id="unique">
-                                <label for="unique">
-                                    <p>Unique</p>
+                                <label class="boxcon" for="unique">
+                                    <input type="radio" name="filter" value="unique" id="unique">
+                                    <label for="unique">
+                                        <p>Unique</p>
+                                    </label>
                                 </label>
-                            </label>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <div id="horizontalLine"></div>
             </div>
-            <div id="horizontalLine"></div>
+            <div class="board">
+                <% pogList.forEach((pog, index)=> { %>
+                    <div class="pogCont" 
+                    data-index="<%= index %>" 
+                    data-name="<%= pog.name %>"
+                    data-rarity="<%= pog.rarity %>"
+                    data-description="<%= pog.description %>"
+                    data-creator="<%= pog.creator %>"
+                    data-id="<%= pog.id %>"
+                    data-code="<%= pog.code %>"
+                    data-color="<%= pog.color %>"
+                    data-code2="<%= pog.code2 %>"
+                    data-type="<%= pog.type %>"
+                    data-number="<%= pog.number %>"
+                    >
+                        <p style="padding: 8px; text-align: center;">
+                            <%= pog.name %>
+                        </p>
+                        <p class="codeTxt"><%= pog.code %></p>
+                        <div id="rarityBanner"></div>
+                        <div id="indexTxt"><%= index + 1 %></div>
+                    </div>
+                    <% }) %>
+            </div>
         </div>
-        <div class="board">
-            <% pogList.forEach((pog, index)=> { %>
-                <div class="pogCont" data-index="<%= index %>" data-rarity="<%= pog.rarity %>">
-                    <p style="padding: 8px; text-align: center;">
-                        <%= pog.name %>
-                    </p>
-                    <p class="codeTxt"><%= pog.code %></p>
-                    <div id="rarityBanner"></div>
-                    <div id="indexTxt"><%= index + 1 %></div>
-                </div>
-                <% }) %>
+        <div id="pogInfoCont">
+            <div id="pogInfo">
+            </div>
         </div>
     </div>
 </body>
