@@ -10,11 +10,11 @@ module.exports = function(io) {
 
     // Auction limits (server-side authoritative)
     const AUCTION_LIMITS = {
-        MIN_START_PRICE: 1,
-        MIN_INCREMENT: 1,
+        MIN_START_PRICE: 100,
+        MIN_INCREMENT: 10,
         MIN_DURATION_MINUTES: 1,
         MAX_DURATION_MINUTES: 1440, // 1 day max
-        MAX_BUY_NOW_PRICE: 1000000
+        MAX_BUY_NOW_PRICE: 10000000
     };
 
     // Helper functions
