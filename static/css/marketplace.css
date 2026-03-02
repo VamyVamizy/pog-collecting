@@ -312,3 +312,25 @@ li {
     #auctionPopup { padding: 16px; }
 }
 
+/* Limits info shown in the Create Auction popup */
+.limits-info {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #c7d0d4;
+    position: absolute;
+    right: 28px;
+    bottom: 28px;
+    background-color: rgba(30,30,30,0.85);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    line-height: 1.35;
+    max-width: 350px;
+}
+.limits-info p { margin: 4px 0; color: #dfe7ea; font-size: 13px; }
+
+@media (max-width: 560px) {
+    .limits-info { position: static; max-width: none; width: 100%; margin-top: 12px; }
+}
+

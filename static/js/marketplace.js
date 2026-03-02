@@ -34,6 +34,15 @@ console.log('================================');
 // PFP (default for current user)
 const pfp = (userdata && userdata.pfp) ? userdata.pfp : '/static/icons/pfp/defaultpfp.png';
 
+// Auction limits (client-side mirrors server limits)
+const AUCTION_LIMITS = {
+    MIN_START_PRICE: 100,
+    MIN_INCREMENT: 10,
+    MIN_DURATION_MINUTES: 1,
+    MAX_DURATION_MINUTES: 1440, // 1 day
+    MAX_BUY_NOW_PRICE: 10000000 // arbitrary cap
+};
+
 // Add this to your marketplace.js
 document.addEventListener('DOMContentLoaded', () => {
     // Find the marketplace content area
@@ -428,7 +437,7 @@ function showCreateAuctionPopup() {
     const popup = document.createElement('div');
     popup.id = 'auctionPopup';
     popup.style.cssText = `
-        background-color: #333
+        background-color: #333333ff
         color: 'white';
         padding: 30px;
         border-radius: 15px;
@@ -472,6 +481,18 @@ function showCreateAuctionPopup() {
             <button id="cancelAuctionBtn" style="padding: 12px 24px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Cancel</button>
         </div>
     `;
+
+    const limitsInfo = document.createElement('div');
+    // Use CSS class for styling (defined in /static/css/marketplace.css)
+    limitsInfo.className = 'limits-info';
+    limitsInfo.innerHTML = `
+        <p>Minimum Starting Price: $${AUCTION_LIMITS.MIN_START_PRICE}</p>
+        <p>Minimum Bid Increment: $${AUCTION_LIMITS.MIN_INCREMENT}</p>
+        <p>Minimum Auction Duration: ${AUCTION_LIMITS.MIN_DURATION_MINUTES} minute</p>
+        <p>Maximum Auction Duration: ${AUCTION_LIMITS.MAX_DURATION_MINUTES} minutes (1 Day)</p>
+        <p>Maximum Buy It Now Price: $${AUCTION_LIMITS.MAX_BUY_NOW_PRICE} (10 Million)</p>
+    `;
+    overlay.appendChild(limitsInfo);
 
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
@@ -567,6 +588,24 @@ function submitAuction() {
     if (!duration || duration < 1) {
         console.log('Validation failed: Invalid duration');
         alert('Please enter a valid auction duration');
+        return;
+    }
+
+    // Enforce configured limits
+    if (startPrice < AUCTION_LIMITS.MIN_START_PRICE) {
+        alert(`Starting price must be at least $${AUCTION_LIMITS.MIN_START_PRICE}`);
+        return;
+    }
+    if (minIncrement < AUCTION_LIMITS.MIN_INCREMENT) {
+        alert(`Minimum increment must be at least $${AUCTION_LIMITS.MIN_INCREMENT}`);
+        return;
+    }
+    if (duration < AUCTION_LIMITS.MIN_DURATION_MINUTES || duration > AUCTION_LIMITS.MAX_DURATION_MINUTES) {
+        alert(`Auction duration must be between ${AUCTION_LIMITS.MIN_DURATION_MINUTES} and ${AUCTION_LIMITS.MAX_DURATION_MINUTES} minutes`);
+        return;
+    }
+    if (buyNowPrice > AUCTION_LIMITS.MAX_BUY_NOW_PRICE) {
+        alert(`Buy It Now price cannot exceed $${AUCTION_LIMITS.MAX_BUY_NOW_PRICE}`);
         return;
     }
 

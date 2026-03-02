@@ -8,6 +8,15 @@ const io = new Server(http);
 
 module.exports = function(io) {
 
+    // Auction limits (server-side authoritative)
+    const AUCTION_LIMITS = {
+        MIN_START_PRICE: 1,
+        MIN_INCREMENT: 1,
+        MIN_DURATION_MINUTES: 1,
+        MAX_DURATION_MINUTES: 1440, // 1 day max
+        MAX_BUY_NOW_PRICE: 1000000
+    };
+
     // Helper functions
     function completeAuction(auction, winnerId, winnerName, winnerPfp, finalBid) {
         usdb.run(`UPDATE market SET AuctionStatus = ?, winner_id = ?, winner_name = ?, winner_pfp = ?, winner_bid = ? 
@@ -283,6 +292,28 @@ socket.on('create auction', (data) => {
         const hasPog = inventory.some(item => item.name === pogName && item.rarity !== "Unique");
         if (!hasPog) {
             socket.emit('auction error', { message: 'You do not own this pog or it cannot be auctioned' });
+            return;
+        }
+
+        // Server-side validation of auction limits
+        if (typeof startPrice !== 'number' || startPrice < AUCTION_LIMITS.MIN_START_PRICE) {
+            socket.emit('auction error', { message: `Starting price must be at least $${AUCTION_LIMITS.MIN_START_PRICE}` });
+            return;
+        }
+        if (typeof minBidIncrement !== 'number' || minBidIncrement < AUCTION_LIMITS.MIN_INCREMENT) {
+            socket.emit('auction error', { message: `Minimum increment must be at least $${AUCTION_LIMITS.MIN_INCREMENT}` });
+            return;
+        }
+        if (typeof auctionTime !== 'number' || auctionTime < AUCTION_LIMITS.MIN_DURATION_MINUTES || auctionTime > AUCTION_LIMITS.MAX_DURATION_MINUTES) {
+            socket.emit('auction error', { message: `Auction duration must be between ${AUCTION_LIMITS.MIN_DURATION_MINUTES} and ${AUCTION_LIMITS.MAX_DURATION_MINUTES} minutes` });
+            return;
+        }
+        if (typeof maxAcceptedBid !== 'number' || maxAcceptedBid <= startPrice) {
+            socket.emit('auction error', { message: 'Buy It Now price must be greater than starting price' });
+            return;
+        }
+        if (maxAcceptedBid > AUCTION_LIMITS.MAX_BUY_NOW_PRICE) {
+            socket.emit('auction error', { message: `Buy It Now price cannot exceed $${AUCTION_LIMITS.MAX_BUY_NOW_PRICE}` });
             return;
         }
 
