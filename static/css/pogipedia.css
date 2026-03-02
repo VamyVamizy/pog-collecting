@@ -82,7 +82,6 @@ li {
 /* Table Container */
 .board {
     padding: 0 20px 0 20px;
-    width: 52%;
     display: grid;
     margin-top: 20px;
     grid-template-columns: repeat(6, 1fr);
@@ -90,6 +89,8 @@ li {
     overflow-x: hidden;
     overflow-y: auto;
     align-content: start;
+    min-height: 75vh;
+    width: 46vw;
 }
 
 .board::-webkit-scrollbar {
@@ -231,7 +232,6 @@ li {
 #rowTop {
     display: flex;
     align-items: center;
-    width: 50%;
     gap: 20px;
     position: relative;
 }
@@ -283,4 +283,57 @@ li {
 
 .boxcon input {
     cursor: pointer;
+}
+
+#pageFlex {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    margin-right: 50px;
+}
+
+#pogInfo {
+    padding: 20px;
+    width: 100%;
+    display: none;
+    font-size: 30px;
+    position: relative;
+    flex-direction: column;
+}
+
+#pogInfo p:not(#desc) {
+    font-size: 25px;
+    color: gray;
+    margin-top: 20px;
+}
+
+#pogInfo #desc {
+    margin: 0;
+}
+
+#pogInfo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.1;
+    z-index: -1;
+}
+
+#add {
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+#add:hover {
+    scale: 1.1;
 }

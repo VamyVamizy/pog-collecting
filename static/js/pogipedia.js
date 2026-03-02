@@ -73,3 +73,33 @@ document.addEventListener("DOMContentLoaded", function() {
     pogContainers.sort((a, b) => rarityOrder[a.dataset.rarity] - rarityOrder[b.dataset.rarity]);
     pogContainers.forEach(pog => pog.parentNode.appendChild(pog));
 });
+
+document.querySelectorAll(".pogCont").forEach(pog => {
+    pog.addEventListener("click", function() {
+        const det = document.getElementById("pogInfo");
+        const name = this.dataset.name;
+        const description = this.dataset.description;
+        const creator = this.dataset.creator;
+        const id = this.dataset.id;
+        const code = this.dataset.code;
+        const color = this.dataset.color;
+        const code2 = this.dataset.code2;
+        const type = this.dataset.type;
+        const number = this.dataset.number;
+
+        det.innerHTML = `
+            <h2>${name}</h2>
+            <p id="desc">${description}</p>
+            <p>Creator: ${creator}</p>
+            <p>ID: ${id}</p>
+            <p>Code: ${code}</p>
+            <p>Color: ${color}</p>
+            <p>Code 2: ${code2}</p>
+            <p>Type: ${type}</p>
+            <p>Number: ${number}</p>
+            <img src="../static/icons/images/pogs/${code2}.webp" width="200" height="200" alt="image doesn't exist" style="margin-top: 20px;">
+        `;
+
+        det.style.display = 'flex';
+    });
+});
