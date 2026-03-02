@@ -221,7 +221,7 @@ li {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 8px;
+    padding: 6px;
     background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
@@ -344,4 +344,86 @@ li {
 
 #add:hover {
     scale: 1.1;
+}
+
+#add:active {
+    scale: 0.95;
+}
+
+#createCont {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#form {
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    border-radius: 10px;
+    padding: 20px;
+    width: 500px;
+    font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif
+}
+
+#pogForm {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#pogForm select, option {
+    color: black;
+}
+
+#pogForm input, #pogForm select, #pogForm textarea {
+    padding: 7px;
+    border-radius: 5px;
+    border: transparent;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.541);
+    width: 100%;
+    color: black;
+}
+
+#pogForm textarea {
+    resize: vertical;
+}
+
+#pogForm .tooltip {
+    color: gray;
+    font-size: 13px;
+}
+
+#pogForm #buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+#pogForm button {
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+#pogForm button:hover {
+    scale: 1.1;
+}
+
+#pogForm button:active {
+    scale: 0.95;
 }
