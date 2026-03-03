@@ -36,6 +36,7 @@
                 <div id="rowTop">
                     <h4><%= pogList.length %> Pogs</h4>
                     <div id="sortCont">
+                        <button id="add">Add Pog</button>
                         <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Pogs...">
                         <div id="filtCont">
                             <button id="filter">
@@ -111,6 +112,83 @@
         <div id="pogInfoCont">
             <div id="pogInfo">
             </div>
+        </div>
+    </div>
+    <div id="createCont" style="display: none;">
+        <div id="form">
+            <form id="pogForm">
+                <h2>Create Pog</h2>
+                <div id="twoRows">
+                    <div class="formColumn">
+                        <div>
+                            <label for="name">Name</label>
+                            <br>
+                            <input type="text" id="name" name="name" placeholder="e.g. Hail of Harpoons" required>
+                            <br>
+                            <div class="tooltip">This will be displayed in the Pogipedia and on Pogglebar pogs.</div>
+                        </div>
+
+                        <div>
+                            <label for="color">Color</label>
+                            <br>
+                            <input type="text" id="color" name="color" placeholder="e.g. Black & Yellow" required>
+                            <br>
+                            <div class="tooltip">This is used for the background color of the pog in the Pogipedia and on Pogglebar info. You can also have multiple colors, seperated by an '&' symbol.</div>
+                        </div>
+
+                        <div>
+                            <label for="description">Description</label>
+                            <br>
+                            <textarea id="description" name="description" required></textarea>
+                            <br>
+                            <div class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder.</div>
+                        </div>
+                    </div>
+
+                    <div class="formColumn">
+                        <div>
+                            <label for="number">Number</label>
+                            <br>
+                            <input type="number" id="number" name="number" placeholder="e.g. 203" required>
+                            <br>
+                            <div class="tooltip">This is the number of pogs that exist, which will be displayed in Pogipedia. If you don't know, put 'N/A'.</div>
+                        </div>
+
+                        <div>
+                            <label for="rarity">Rarity</label>
+                            <br>
+                            <select id="rarity" name="rarity" required>
+                                <option value="trash">Trash</option>
+                                <option value="common">Common</option>
+                                <option value="uncommon">Uncommon</option>
+                                <option value="mythic">Mythic</option>
+                                <option value="unique">Unique</option>
+                            </select>
+                            <br>
+                            <div class="tooltip">This will be displayed in the Pogipedia and used in Pogglebar in crates and the binder. CPs are the only pogs that can be Trash unless the teacher says otherwise.</div>
+                        </div>
+
+                        <div>
+                            <label for="creator">Creator</label>
+                            <br>
+                            <input type="text" id="creator" name="creator" placeholder="e.g. Mr. Smith" required>
+                            <br>
+                            <div class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder. Input the person who made the pog or, if asked to do so by the teacher, make them the creator.</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="image">Image</label>
+                    <br>
+                    <input type="file" id="image" name="image" accept="image/webp" required>
+                    <br>
+                    <div class="tooltip">This will be displayed in the Pogipedia. This image must be a .webp file. Ensure the image name is the name of your pog with camel case and index. (e.g. Name: Hail of Harpoons -> image name: HailOfHarpoons0.webp) </div>
+                </div>
+
+                <div id="buttons">
+                    <button type="submit">Create Pog</button>
+                    <button type="button" id="cancel">Cancel</button>
+                </div>
         </div>
     </div>
 </body>
