@@ -18,7 +18,7 @@
 18,CP,Red,2223A02,346,CP17,This Pog was created to represent the York Tech 2022-2023 class of Computer Programming.,Class Pog,Trash,Mr. Smith,None
 19,CP,Orange,2223A02,346,CP18,This Pog was created to represent the York Tech 2022-2023 class of Computer Programming.,Class Pog,Trash,Mr. Smith,None
 20,CP,Teal,2223A02,346,CP19,This Pog was created to represent the York Tech 2022-2023 class of Computer Programming.,Class Pog,Trash,Mr. Smith,None
-23,Dingus,Black,2223A02,N/A,Dingus0,amogus,Student Created,Common,Unknown,Penetrate
+23,Dingus,Black,2223A02,N/A,Dingus0,amogus,Student Created,Common,Penetrate
 21,CP,Black & Red,2223A02,346,CP20,This Pog was created to represent the York Tech 2022-2023 class of Computer Programming.,Class Pog,Trash,Mr. Smith,None
 22,CP,White & Blue,2223A02,346,CP21,This Pog was created to represent the York Tech 2022-2023 class of Computer Programming.,Class Pog,Trash,Mr. Smith,None
 24,York Tech Cyber 22-23,Grey,2223A04,N/A,York Tech Cyber 22-230,This Pog was created to represent the York Tech Cyber 2022-2023 Class.,Class Pog,Common,Mr. Smith,AOE
@@ -51,7 +51,7 @@
 51,Grass Energy,Green & Black,2223A12,60,Grass Energy0,This Pog is to be used in Pokepogs. This PokePogs represents the Grass Energy allowing certain PokePogs to user certain moves,PokePogs,Common,Mr. Smith,Booster
 52,Psychic Energy,Purple & Black,2223A13,60,Psychic Energy0,This Pog is to be used in Pokepogs. This PokePog represents the Psychic Energy allowing certain PokePogs to user certain moves,PokePogs,Common,Mr. Smith,DoT
 53,Fighting Energy,Orange & Black,2223A15,60,Fighting Energy0,This Pog is to be used in Pokepogs. This PokePogs represents the Fighting Energy allowing certain PokePogs to user certain moves,PokePogs,Common,Mr. Smith,DoT
-54,Emo Boy,Grey & Iridescent,2223A19,30,Emo Boy0,This Pog is in rememberance of Christopher Boldt. A student who had amazing potential but couldn't apply himself,Student Created,Uncommon,Common,Stun
+54,Emo Boy,Grey & Iridescent,2223A19,30,Emo Boy0,This Pog is in rememberance of Christopher Boldt. A student who had amazing potential but couldn't apply himself,Class Pog,Uncommon,Student Created,Stun
 55,SW,Grey & Black,2223A20,N/A,SW0,This Pog was created to represent the York Tech 2022-2023 class of Computer Software.,Class Pog,Common,Mr. Smith,Blast
 56,SW,Black,2223A20,N/A,SW1,This Pog was created to represent the York Tech 2022-2023 class of Computer Software.,Class Pog,Common,Mr. Smith,Penetrate
 57,SW,White & Grey,2223A20,N/A,SW2,This Pog was created to represent the York Tech 2022-2023 class of Computer Software.,Class Pog,Common,Mr. Smith,Weakness
@@ -103,7 +103,7 @@
 105,Butter Pog,Black & Yellow,2223A51,30,Butter Pog1,"This pog was made for the RoboDog's Tag. The pog was made after the meme 'Butter Dog, the dog with the butter on it, butter dog",Teacher Created,Uncommon,Mr. Smith,Weakness
 106,This is a joke,White & Black,2223A52,30,This is a joke0,This pog was created because Mr. Smith got in trouble for using unprofessional language in the weekly review.,Teacher Created,Uncommon,Mr. Smith,Stun
 107,Merkert Trainer,Blue & Green,2223A53,30,Merkert Trainer0,This Pog was made to represent the Merkert Trainer Puck in PokePogs,PokePogs,Uncommon,Mr. Smith,Hunter
-108,Menacing,"Green, Purple & Gold",2223A54,30,Menacing0,Was that a JoJo reference,Student Created,Uncommon,Common,Stun
+108,Menacing,"Green, Purple & Gold",2223A54,30,Menacing0,Was that a JoJo reference,Class Pog,Uncommon,Student Created,Stun
 109,Igglybuff,White & Grey,2223B25,30,Igglybuff0,This Pog was made to represent the Igglybuff Puck in PokePogs,PokePogs,Uncommon,Mr. Smith,Absorber
 110,Magikarp,White & Blue,2223B26,30,Magikarp0,This Pog was made to represent the Magikarp Puck in PokePogs,PokePogs,Uncommon,Mr. Smith,Energy
 111,Pichu,White & Yellow,N/A,30,Pichu0,This Pog was made to represent the Pichu Puck in PokePogs,PokePogs,Uncommon,Mr. Smith,Zoner
@@ -114,7 +114,7 @@
 116,Arc Reactor,Blue,N/A,N/A,Arc Reactor0,This Pog was created by Chris Mooney a Senior in the 2021-2022 Computer Programming Class,Student Created,Common,Chris Mooney,Energy
 117,OG Arc Reactor,Blue,N/A,N/A,OG Arc Reactor0,"This Pog was made to represent a Titan Core from Titanfall, But due to Public Opinion it was renamed. This Pog was created by Jayson Ziegler a Senior in the 2022-2023 Computer Programming Class but was printed by Chris Mooney a Senior in the 2021-2022 Computer Programming Class",Student Created,Common,Jayson Ziegler & Chris Mooney,Penetrate
 118,Radioactive,Blue,N/A,N/A,Radioactive0,Imagine Dragons. This Pog was created by Chris Mooney a Senior in the 2021-2022 Computer Programming Class.,Student Created,Common,Chris Mooney,Booster
-119,Gaming Mode,Green,N/A,N/A,Gaming Mode0,When you put on these glasses you will enter the world of the game,Student Created,Common,Common,AOE
+119,Gaming Mode,Green,N/A,N/A,Gaming Mode0,When you put on these glasses you will enter the world of the game,Class Pog,Common,Student Created,AOE
 120,PogChamp,Grey,N/A,N/A,PogChamp0,"This Pog was the first Pog ever created for the class. It was created under the meme 'Ugh Fine, I guess you are my lil PogChamp'",Teacher Created,Common,Mr. Smith,Energy
 121,PogChamp,Green,N/A,N/A,PogChamp1,"This Pog was the first Pog ever created for the class. It was created under the meme 'Ugh Fine, I guess you are my lil PogChamp'",Teacher Created,Common,Mr. Smith,AA
 122,PogChamp,Red,N/A,N/A,PogChamp2,"This Pog was the first Pog ever created for the class. It was created under the meme 'Ugh Fine, I guess you are my lil PogChamp'",Teacher Created,Common,Mr. Smith,Weakness
@@ -169,7 +169,7 @@
 178,Cyber Security,Iridescent & Orange,2324A02,N/A,Cyber3,This Pog was created to represent the York Tech 2023-2024 class of Cyber Security.,Teacher Created,Common,Mr. Smith,Penetrate
 179,Danganronpa,"Black, Red, & White trim",2324A07,N/A,Danganronpa0,This pog was created as a reference to the Danganronpa Anime,Teacher Created,Common,Mr. Smith,Stun
 180,Depresso Espresso,"Brown, Blue, Purple, Black trim",2324A29,N/A,Depresso0,This pog was created as a reference to Depresso a Depressed pal in Palworld.,Teacher Created,Common,Mr. Smith,Stun
-181,Dingus,Black & White,2223A20,N/A,Dingus1,amogus,Student Created,Common,Common,Booster
+181,Dingus,Black & White,2223A20,N/A,Dingus1,amogus,Class Pog,Common,Student Created,Booster
 182,Duo,"White, Green, Yellow, & Black Trim",2324A40,N/A,Duo0,This pog was created as a reference to the Duolingo owl Duo,Teacher Created,Common,Mr. Smith,Penetrate
 183,Duo???,"White, Black, Green, Yellow, & Black Trim",2324A40,N/A,Duo1,This pog was a misprint of the Duo pog where the green color layer for the body either ran out of filliment or didn't print leading to an intresting miss color.,Teacher Created,Common,Mr. Smith,DoT
 184,Elden Ring,Black & Yellow,2324A32,N/A,Elden0,This pog was created as a reference to Elden Ring and it's logo.,Teacher Created,Common,Mr. Smith,AOE
@@ -268,4 +268,3 @@
 283,Hatsune Miku,"Blue, Red, Beige, White, & Black Trim",2425A14,N/A,Miku0,"Pronounced (Hat-Su-Ne Mee-Koo), Hatsune Miku is a Vocaloid which is a software voicebank developed by Cypton Future Media. She is their offical mascot and is personalized as an idol leading into them performing concerts via holograms. Her vocal soundbank was taken and created by voice actress Saki Fujita",Teacher Created,Common,Mr. Smith,Hunter
 284,Spongebob Squarepants,"Blue, Yellow, White, & Black Trim",N/A,N/A,SpongeBoy0,Despite prior notice that there would be no more Sqogs Spongebob Squarepants is the second Sqog varient. Spongebob is a sea sponge from the Nickelodeon show Spongebob Squarepants,Teacher Created,Common,Mr. Smith,Energy
 285,Samisu,"Magenta, Purple, Beige, White, & Black Trim",2425A12,N/A,Samisu0,"Pronounced (Sah-mee-soo), Samisu is Mr. Smiths magical E-Girl form!, This pogs specific design is based off of student artwork made of Samisu that was gifted to Mr. Smith,The creator of the artwork is Jenna Mellen and my I say her works are extraordinary",Teacher Created,Common,Mr. Smith,AA
-286,Goon Pog,"White",2425A37,N/A,Goon0,"Gooner legends",Student Created,Otherwordly,Vamyholic,Penetrate

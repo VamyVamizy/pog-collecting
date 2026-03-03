@@ -27,6 +27,7 @@
                 < </a>
         </div>
     </div>
+    <div id="details" style="display: none;"></div>
     <br>
     <div id="pageCont">
         <div id="top_bar">
@@ -56,13 +57,11 @@
                 <div class="playerCont"
                     data-name="<%= score.displayname %>"
                     data-score="<%= score.score %>"
-                    data-fid="<%= score.fid %>">
+                    data-fid="<%= score.fid %>"
+                    data-index="<%= index %>">
                     <p><%= score.displayname %></p>
                     <div id="options">
-                        <button class="purchases">
-                            <img src="../static/icons/playerbase/dollar.png" width="20" height="20">
-                        </button>
-                        <button class="info">
+                        <button class="infobtn">
                             <img src="../static/icons/playerbase/profile.png" width="20" height="20">
                         </button>
                         <% const adminFids = [73,84,44,87]; %>

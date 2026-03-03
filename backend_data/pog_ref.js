@@ -21,8 +21,8 @@ function initializePogDatabase() {
     fs.createReadStream('pogipedia/db/pogs.csv')
       .pipe(csv({ headers }))
             .on('data', (row) => {
-                const { id, name, color, description, rarity, creator, subclass  } = row;
-                results.push({ id, name, color, description, rarity, creator, subclass  });
+                const { id, name, color, code, number, code2, description, type, rarity, creator, subclass  } = row;
+                results.push({ id, name, color, code, number, code2, description, type, rarity, creator, subclass  });
             })
       .on('end', () => {
         resolve(results);

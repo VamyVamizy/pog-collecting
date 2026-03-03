@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Pogipedia</title>
+    <link rel="stylesheet" href="../static/css/pogipedia.css">
+</head>
+
+<body>
+    <div id="leadBanner">
+        <div class="leftstuff">
+            <div style="display: none" id="userdata">
+                <%= JSON.stringify(userdata) %>
+            </div>
+            <div style="display: none" id="pogList">
+                <%= JSON.stringify(pogList) %>
+            </div>
+            <h1 style="margin-left: 10px;">Pogipedia</h1>
+            </h4>
+            <div style="display: none" id="maxPogs">
+                <%= JSON.stringify(maxPogs) %>
+            </div>
+        </div>
+        <div class="rightstuff">
+            <a href="/collection" id="circleButton">
+                < </a>
+        </div>
+    </div>
+    <br>
+    <div id="pageFlex">
+        <div id="flexcont">
+            <div id="numCont">
+                <div id="rowTop">
+                    <h4><%= pogList.length %> Pogs</h4>
+                    <div id="sortCont">
+                        <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Pogs...">
+                        <div id="filtCont">
+                            <button id="filter">
+                                <img src="../static/icons/playerbase/filter.png" width="25" height="25">
+                            </button>
+                            <div id="filterBox" style="display: none;">
+                                <label class="boxcon" for="none">
+                                    <input type="radio" name="filter" value="none" id="none" checked>
+                                    <label for="none">
+                                        <p>None</p>
+                                    </label>
+                                </label>
+                                <label class="boxcon" for="trash">
+                                    <input type="radio" name="filter" value="trash" id="trash">
+                                    <label for="trash">
+                                        <p>Trash</p>
+                                    </label>
+                                </label>
+                                <label class="boxcon" for="common">
+                                    <input type="radio" name="filter" value="common" id="common">
+                                    <label for="common">
+                                        <p>Common</p>
+                                    </label>
+                                </label>
+                                <label class="boxcon" for="uncommon">
+                                    <input type="radio" name="filter" value="uncommon" id="uncommon">
+                                    <label for="uncommon">
+                                        <p>Uncommon</p>
+                                    </label>
+                                </label>
+                                <label class="boxcon" for="mythic">
+                                    <input type="radio" name="filter" value="mythic" id="mythic">
+                                    <label for="mythic">
+                                        <p>Mythic</p>
+                                    </label>
+                                </label>
+                                <label class="boxcon" for="unique">
+                                    <input type="radio" name="filter" value="unique" id="unique">
+                                    <label for="unique">
+                                        <p>Unique</p>
+                                    </label>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="horizontalLine"></div>
+            </div>
+            <div class="board">
+                <% pogList.forEach((pog, index)=> { %>
+                    <div class="pogCont" 
+                    data-index="<%= index %>" 
+                    data-name="<%= pog.name %>"
+                    data-rarity="<%= pog.rarity %>"
+                    data-description="<%= pog.description %>"
+                    data-creator="<%= pog.creator %>"
+                    data-id="<%= pog.id %>"
+                    data-code="<%= pog.code %>"
+                    data-color="<%= pog.color %>"
+                    data-code2="<%= pog.code2 %>"
+                    data-type="<%= pog.type %>"
+                    data-number="<%= pog.number %>"
+                    >
+                        <p class="nameTxt" style="display: none"><%= pog.name %></p>
+                        <img class="thumbnail" src="../static/icons/images/pogs/<%= pog.code2 %>.webp" width="100%" height="100%">
+                        <p class="codeTxt"><%= pog.code %></p>
+                        <div id="rarityBanner"></div>
+                        <div id="indexTxt"><%= index + 1 %></div>
+                    </div>
+                    <% }) %>
+            </div>
+        </div>
+        <div id="pogInfoCont">
+            <div id="pogInfo">
+            </div>
+        </div>
+    </div>
+</body>
+<script src="../static/js/pogipedia.js"></script>

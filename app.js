@@ -177,9 +177,13 @@ app.get('/battle', (req, res) => {
     res.render('battle', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
 });
 
+app.get('/pogipedia', (req, res) => {
+    res.render('pogipedia', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
 app.get('/leaderboard', (req, res) => {
     usdb.all(
-        'SELECT * FROM userSettings ORDER BY score DESC LIMIT 100', [],
+        'SELECT * FROM userSettings ORDER BY score DESC LIMIT 50', [],
         (err, rows) => {
             if (err) {
                 console.error('DB select error:', err);
@@ -213,7 +217,7 @@ app.get('/playerbase', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 100', [], (err, rows) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 50', [], (err, rows) => {
         if (err) {
             console.error('API leaderboard error', err);
             return res.status(500).json({ error: 'db' });
