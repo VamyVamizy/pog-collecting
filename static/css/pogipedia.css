@@ -379,10 +379,10 @@ li {
     gap: 20px;
 }
 
-#formColumn {
+.formColumn {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 10px;
 }
 
 #pogForm select, option {
@@ -396,6 +396,10 @@ li {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.541);
     width: 100%;
     color: black;
+}
+
+#pogForm #image {
+    color: white;
 }
 
 #pogForm textarea {
