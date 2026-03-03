@@ -103,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert('Failed to ban user');
             });
         });
+    });
 });
 
 function hide() {
