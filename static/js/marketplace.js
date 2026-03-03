@@ -437,8 +437,8 @@ function showCreateAuctionPopup() {
     const popup = document.createElement('div');
     popup.id = 'auctionPopup';
     popup.style.cssText = `
-        background-color: #333333ff
-        color: 'white';
+        background-color: #333333ff;
+        color: white;
         padding: 30px;
         border-radius: 15px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);

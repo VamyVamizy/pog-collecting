@@ -78,8 +78,30 @@ module.exports = function(io) {
                     return inv.findIndex(i => i && i.name === pog.name);
                 }
 
-                const pogToTransfer = (completedAuction.pogData && typeof completedAuction.pogData === 'object') ? completedAuction.pogData : (completedAuction.pogData ? completedAuction.pogData : { name: completedAuction.pog });
+                // Build a safe descriptor for the pog to transfer based on the canonical auction.pog
+                let pogToTransfer = { name: completedAuction.pog };
 
+                if (completedAuction.pogData && typeof completedAuction.pogData === 'object') {
+                    const clientPogName = completedAuction.pogData.name;
+                    if (clientPogName && String(clientPogName) === String(completedAuction.pog)) {
+                        // Only trust full pogData when its name matches the auction listing
+                        pogToTransfer = Object.assign({}, completedAuction.pogData);
+                    } else {
+                        console.warn(
+                            'Untrusted pogData detected: name does not match auction.pog; ignoring client-provided identifiers for transfer',
+                            { auctionPog: completedAuction.pog, pogDataName: clientPogName }
+                        );
+                    }
+                } else if (typeof completedAuction.pogData === 'string' && completedAuction.pogData.trim() !== '') {
+                    // If pogData is a simple string, ensure it matches the canonical pog name
+                    if (String(completedAuction.pogData) !== String(completedAuction.pog)) {
+                        console.warn(
+                            'Untrusted string pogData detected: value does not match auction.pog; ignoring for transfer',
+                            { auctionPog: completedAuction.pog, pogData: completedAuction.pogData }
+                        );
+                    }
+                    // When it matches, the default { name: completedAuction.pog } is already correct
+                }
                 function updateUserScore(userIdentifier, delta, cb) {
                     const isNumeric = (typeof userIdentifier === 'number') || (/^\d+$/.test(String(userIdentifier)));
                     if (isNumeric) {
@@ -95,6 +117,11 @@ module.exports = function(io) {
 
                 // 1) Remove pog from seller inventory (best-effort), update seller score
                 getUserInventory(auction.user_id, (sErr, sellerInv) => {
+                    if (sErr) {
+                        console.error('Failed to load seller inventory for auction completion:', auction.user_id, sErr);
+                        // Abort transfer for this auction completion to avoid overwriting inventory with an empty array
+                        return;
+                    }
                     sellerInv = Array.isArray(sellerInv) ? sellerInv : [];
                     let removedPog = null;
                     const idx = findPogIndex(sellerInv, pogToTransfer);
