@@ -118,62 +118,63 @@
         <div id="form">
             <form id="pogForm">
                 <h2>Create Pog</h2>
-                <div class="formColumn">
-                    <div>
-                        <label for="name">Name</label>
-                        <br>
-                        <input type="text" id="name" name="name" placeholder="e.g. Hail of Harpoons" required>
-                        <br>
-                        <label class="tooltip">This will be displayed in the Pogipedia and on Pogglebar pogs.</label>
+                <div id="twoRows">
+                    <div class="formColumn">
+                        <div>
+                            <label for="name">Name</label>
+                            <br>
+                            <input type="text" id="name" name="name" placeholder="e.g. Hail of Harpoons" required>
+                            <br>
+                            <label class="tooltip">This will be displayed in the Pogipedia and on Pogglebar pogs.</label>
+                        </div>
+
+                        <div>
+                            <label for="color">Color</label>
+                            <br>
+                            <input type="text" id="color" name="color" placeholder="e.g. Black & Yellow" required>
+                            <br>
+                            <label class="tooltip">This is used for the background color of the pog in the Pogipedia and on Pogglebar info. You do not need to use valid CSS. You can also have multiple colors, seperated by an '&' symbol.</label>
+                        </div>
+
+                        <div>
+                            <label for="description">Description</label>
+                            <br>
+                            <textarea id="description" name="description" required></textarea>
+                            <br>
+                            <label class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder.</label>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="color">Color</label>
-                        <br>
-                        <input type="text" id="color" name="color" placeholder="e.g. Black & Yellow" required>
-                        <br>
-                        <label class="tooltip">This is used for the background color of the pog in the Pogipedia and on Pogglebar info. You do not need to use valid CSS. You can also have multiple colors, seperated by an '&' symbol.</label>
-                    </div>
+                    <div class="formColumn">
+                        <div>
+                            <label for="number">Number</label>
+                            <br>
+                            <input type="number" id="number" name="number" placeholder="e.g. 203" required>
+                            <br>
+                            <label class="tooltip">This is the number of pogs that exist, which will be displayed in Pogipedia. If you don't know, put 'N/A'.</label>
+                        </div>
 
-                    <div>
-                        <label for="description">Description</label>
-                        <br>
-                        <textarea id="description" name="description" required></textarea>
-                        <br>
-                        <label class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder.</label>
+                        <div>
+                            <label for="rarity">Rarity</label>
+                            <br>
+                            <select id="rarity" name="rarity" required>
+                                <option value="trash">Trash</option>
+                                <option value="common">Common</option>
+                                <option value="uncommon">Uncommon</option>
+                                <option value="mythic">Mythic</option>
+                                <option value="unique">Unique</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="creator">Creator</label>
+                            <br>
+                            <input type="text" id="creator" name="creator" placeholder="e.g. Mr. Smith" required>
+                            <br>
+                            <label class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder. Input the person who made the pog or, if asked to do so by the teacher, make them the creator.</label>
+                        </div>
                     </div>
                 </div>
-
-                <div class="formColumn">
-                    <div>
-                        <label for="number">Number</label>
-                        <br>
-                        <input type="number" id="number" name="number" placeholder="e.g. 203" required>
-                        <br>
-                        <label class="tooltip">This is the number of pogs that exist, which will be displayed in Pogipedia. If you don't know, put 'N/A'.</label>
-                    </div>
-
-                    <div>
-                        <label for="rarity">Rarity</label>
-                        <br>
-                        <select id="rarity" name="rarity" required>
-                            <option value="trash">Trash</option>
-                            <option value="common">Common</option>
-                            <option value="uncommon">Uncommon</option>
-                            <option value="mythic">Mythic</option>
-                            <option value="unique">Unique</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="creator">Creator</label>
-                        <br>
-                        <input type="text" id="creator" name="creator" placeholder="e.g. Mr. Smith" required>
-                        <br>
-                        <label class="tooltip">This will be displayed in the Pogipedia and in the Pogglebar binder. Input the person who made the pog or, if asked to do so by the teacher, make them the creator.</label>
-                    </div>
-                </div>
-
                 <div>
                     <label for="image">Image</label>
                     <br>
