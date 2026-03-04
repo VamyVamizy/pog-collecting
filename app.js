@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const digio = require('socket.io-client');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 //debug
 process.on('uncaughtException', (err) => {
@@ -116,6 +117,7 @@ app.set('trust proxy', true);
 app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -148,14 +150,24 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
-    const redirectAfter = encodeURIComponent(THIS_URL);
+    const redirectAfter = encodeURIComponent(THIS_URL || '/');
 
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
         res.clearCookie("connect.sid");
 
-        // Force auth provider logout
-        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+        // If an external auth provider is configured, send user there to
+        // complete logout; otherwise fall back to the local login page.
+        const logoutTarget = AUTH_URL ? `${AUTH_URL}/logout?redirectURL=${redirectAfter}` : '/login';
+        // If the client expects JSON (fetch/XHR), return the redirect URL as JSON
+        // so the client can navigate the top-level window. Otherwise perform a
+        // server-side redirect which works for form POSTs and normal browser
+        // navigations.
+        const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+        if (wantsJson) {
+            return res.json({ redirect: logoutTarget });
+        }
+        return res.redirect(logoutTarget);
     });
 });
 
