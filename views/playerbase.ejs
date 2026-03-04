@@ -66,17 +66,24 @@
                         </button>
                         <% const adminFids = [73,84,44,87]; %>
                         <% const currentFid = (userdata && (userdata.fid || userdata.FID)) ? Number(userdata.fid || userdata.FID) : null; %>
+                        <% const isBanned = Array.isArray(bannedList) && bannedList.some(b => b && b.fid && Number(b.fid) === Number(score.fid)); %>
                         <% if (currentFid && adminFids.includes(currentFid)) { %>
-                        <button class="ban">
-                            <img src="../static/icons/playerbase/ban.png" width="20" height="20">
-                        </button>
+                            <% if (isBanned) { %>
+                                <button class="unban" title="Unban user">
+                                    <img src="../static/icons/playerbase/ban.png" width="20" height="20" style="filter:grayscale(100%);opacity:0.6">
+                                </button>
+                            <% } else { %>
+                                <button class="ban" title="Ban user">
+                                    <img src="../static/icons/playerbase/ban.png" width="20" height="20">
+                                </button>
+                            <% } %>
                         <% } %>
                     </div>
                     <img id="pfp" src="<%= score.pfp %>" width="250" height="250">
                     <div class="banConf" style="display: none;">
-                        <h3>Ban user?</h3>
+                        <h3><%= isBanned ? 'Unban user?' : 'Ban user?' %></h3>
                         <div id="buttonflex">
-                            <button class="confirm_yes">✓</button>
+                            <button class="confirm_yes" data-action="<%= isBanned ? 'unban' : 'ban' %>">✓</button>
                         </div>
                     </div>
                 </div>
