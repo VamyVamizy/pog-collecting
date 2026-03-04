@@ -86,11 +86,11 @@ li {
     margin-top: 20px;
     grid-template-columns: repeat(6, 1fr);
     height: 75vh;
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     align-content: start;
     min-height: 75vh;
-    width: 46vw;
+    width: 47vw;
 }
 
 .board::-webkit-scrollbar {
