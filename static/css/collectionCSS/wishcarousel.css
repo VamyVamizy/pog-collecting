@@ -124,3 +124,19 @@
     pointer-events: none;
     visibility: hidden;
 }
+/* article animations for different rarities (wish of clarity */
+@keyframes floatSparkle {
+    0%, 100% { 
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    50% { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+}
+
+/* removing the glow when clarity ends */
+.crate {
+    transition: box-shadow 0.5s ease;
+}

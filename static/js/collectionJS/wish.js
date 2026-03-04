@@ -44,6 +44,13 @@ document.getElementById("useWish").addEventListener("click", async () => {
                 dropRateWishActive = true;
                 dropRateWishEndTime = Date.now() + WISH_DURATION;
                 showSuccessMessage("Drop Rate Boost Activated! Better luck for 5 minutes");
+                updateDropRateDisplay();
+            } else if (currentWish.type === "clarity") {
+                // Clarity boost
+                clarityWishActive = true;
+                clarityWishEndTime = Date.now() + WISH_DURATION;
+                generateClarityPreviews();
+                showSuccessMessage("Clarity Boost Activated! Next 5 crates revealed for 5 minutes");
             }
             
             wish -= 7;
@@ -66,8 +73,10 @@ function slideToWish(direction) {
     const circle = document.querySelector('.wish-circle');
     const info = document.querySelector('.wish-info');
     
-    circle.classList.add('slide-out-left');
-    info.classList.add('slide-out-left');
+    circle.style.transform = 'translateX(-300px)';
+    circle.style.opacity = '0';
+    info.style.transform = 'translateX(-300px)';
+    info.style.opacity = '0';
     
     setTimeout(() => {
         if (direction === 'right') {
@@ -77,20 +86,21 @@ function slideToWish(direction) {
         }
         
         updateWishDisplay();
-        
-        circle.classList.remove('slide-out-left');
-        info.classList.remove('slide-out-left');
-        circle.classList.add('slide-in-right');
-        info.classList.add('slide-in-right');
+
+        circle.style.transform = 'translateX(300px)';
+        circle.style.opacity = '0';
+        info.style.transform = 'translateX(300px)';
+        info.style.opacity = '0';
         
         setTimeout(() => {
-            circle.classList.remove('slide-in-right');
-            info.classList.remove('slide-in-right');
-            circle.classList.add('slide-in-center');
-            info.classList.add('slide-in-center');
+            circle.style.transform = 'translateX(0)';
+            circle.style.opacity = '1';
+            info.style.transform = 'translateX(0)';
+            info.style.opacity = '1';
         }, 50);
     }, 250);
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('leftCursor').addEventListener('click', (e) => {
