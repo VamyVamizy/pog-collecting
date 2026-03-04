@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Playerbase</title>
+    <link rel="stylesheet" href="../static/css/playerbase.css">
+</head>
+<body>
+    <div id="leadBanner">
+        <div class="leftstuff">
+            <div style="display: none" id="userdata">
+                <%= JSON.stringify(userdata) %>
+            </div>
+            <div style="display: none" id="scores">
+                <%= JSON.stringify(scores) %>
+            </div>
+            <h1 style="margin-left: 10px;">Playerbase</h1>
+            </h4>
+            <div style="display: none" id="maxPogs">
+                <%= JSON.stringify(maxPogs) %>
+            </div>
+        </div>
+        <div class="rightstuff">
+            <a href="/collection" id="circleButton">
+                < </a>
+        </div>
+    </div>
+    <div id="details" style="display: none;"></div>
+    <br>
+    <div id="pageCont">
+        <div id="top_bar">
+            <input type="text" id="searchBox" onkeyup="searchResources()" placeholder="Search Users...">
+            <div id="filtCont">
+                <button id="filter">
+                    <img src="../static/icons/playerbase/filter.png" width="25" height="25">
+                </button>
+                <div id="filterBox" style="display: none;">
+                    <label class="boxcon" for="name">
+                        <input type="radio" name="filter" value="name" id="name">
+                        <label for="name">
+                            <p>Name</p>
+                        </label>
+                    </label>
+                    <label class="boxcon" for="score">
+                        <input type="radio" name="filter" value="score" id="score" checked>
+                        <label for="score">
+                            <p>Score</p>
+                        </label>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div id="flexcont">
+            <% scores.forEach((score, index)=> { %>
+                <div class="playerCont"
+                    data-name="<%= score.displayname %>"
+                    data-score="<%= score.score %>"
+                    data-fid="<%= score.fid %>"
+                    data-index="<%= index %>">
+                    <p><%= score.displayname %></p>
+                    <div id="options">
+                        <button class="infobtn">
+                            <img src="../static/icons/playerbase/profile.png" width="20" height="20">
+                        </button>
+                        <% const adminFids = [73,84,44,87]; %>
+                        <% const currentFid = (userdata && (userdata.fid || userdata.FID)) ? Number(userdata.fid || userdata.FID) : null; %>
+                        <% if (currentFid && adminFids.includes(currentFid)) { %>
+                        <button class="ban">
+                            <img src="../static/icons/playerbase/ban.png" width="20" height="20">
+                        </button>
+                        <% } %>
+                    </div>
+                    <img id="pfp" src="<%= score.pfp %>" width="250" height="250">
+                    <div class="banConf" style="display: none;">
+                        <h3>Ban user?</h3>
+                        <div id="buttonflex">
+                            <button class="confirm_yes">✓</button>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+</body>
+</body>
+</html>
+<script src="../static/js/playerbase.js"></script>

@@ -2,7 +2,6 @@
 const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
-const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const http = require('http').createServer(app);
 const { Server } = require('socket.io');
@@ -24,11 +23,13 @@ process.on('exit', (code) => {
 });
 
 //modules
-const achievements = require("./modules/backend_js/trophyList.js")
-const crateRef = require("./modules/backend_js/crateRef.js")
+const achievements = require("./modules/backend_js/trophyList.js");
+const crateRef = require("./modules/backend_js/crateRef.js");
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
+// banned list helper (used to print/inspect banned users)
+const bannedListModule = require('./modules/backend_js/tb_declar/banned_list.js');
 app.get('/api/perks', (req, res) => {
     res.json({ perks });
     console.log("Perks API accessed");
@@ -63,12 +64,16 @@ app.use(session({
 app.use((req, res, next) => {
     next();
 });
+
 //routes
 const marketplaceRouter = require('./routes/marketplace_rt.js');
 app.use('/', marketplaceRouter);
 const collectionRouter = require('./routes/collection_rt.js');
 app.use('/', collectionRouter);
-
+const authRouter = require('./routes/authenticate_rt.js');
+app.use('/', authRouter);
+const loginRouter = require('./routes/login_rt.js');
+app.use('/', loginRouter);
 
 // API key for Formbar API access
 const API_KEY = process.env.API_KEY;
@@ -105,33 +110,29 @@ socket.on('transferResponse', (response) => {
 /* It is a good idea to use a Environment Variable or a .env file that is in the .gitignore file for your SECRET.
 This will prevent it from getting out and allowing people to hack your cookies.*/
 
-// Middleware to check if user is authenticated
-function isAuthenticated(req, res, next) {
-    console.log("Authenticating...");
-    if (req.session.user) {
-        const tokenData = req.session.token;
-        try {
-            // Check if the token has expired
-            const currentTime = Math.floor(Date.now() / 1000);
-            if (tokenData.exp < currentTime) {
-                throw new Error('Token has expired');
-            }
-            next();
-        } catch (err) {
-            res.redirect(`${AUTH_URL}/oauth?refreshToken=${tokenData.refreshToken}&redirectURL=${THIS_URL}`);
-        }
-    } else {
-        res.redirect(`${AUTH_URL}/oauth?redirectURL=${THIS_URL}`);
-    }
-}
-// The following isAuthenticated function checks when the access token expires and promptly retrieves a new one using the user's refresh token.
-
 //set
 app.set('view engine', 'ejs');
 app.set('trust proxy', true);
 app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
+
+app.use((req, res, next) => {
+    try {
+        const banned = bannedListModule && typeof bannedListModule.getBannedList === 'function'
+            ? bannedListModule.getBannedList()
+            : [];
+        const fid = req.session && req.session.user && (req.session.user.fid || req.session.user.FID) ? Number(req.session.user.fid || req.session.user.FID) : null;
+        const isBanned = fid != null && banned.some(b => (b && b.fid && Number(b.fid) === fid) || (typeof b === 'number' && b === fid));
+        // attach to session and locals for templates and client scripts
+        if (!req.session.user) req.session.user = req.session.user || {};
+        req.session.user.isBanned = !!isBanned;
+        res.locals.userBanned = !!isBanned;
+    } catch (e) {
+        console.error('Failed to evaluate banned status for session user:', e);
+    }
+    next();
+});
 
 // user settings database (use repo-root `data` folder)
 const { runMigrations } = require('./data/migrations.js');
@@ -144,147 +145,8 @@ runMigrations(usdb).catch(err => {
     process.exit(1);
 });
 
-// login route
-app.get('/', isAuthenticated, (req, res) => {
-    try {
-        function insertUser() {
 
-            const displayName = req.session.user.displayName;
-
-            const id = req.session.token.id;
-
-            usdb.get(`SELECT uid FROM userSettings WHERE displayname = ?`, [displayName], [id], (err, row) => {
-                if (err) {
-                    return console.error("Error querying user:", err.message);
-                }
-                if (row) {
-                    console.log(`User '${displayName}' already exists with uid ${row.uid} and fid ${id}`);
-                    return;
-                } else {
-                    usdb.run(`INSERT INTO userSettings (fid, theme, score, inventory, Isize, xp, maxxp, level, income, totalSold, cratesOpened, pogamount, achievements, tiers, mergeCount, highestCombo, wish, crates, pfp, displayname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [
-                            id,
-                            req.session.user.theme,
-                            req.session.user.score,
-                            JSON.stringify(req.session.user.inventory),
-                            req.session.user.Isize,
-                            req.session.user.xp,
-                            req.session.user.maxxp,
-                            req.session.user.level,
-                            req.session.user.income,
-                            req.session.user.totalSold,
-                            req.session.user.cratesOpened,
-                            JSON.stringify(req.session.user.pogamount),
-                            JSON.stringify(req.session.user.achievements),
-                            JSON.stringify(req.session.user.tiers),
-                            req.session.user.mergeCount,
-                            req.session.user.highestCombo,
-                            req.session.user.wish,
-                            JSON.stringify(req.session.user.crates),
-                            req.session.user.pfp,
-                            displayName
-                        ],
-                        function (err) {
-                            if (err) {
-                                return console.error("Error inserting user:", err.message);
-                            }
-                            console.log(`User '${displayName}' inserted with rowid ${this.lastID} and fid ${id}`);
-                        });
-                }
-            });
-        }
-
-        // add variable references here
-        req.session.user = {
-            fid: req.session.token?.id || 0,
-            displayName: req.session.token?.displayName || "guest",
-            theme: req.session.user.theme || 'black',
-            score: req.session.user.score || 0,
-            inventory: req.session.user.inventory || [],
-            Isize: req.session.user.Isize || 3,
-            xp: req.session.user.xp || 0,
-            maxxp: req.session.user.maxxp || 15,
-            level: req.session.user.level || 1,
-            income: req.session.user.income || 0,
-            totalSold: req.session.user.totalSold || 0,
-            cratesOpened: req.session.user.cratesOpened || 0,
-            pogamount: req.session.user.pogamount || [],
-            achievements: req.session.user.achievements || achievements,
-            tiers: req.session.user.tiers || tiers,
-            mergeCount: req.session.user.mergeCount || 0,
-            highestCombo: req.session.user.highestCombo || 0,
-            wish: req.session.user.wish || 0,
-            crates: req.session.user.crates || crateRef,
-            pfp: req.session.user.pfp || "static/icons/pfp/defaultpfp.png"
-        };
-
-        // load user data from database
-        const displayName = req.session.token?.displayName || "guest";
-        const id = req.session.token?.id || 0;
-        usdb.get(`SELECT * FROM userSettings WHERE displayname = ?`, [displayName], [id], (err, row) => {
-            if (err) {
-                return console.error("Error querying user:", err.message);
-            }
-            if (row) {
-                req.session.user = {
-                    fid: id,
-                    displayName: displayName,
-                    theme: row.theme,
-                    score: row.score,
-                    inventory: JSON.parse(row.inventory),
-                    Isize: row.Isize,
-                    xp: row.xp,
-                    maxxp: row.maxxp,
-                    level: row.level,
-                    income: row.income,
-                    totalSold: row.totalSold,
-                    cratesOpened: row.cratesOpened,
-                    pogamount: JSON.parse(row.pogamount),
-                    achievements: JSON.parse(row.achievements),
-                    tiers: JSON.parse(row.tiers),
-                    mergeCount: row.mergeCount,
-                    highestCombo: row.comboHigh,
-                    wish: row.wish,
-                    crates: JSON.parse(row.crates),
-                    pfp: row.pfp
-                };
-                console.log(`User data loaded for '${displayName}'`);
-            } else {
-                // all starting values are HERE
-                req.session.user = {
-                    fid: id,
-                    displayName: displayName,
-                    theme: 'black',
-                    score: 0,
-                    inventory: [],
-                    Isize: 10,
-                    xp: 0,
-                    maxxp: 30,
-                    level: 1,
-                    income: 0,
-                    totalSold: 0,
-                    cratesOpened: 0,
-                    pogamount: [],
-                    achievements: achievements,
-                    tiers: tiers,
-                    mergeCount: 0,
-                    highestCombo: 0,
-                    wish: 0,
-                    crates: crateRef,
-                    pfp: "static/icons/pfp/defaultpfp.png"
-                };
-
-                console.log(`No existing user data for '${displayName}', using defaults.`);
-            }
-            // Call insertUser and handle callback
-            insertUser();
-            res.render('collection.ejs', { userdata: req.session.user, token: req.session.token, maxPogs: pogCount, pogList: results });
-        });
-    } catch (error) {
-        res.send(error.message)
-    }
-});
-
+//logout
 app.post("/logout", (req, res) => {
     const redirectAfter = encodeURIComponent(THIS_URL);
 
@@ -311,9 +173,17 @@ app.get('/achievements', (req, res) => {
     res.render('achievements', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
 });
 
+app.get('/battle', (req, res) => {
+    res.render('battle', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/pogipedia', (req, res) => {
+    res.render('pogipedia', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
 app.get('/leaderboard', (req, res) => {
     usdb.all(
-        'SELECT * FROM userSettings ORDER BY score DESC LIMIT 100', [],
+        'SELECT * FROM userSettings ORDER BY score DESC LIMIT 50', [],
         (err, rows) => {
             if (err) {
                 console.error('DB select error:', err);
@@ -323,10 +193,43 @@ app.get('/leaderboard', (req, res) => {
     );
 });
 
+app.get('/playerbase', (req, res) => {
+    usdb.all(
+        'SELECT * FROM userSettings ORDER BY score DESC', [],
+        (err, rows) => {
+            if (err) {
+                console.error('DB select error:', err);
+            }
+            // If current user is an admin, print the banned list to server console for debugging
+            try {
+                const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+                const adminIds = [73,84,44,87];
+                if (currentId && adminIds.includes(currentId)) {
+                    console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
+                }
+            } catch (e) {
+                console.error('Error while printing banned list for admin:', e);
+            }
+
+            res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+        }
+    );
+});
+
 app.get('/api/leaderboard', (req, res) => {
-    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 100', [], (err, rows) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 50', [], (err, rows) => {
         if (err) {
             console.error('API leaderboard error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+app.get('/api/playerbase', (req, res) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC', [], (err, rows) => {
+        if (err) {
+            console.error('API playerbase error', err);
             return res.status(500).json({ error: 'db' });
         }
         res.json(rows || []);
@@ -517,39 +420,6 @@ app.post('/api/user/team', express.json(), (req, res) => {
     );
 });
 
-// login page
-app.get('/login', (req, res) => {
-    if (req.query.token) {
-        let tokenData = jwt.decode(req.query.token);
-        req.session.token = tokenData;
-        req.session.user = {
-            displayName: tokenData.displayName,
-            fid: tokenData.fid,
-            theme: tokenData.theme || 'black',
-            score: tokenData.score || 0,
-            inventory: tokenData.inventory || [],
-            Isize: tokenData.Isize || 3,
-            xp: tokenData.xp || 0,
-            maxxp: tokenData.maxxp || 100,
-            level: tokenData.level || 1,
-            income: tokenData.income || 0,
-            totalSold: tokenData.totalSold || 0,
-            cratesOpened: tokenData.cratesOpened || 0,
-            pogamount: tokenData.pogamount || [],
-            achievements: tokenData.achievements || achievements,
-            tiers: tokenData.tiers || tiers,
-            mergeCount: tokenData.mergeCount || 0,
-            highestCombo: tokenData.highestCombo || 0,
-            wish: tokenData.wish || 0,
-            crates: tokenData.crates || crateRef,
-            pfp: tokenData.pfp || "static/icons/pfp/defaultpfp.png"
-        };
-        res.redirect('/');
-    } else {
-        res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-    };
-});
-
 app.post('/api/user/sync-inventory', express.json(), (req, res) => {
     const inventory = req.body && req.body.inventory ? req.body.inventory : null;
     const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
@@ -569,6 +439,36 @@ app.post('/api/user/sync-inventory', express.json(), (req, res) => {
         // optionally update other derived session fields here
         return res.json({ ok: true, changes: this.changes });
     });
+});
+
+// Admin: ban a user (add to banned list)
+app.post('/api/ban', express.json(), (req, res) => {
+    // Simple admin check (same test used elsewhere)
+    const adminIds = [73,44,87];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    // Protect certain internal/admin FIDs from being banned.
+    const PROTECTED_FIDS = [73, 44, 87];
+    if (fid && PROTECTED_FIDS.includes(fid)) {
+        return res.status(400).json({ ok: false, message: 'cannot ban this user' });
+    }
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.addBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
 });
 
 // API route to get user state

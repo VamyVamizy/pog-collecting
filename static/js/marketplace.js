@@ -34,6 +34,15 @@ console.log('================================');
 // PFP (default for current user)
 const pfp = (userdata && userdata.pfp) ? userdata.pfp : '/static/icons/pfp/defaultpfp.png';
 
+// Auction limits (client-side mirrors server limits)
+const AUCTION_LIMITS = {
+    MIN_START_PRICE: 100,
+    MIN_INCREMENT: 10,
+    MIN_DURATION_MINUTES: 1,
+    MAX_DURATION_MINUTES: 1440, // 1 day
+    MAX_BUY_NOW_PRICE: 10000000 // arbitrary cap
+};
+
 // Add this to your marketplace.js
 document.addEventListener('DOMContentLoaded', () => {
     // Find the marketplace content area
@@ -133,10 +142,12 @@ function renderAuction(auction) {
     const currentBid = auction.winner_bid || auction.startPrice;
     const isFirstBid = !auction.winner_bid;
     
-    // Can user interact with this auction?
-    const canBid = auction.AuctionStatus === 'active' && 
-                   timeLeft > 0 && 
-                   auction.user_id !== userdata.fid;
+    // Determine if this auction belongs to the current user (support fid or displayname/displayName)
+    const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+    const isSeller = myIds.includes(String(auction.user_id));
+
+    // Can user interact with this auction? (not if you're the seller)
+    const canBid = auction.AuctionStatus === 'active' && timeLeft > 0 && !isSeller;
     
     // TODO: Build the HTML content
     wrapper.innerHTML = `
@@ -174,6 +185,16 @@ function renderAuction(auction) {
 }
 
 function placeBid(sellerId, pogName, currentBid, minIncrement) {
+    // Prevent seller from bidding on their own auction (client-side guard)
+    try {
+        const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+        if (myIds.includes(String(sellerId))) {
+            alert("You can't bid on your own auction.");
+            return;
+        }
+    } catch (e) {
+        // ignore and proceed with normal validation
+    }
     const minimumBid = currentBid + minIncrement;
     
     // Create popup asking for bid amount
@@ -222,6 +243,16 @@ function placeBid(sellerId, pogName, currentBid, minIncrement) {
 }
 
 function buyItNow(sellerId, pogName, price) {
+    // Prevent seller from buying their own auction (client-side guard)
+    try {
+        const myIds = [userdata && userdata.fid, userdata && (userdata.displayName || userdata.displayname)].filter(Boolean).map(String);
+        if (myIds.includes(String(sellerId))) {
+            alert("You can't buy your own auction.");
+            return;
+        }
+    } catch (e) {
+        // ignore and proceed with normal validation
+    }
     // Check if user has enough money
     if (price > userdata.score) {
         alert(`You don't have enough money. You need $${price} but only have $${userdata.score}`);
@@ -322,17 +353,24 @@ socket.on('auction completed', (completedAuction) => {
     const sellerId = completedAuction.user_id != null ? String(completedAuction.user_id) : null;
     const myId = userdata && (userdata.fid != null ? String(userdata.fid) : String(userdata.displayName || userdata.displayname || ''));
 
-    // If I'm the winner, add pog to my inventory and deduct money
+    // If I'm the winner, apply authoritative snapshot when available
     if (winnerId && myId && winnerId === myId) {
-        userdata.score = (typeof userdata.score === 'number') ? userdata.score - (completedAuction.winner_bid || 0) : userdata.score;
-
-        if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
-        let pogDetails = pogList.find(pog => pog.name === completedAuction.pog);
-        if (!pogDetails) {
-            // fallback minimal pog structure
-            pogDetails = { name: completedAuction.pog };
+        if (Array.isArray(completedAuction.updatedWinnerInventory)) {
+            userdata.inventory = completedAuction.updatedWinnerInventory;
+        } else if (completedAuction.pogData) {
+            if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
+            userdata.inventory.push(completedAuction.pogData);
+        } else {
+            if (!Array.isArray(userdata.inventory)) userdata.inventory = [];
+            const pogDetails = pogList.find(pog => pog.name === completedAuction.pog) || { name: completedAuction.pog };
+            userdata.inventory.push(pogDetails);
         }
-        userdata.inventory.push(pogDetails);
+
+        if (typeof completedAuction.updatedWinnerScore === 'number') {
+            userdata.score = completedAuction.updatedWinnerScore;
+        } else {
+            userdata.score = (typeof userdata.score === 'number') ? userdata.score - (completedAuction.winner_bid || 0) : userdata.score;
+        }
 
         alert(`Congratulations! You won ${completedAuction.pog} for $${completedAuction.winner_bid}!`);
 
@@ -342,12 +380,24 @@ socket.on('auction completed', (completedAuction) => {
         });
     }
 
-    // If I'm the seller, credit money and ensure my state is saved
+    // If I'm the seller, apply authoritative snapshot when available
     if (sellerId && myId && sellerId === myId) {
-        userdata.score = (typeof userdata.score === 'number') ? userdata.score + (completedAuction.winner_bid || 0) : userdata.score;
+        if (Array.isArray(completedAuction.updatedSellerInventory)) {
+            userdata.inventory = completedAuction.updatedSellerInventory;
+        } else {
+            const idx = userdata.inventory.findIndex(i => i && i.name === completedAuction.pog);
+            if (idx !== -1) userdata.inventory.splice(idx, 1);
+        }
+
+        if (typeof completedAuction.updatedSellerScore === 'number') {
+            userdata.score = completedAuction.updatedSellerScore;
+        } else {
+            userdata.score = (typeof userdata.score === 'number') ? userdata.score + (completedAuction.winner_bid || 0) : userdata.score;
+        }
+
         alert(`Your ${completedAuction.pog} sold for $${completedAuction.winner_bid}!`);
 
-        // Persist seller inventory/state to server (auction creation likely removed the pog earlier, but persist any state changes)
+        // Persist seller inventory/state to server
         syncInventoryToServer().then(() => {
             if (typeof save === 'function') save();
         });
@@ -387,8 +437,8 @@ function showCreateAuctionPopup() {
     const popup = document.createElement('div');
     popup.id = 'auctionPopup';
     popup.style.cssText = `
-        background-color: #333
-        color: 'white';
+        background-color: #333333ff;
+        color: white;
         padding: 30px;
         border-radius: 15px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -431,6 +481,18 @@ function showCreateAuctionPopup() {
             <button id="cancelAuctionBtn" style="padding: 12px 24px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Cancel</button>
         </div>
     `;
+
+    const limitsInfo = document.createElement('div');
+    // Use CSS class for styling (defined in /static/css/marketplace.css)
+    limitsInfo.className = 'limits-info';
+    limitsInfo.innerHTML = `
+        <p>Minimum Starting Price: $${AUCTION_LIMITS.MIN_START_PRICE}</p>
+        <p>Minimum Bid Increment: $${AUCTION_LIMITS.MIN_INCREMENT}</p>
+        <p>Minimum Auction Duration: ${AUCTION_LIMITS.MIN_DURATION_MINUTES} minute</p>
+        <p>Maximum Auction Duration: ${AUCTION_LIMITS.MAX_DURATION_MINUTES} minutes (1 Day)</p>
+        <p>Maximum Buy It Now Price: $${AUCTION_LIMITS.MAX_BUY_NOW_PRICE} (10 Million)</p>
+    `;
+    overlay.appendChild(limitsInfo);
 
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
@@ -529,6 +591,24 @@ function submitAuction() {
         return;
     }
 
+    // Enforce configured limits
+    if (startPrice < AUCTION_LIMITS.MIN_START_PRICE) {
+        alert(`Starting price must be at least $${AUCTION_LIMITS.MIN_START_PRICE}`);
+        return;
+    }
+    if (minIncrement < AUCTION_LIMITS.MIN_INCREMENT) {
+        alert(`Minimum increment must be at least $${AUCTION_LIMITS.MIN_INCREMENT}`);
+        return;
+    }
+    if (duration < AUCTION_LIMITS.MIN_DURATION_MINUTES || duration > AUCTION_LIMITS.MAX_DURATION_MINUTES) {
+        alert(`Auction duration must be between ${AUCTION_LIMITS.MIN_DURATION_MINUTES} and ${AUCTION_LIMITS.MAX_DURATION_MINUTES} minutes`);
+        return;
+    }
+    if (buyNowPrice > AUCTION_LIMITS.MAX_BUY_NOW_PRICE) {
+        alert(`Buy It Now price cannot exceed $${AUCTION_LIMITS.MAX_BUY_NOW_PRICE}`);
+        return;
+    }
+
     console.log('All validations passed');
     console.log('Socket connected?', socket.connected);
 
@@ -544,6 +624,19 @@ function submitAuction() {
         // server expects a display name (userSettings.displayname) when checking inventory
         sellerId: userdata.displayName || userdata.displayname || userdata.fid
     };
+
+    // Include exact pog instance data (so server can transfer the correct instance)
+    try {
+        const inv = Array.isArray(userdata.inventory) ? userdata.inventory : [];
+        const selectedIdx = inv.findIndex(item => item && item.name === pogName);
+        if (selectedIdx !== -1) {
+            auctionData.pogData = inv[selectedIdx];
+        } else {
+            auctionData.pogData = null;
+        }
+    } catch (e) {
+        auctionData.pogData = null;
+    }
 
     console.log('Sending auction data:', auctionData);
     socket.emit('create auction', auctionData);

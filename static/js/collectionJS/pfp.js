@@ -37,7 +37,7 @@ document.getElementById("userCont").addEventListener("click", () => {
     document.getElementById("pfpChanger").style.display = "block";
 });
 
-document.getElementById("logout").addEventListener("click", async () => {
+/*document.getElementById("logout").addEventListener("click", async () => {
     const choose = confirm("Would you like to log out of your account?")
     if (!choose) return
     await fetch("/logout", {
@@ -46,7 +46,7 @@ document.getElementById("logout").addEventListener("click", async () => {
     });
 
     window.location.href = "/";
-});
+});*/
 
 console.log(theme_col);
 document.getElementById("picker").value = theme_col;
