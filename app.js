@@ -150,15 +150,30 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
-    const redirectAfter = encodeURIComponent(THIS_URL || '/');
+    let logoutTarget = '/login';
+    try {
+        const myIpEnv = process.env.MY_IP;
+        if (myIpEnv && typeof myIpEnv === 'string' && myIpEnv.trim() !== '') {
+            let base = myIpEnv.trim();
+            if (!/^https?:\/\//i.test(base)) {
+                // no scheme — assume http and add default port 3000 if missing
+                if (!base.includes(':')) base = `${base}:3000`;
+                base = `http://${base}`;
+            }
+            base = base.replace(/\/$/, '');
+            logoutTarget = `${base}/login`;
+        } else if (THIS_URL && typeof THIS_URL === 'string' && THIS_URL.trim() !== '') {
+            const base = THIS_URL.replace(/\/$/, '');
+            logoutTarget = `${base}/login`;
+        }
+    } catch (e) {
+        logoutTarget = '/login';
+    }
 
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
         res.clearCookie("connect.sid");
 
-        // If an external auth provider is configured, send user there to
-        // complete logout; otherwise fall back to the local login page.
-        const logoutTarget = AUTH_URL ? `${AUTH_URL}/logout?redirectURL=${redirectAfter}` : '/login';
         // If the client expects JSON (fetch/XHR), return the redirect URL as JSON
         // so the client can navigate the top-level window. Otherwise perform a
         // server-side redirect which works for form POSTs and normal browser
