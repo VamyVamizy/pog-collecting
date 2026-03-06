@@ -45,16 +45,180 @@ function drawCircle(x, y, r, fillStyle = '#ffffff', strokeStyle = null) {
 }
 
 //player pogs
-const pog1 = drawCircle(200, 700, 50, '#00ff00');
-const pog2 = drawCircle(500, 700, 50, '#0000ff');
-const pog3 = drawCircle(800, 700, 50, '#ff0000');
-const pog4 = drawCircle(1100, 700, 50, '#ffff00');  
+// Image-backed pog rendering
+// A simple in-file loader/drawer that draws an image centered at a point
+// with a given radius. If the image is not ready, it falls back to drawing
+// the circle so the UI remains responsive.
+const pogImages = {};
 
-//enemy pogs
-const enemyPog1 = drawCircle(800, 200, 50, '#00ffff');
-const enemyPog2 = drawCircle(1100, 200, 50, '#ff00ff');
-const enemyPog3 = drawCircle(1400, 200, 50, '#ffffff');
-const enemyPog4 = drawCircle(1700, 200, 50, '#888888'); 
+function loadPogImage(key, src) {
+  try {
+    const img = new Image();
+    img.onload = () => { img._ready = true; };
+    img.onerror = () => { img._ready = false; img._error = true; };
+    img.src = src;
+    pogImages[key] = img;
+    return img;
+  } catch (e) {
+    console.error('Failed to load pog image', key, src, e);
+    return null;
+  }
+}
+
+// Try a list of candidate URLs in order until one successfully loads.
+function loadPogImageVariants(key, candidates) {
+  if (!Array.isArray(candidates)) candidates = [String(candidates)];
+  try {
+    const img = new Image();
+    img._ready = false;
+    img._error = false;
+    img._tried = 0;
+
+    function tryNext() {
+      if (img._tried >= candidates.length) {
+        img._error = true;
+        img._ready = false;
+        try { console.warn('loadPogImageVariants: all candidates failed', key, candidates); } catch (e) {}
+        return;
+      }
+      const s = candidates[img._tried++];
+      // assign src to start loading; onerror will trigger tryNext()
+      try {
+        img.src = s;
+      } catch (e) {
+        // on some browsers setting src can throw for invalid URLs; continue
+        tryNext();
+      }
+    }
+
+    img.onload = () => { img._ready = true; try { console.debug('loadPogImageVariants: loaded', key, img.src); } catch (e) {} };
+    img.onerror = () => { tryNext(); };
+
+    pogImages[key] = img;
+    // kick off
+    tryNext();
+    return img;
+  } catch (e) {
+    console.error('loadPogImageVariants failed', key, e);
+    return null;
+  }
+}
+
+function drawPogImage(key, x, y, r, fallbackColor = '#ffffff') {
+  const img = pogImages[key];
+  // Defensive: only call drawImage when the image actually has data.
+  // Some browsers mark errored images as `.complete === true` but they
+  // have no naturalWidth/Height and will throw when drawn. Check those.
+  if (img && (img._ready || (img.complete && img.naturalWidth && img.naturalHeight))) {
+    // maintain aspect ratio and draw within a square of size 2*r
+    const w = (img.naturalWidth || img.width) || (2 * r);
+    const h = (img.naturalHeight || img.height) || (2 * r);
+    // scale to fit 2*r box while preserving aspect
+    const scale = Math.min((2 * r) / w, (2 * r) / h);
+    const dw = Math.max(1, Math.floor(w * scale));
+    const dh = Math.max(1, Math.floor(h * scale));
+    try {
+      ctx.drawImage(img, x - dw / 2, y - dh / 2, dw, dh);
+    } catch (e) {
+      // If drawing still fails, mark image as broken and fallback to circle.
+      try { console.warn('drawPogImage: drawImage failed, falling back', key, e); } catch (e2) {}
+      drawCircle(x, y, r, fallbackColor);
+    }
+  } else {
+    // fallback circle while image loads or on error
+    drawCircle(x, y, r, fallbackColor);
+  }
+}
+
+const embeddedPogList = (() => {
+  try {
+    const el = document.getElementById('pogList');
+    return el ? JSON.parse(el.textContent || el.innerText || '[]') : (window.pogList || []);
+  } catch (e) { return window.pogList || []; }
+})();
+
+const embeddedUserdata = (() => {
+  try {
+    const el = document.getElementById('userdata');
+    return el ? JSON.parse(el.textContent || el.innerText || '{}') : (window.userdata || {});
+  } catch (e) { return window.userdata || {}; }
+})();
+
+const playerPogKeys = ['pog1','pog2','pog3','pog4'];
+
+const playerPogMeta = [null, null, null, null];
+
+async function initPlayerLoadout() {
+  let loadoutsResp = null;
+  try {
+    const resp = await fetch('/api/user/team', { credentials: 'same-origin' });
+    if (resp && resp.ok) loadoutsResp = await resp.json();
+  } catch (e) {
+    console.warn('Failed to fetch /api/user/team, falling back to client state', e);
+  }
+
+  const selectedIndex = (loadoutsResp && typeof loadoutsResp.selected === 'number') ? loadoutsResp.selected : (typeof window.currentLoadoutIndex === 'number' ? window.currentLoadoutIndex : 0);
+  const loadouts = (loadoutsResp && Array.isArray(loadoutsResp.loadouts)) ? loadoutsResp.loadouts : (Array.isArray(window.currentTeam) ? [window.currentTeam] : (window.currentTeam ? [window.currentTeam] : []));
+  const selectedLoadout = (Array.isArray(loadouts) && loadouts[selectedIndex]) ? loadouts[selectedIndex] : (loadouts[0] || null);
+
+  if (!selectedLoadout) {
+    console.info('No loadout found for player. Using defaults.');
+    return;
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const item = selectedLoadout[i];
+    if (!item) {
+      playerPogKeys[i] = 'pog' + (i+1);
+      playerPogMeta[i] = null;
+      continue;
+    }
+
+    let lookupId = null;
+    let lookupName = null;
+    if (typeof item === 'object') {
+      lookupId = item.id || item.ID || null;
+      lookupName = item.name || item.displayname || null;
+    } else if (typeof item === 'string' || typeof item === 'number') {
+      // could be ID or name
+      if (String(item).match(/^\d+$/)) lookupId = item;
+      else lookupName = String(item);
+    }
+
+    const pog = (lookupId !== null) ? embeddedPogList.find(p => String(p.id) === String(lookupId)) : (lookupName ? embeddedPogList.find(p => String(p.name) === String(lookupName) || String(p.code) === String(lookupName)) : null);
+
+    if (pog && (pog.code2 || pog.code)) {
+      const code = pog.code2 || pog.code || pog.name;
+      const key = 'player' + (i+1);
+      const candidates = makeCandidatesForCode(code);
+      // small debug to help correlate filenames with your assets
+      try { console.debug('initPlayerLoadout: candidates for', code, candidates.slice(0,6)); } catch (e) {}
+      loadPogImageVariants(key, candidates);
+      playerPogKeys[i] = key;
+      playerPogMeta[i] = { code2: pog.code2, code: pog.code, name: pog.name, id: pog.id };
+    } else {
+      // try to build a filename from name fallback (sanitize)
+      const name = lookupName || (pog && pog.name) || null;
+      if (name) {
+        const safe = String(name).replace(/[^a-z0-9\-_]/gi, '_');
+        const key = 'player' + (i+1);
+        const candidates = makeCandidatesForCode(safe);
+        try { console.debug('initPlayerLoadout: guessed candidates for', name, candidates.slice(0,6)); } catch (e) {}
+        loadPogImageVariants(key, candidates);
+        playerPogKeys[i] = key;
+        playerPogMeta[i] = { guessedName: name };
+      } else {
+        // keep default placeholder
+        playerPogKeys[i] = 'pog' + (i+1);
+        playerPogMeta[i] = null;
+      }
+    }
+  }
+  console.debug('Player loadout mapped->', playerPogKeys, playerPogMeta);
+}
+
+// initialize player loadout as soon as possible
+initPlayerLoadout().catch(e => console.warn('initPlayerLoadout failed', e));
 
 /*
      ##### ##      ##### /    ##     /###           / /###           /   # ###        ##### #     ##      #######    
@@ -322,11 +486,18 @@ fire.src = '../static/icons/misc/fire.png';
 
 function drawFireCentered() {
   if (!fire._ready && !fire.complete) return;
+  // ensure the image actually has dimensions (not a broken image)
+  const hasSize = (fire.naturalWidth && fire.naturalHeight) || (fire.width && fire.height);
+  if (!hasSize) return;
   const w = fire.naturalWidth || fire.width || 0;
   const h = fire.naturalHeight || fire.height || 0;
   const x = (canvas.width - w) / 2;
   const y = (canvas.height - h) / 2;
-  ctx.drawImage(fire, x, y, w, h);
+  try {
+    ctx.drawImage(fire, x, y, w, h);
+  } catch (e) {
+    try { console.warn('drawFireCentered drawImage failed', e); } catch (e2) {}
+  }
 }
 
 
@@ -397,17 +568,19 @@ function render() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // draw pogs / UI 
-  // players
-  drawCircle(200, 700, 50, '#00ff00');
-  drawCircle(500, 700, 50, '#0000ff');
-  drawCircle(800, 700, 50, '#ff0000'); // red pog
-  drawCircle(1100, 700, 50, '#ffff00');
+  // players (image-backed). We map these to the user's selected loadout via
+  // `playerPogKeys` which initPlayerLoadout() populates. If a key has no
+  // loaded image, drawPogImage will fallback to a colored circle.
+  drawPogImage(playerPogKeys[0] || 'pog1', 200, 700, 50, '#00ff00');
+  drawPogImage(playerPogKeys[1] || 'pog2', 500, 700, 50, '#0000ff');
+  drawPogImage(playerPogKeys[2] || 'pog3', 800, 700, 50, '#ff0000'); // red pog
+  drawPogImage(playerPogKeys[3] || 'pog4', 1100, 700, 50, '#ffff00');
 
   // enemies
-  drawCircle(800, 200, 50, '#00ffff');
-  drawCircle(1100, 200, 50, '#ff00ff');
-  drawCircle(1400, 200, 50, '#ffffff');
-  drawCircle(1700, 200, 50, '#888888');
+  drawPogImage('enemy1', 800, 200, 50, '#00ffff');
+  drawPogImage('enemy2', 1100, 200, 50, '#ff00ff');
+  drawPogImage('enemy3', 1400, 200, 50, '#ffffff');
+  drawPogImage('enemy4', 1700, 200, 50, '#888888');
 
   // UI (buttons)
   drawCircle(1650, 800, 60, '', '#ffffff');
@@ -442,14 +615,48 @@ function update(dt) {
   // TODO: advance other animations / timers / cooldowns here
 }
 
+try { console.log && console.log('battle.js loaded'); } catch (e) {}
+
 let lastTime = performance.now();
 let loopRunning = true;
+function drawFatalErrorOverlay(err) {
+  try {
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ff6666';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const msg = 'Battle script error: ' + (err && err.message ? err.message : String(err));
+    const lines = msg.match(/.{1,80}/g) || [msg];
+    let y = 20;
+    for (const ln of lines) { ctx.fillText(ln, 20, y); y += 26; }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px monospace';
+    ctx.fillText('Open developer console for full stack (F12).', 20, y + 10);
+    ctx.restore();
+  } catch (e) {
+    try { console.error('Failed to draw error overlay', e); } catch (e2) {}
+  }
+}
+
 function mainLoop(now) {
   if (!loopRunning) return;
-  const dt = now - lastTime;
-  lastTime = now;
-  update(dt);
-  render();
+  try {
+    const dt = now - lastTime;
+    lastTime = now;
+    update(dt);
+    render();
+  } catch (err) {
+    // prevent the loop from silently stopping -- log and draw overlay
+    try { console.error('Unhandled error in battle loop', err); } catch (e) {}
+    drawFatalErrorOverlay(err);
+    // stop the loop to avoid spamming more errors
+    loopRunning = false;
+    return;
+  }
   requestAnimationFrame(mainLoop);
 }
 
@@ -460,6 +667,17 @@ canvas.addEventListener('click', function(e) {
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const clickY = e.clientY - rect.top;
+
+  const pauseX = 1850, pauseY = 50, pauseR = 40;
+  const pdx = clickX - pauseX, pdy = clickY - pauseY;
+  if (pdx * pdx + pdy * pdy <= pauseR * pauseR) {
+    const ok = confirm('Return to main page? Your current battle progress will be lost.');
+    if (ok) {
+      // navigate to the app root (main page)
+      window.location.href = '/';
+      return;
+    }
+  }
 
   const dx = clickX - 1650, dy = clickY - 800;
   if (dx * dx + dy * dy <= 60 * 60) {
@@ -504,12 +722,56 @@ function getProjectilePosition(prj) {
 function renderProjectile(prj) {
   const pos = getProjectilePosition(prj);
   // if using an image
-  if (prj.img && (prj.img._ready || prj.img.complete)) {
+  if (prj.img && (prj.img._ready || (prj.img.complete && prj.img.naturalWidth && prj.img.naturalHeight))) {
     const w = (prj.img.naturalWidth || prj.img.width) * (prj.size || 1);
     const h = (prj.img.naturalHeight || prj.img.height) * (prj.size || 1);
-    ctx.drawImage(prj.img, pos.x - w/2, pos.y - h/2, w, h);
+    try {
+      ctx.drawImage(prj.img, pos.x - w/2, pos.y - h/2, w, h);
+    } catch (e) {
+      try { console.warn('renderProjectile: drawImage failed for projectile image', e); } catch (e2) {}
+      // fallback to circle so we don't crash the render loop
+      drawCircle(pos.x, pos.y, 12 * (prj.size || 1), '#ff6600');
+    }
   } else {
     // fallback: draw a simple circle
     drawCircle(pos.x, pos.y, 12 * (prj.size || 1), '#ff6600');
   }
+}
+
+function makeCandidatesForCode(code) {
+  const raw = String(code || '').trim();
+  if (!raw) return [];
+  const underscore = raw.replace(/\s+/g, '_');
+  const dash = raw.replace(/\s+/g, '-');
+  const noSpace = raw.replace(/\s+/g, '');
+  const lower = raw.toLowerCase();
+  const lowerUnderscore = lower.replace(/\s+/g, '_');
+
+  const variants = [
+    raw,
+    underscore,
+    dash,
+    noSpace,
+    lower,
+    lowerUnderscore,
+    raw + '_thumbnail',
+    underscore + '_thumbnail',
+    dash + '_thumbnail',
+    noSpace + '_thumbnail'
+  ];
+
+  const prefixes = ['/static/icons/images/pogs/', '/static/images/pogs/'];
+  const exts = ['.webp', '.png', '.jpg'];
+  const out = [];
+  for (const p of prefixes) {
+    for (const v of variants) {
+      for (const e of exts) {
+        out.push(p + v + e);
+        // also push URL-encoded variant (spaces -> %20)
+        out.push(p + encodeURIComponent(v) + e);
+      }
+    }
+  }
+  // dedupe while preserving order
+  return Array.from(new Set(out));
 }

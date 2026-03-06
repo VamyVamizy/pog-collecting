@@ -150,7 +150,7 @@ document.getElementById("practice").addEventListener("click", () => {
         return;
     }
     save();
-    //window.location.href = "/battle";
+    window.location.href = "/battle";
 });
 
 document.getElementById("playerBtn").addEventListener("click", () => {
