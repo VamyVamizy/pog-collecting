@@ -91,7 +91,7 @@ function loadPogImageVariants(key, candidates) {
       }
     }
 
-    img.onload = () => { img._ready = true; try { console.debug('loadPogImageVariants: loaded', key, img.src); } catch (e) {} };
+  img.onload = () => { img._ready = true; try { console.log('loadPogImageVariants: loaded', key, img.src); } catch (e) {} };
     img.onerror = () => { tryNext(); };
 
     pogImages[key] = img;
@@ -148,77 +148,148 @@ const playerPogKeys = ['pog1','pog2','pog3','pog4'];
 
 const playerPogMeta = [null, null, null, null];
 
+// enemy slots (will be populated by initEnemyLoadout)
+const enemyPogKeys = ['enemy1','enemy2','enemy3','enemy4'];
+const enemyPogMeta = [null, null, null, null];
+
+// Helper: given a loadout item (object or string/number), resolve it to a
+// pogList entry and start loading its image. Returns true if an image was queued.
+function resolveAndLoadPogSlot(item, slotIndex, keyPrefix, keysArr, metaArr) {
+  if (!item) return false;
+
+  let lookupId = null;
+  let lookupName = null;
+  if (typeof item === 'object') {
+    lookupId = item.id || item.ID || item.pogid || item.pogId || null;
+    lookupName = item.name || item.displayname || null;
+  } else if (typeof item === 'string' || typeof item === 'number') {
+    if (String(item).match(/^\d+$/)) lookupId = item;
+    else lookupName = String(item);
+  }
+
+  // Find the pog in the embedded full pog list
+  let pog = null;
+  if (lookupId !== null) {
+    pog = embeddedPogList.find(p => String(p.id) === String(lookupId));
+  }
+  if (!pog && lookupName) {
+    pog = embeddedPogList.find(p =>
+      String(p.name) === String(lookupName) ||
+      String(p.code) === String(lookupName) ||
+      String(p.code2) === String(lookupName)
+    );
+  }
+
+  const code = pog && (pog.code2 || pog.code);
+  if (code) {
+    const key = keyPrefix + (slotIndex + 1);
+    const candidates = makeCandidatesForCode(code);
+    console.log(keyPrefix + ' slot ' + slotIndex + ': resolved code2=' + code, '| first candidates:', candidates.slice(0, 4));
+    loadPogImageVariants(key, candidates);
+    keysArr[slotIndex] = key;
+    metaArr[slotIndex] = { code2: pog.code2, code: pog.code, name: pog.name, id: pog.id };
+    return true;
+  }
+
+  // Fallback: try to use the name directly as a filename guess
+  const name = lookupName || (pog && pog.name) || null;
+  if (name) {
+    const key = keyPrefix + (slotIndex + 1);
+    const candidates = makeCandidatesForCode(name);
+    console.log(keyPrefix + ' slot ' + slotIndex + ': guessed name=' + name, '| first candidates:', candidates.slice(0, 4));
+    loadPogImageVariants(key, candidates);
+    keysArr[slotIndex] = key;
+    metaArr[slotIndex] = { guessedName: name };
+    return true;
+  }
+
+  return false;
+}
+
 async function initPlayerLoadout() {
+  // --- Source 1: Server API (persisted across devices) ---
   let loadoutsResp = null;
   try {
     const resp = await fetch('/api/user/team', { credentials: 'same-origin' });
     if (resp && resp.ok) loadoutsResp = await resp.json();
   } catch (e) {
-    console.warn('Failed to fetch /api/user/team, falling back to client state', e);
+    console.warn('Failed to fetch /api/user/team', e);
   }
 
-  const selectedIndex = (loadoutsResp && typeof loadoutsResp.selected === 'number') ? loadoutsResp.selected : (typeof window.currentLoadoutIndex === 'number' ? window.currentLoadoutIndex : 0);
-  const loadouts = (loadoutsResp && Array.isArray(loadoutsResp.loadouts)) ? loadoutsResp.loadouts : (Array.isArray(window.currentTeam) ? [window.currentTeam] : (window.currentTeam ? [window.currentTeam] : []));
-  const selectedLoadout = (Array.isArray(loadouts) && loadouts[selectedIndex]) ? loadouts[selectedIndex] : (loadouts[0] || null);
+  // --- Source 2: localStorage (same key teamSelect.js uses) ---
+  let localLoadouts = null;
+  let localSelected = 0;
+  try {
+    const raw = localStorage.getItem('pog_team_loadouts_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) localLoadouts = parsed;
+    }
+  } catch (e) { /* ignore */ }
 
-  if (!selectedLoadout) {
-    console.info('No loadout found for player. Using defaults.');
+  // Merge: prefer server data if available, fall back to localStorage
+  let selectedIndex = 0;
+  let selectedLoadout = null;
+
+  if (loadoutsResp && Array.isArray(loadoutsResp.loadouts)) {
+    selectedIndex = typeof loadoutsResp.selected === 'number' ? loadoutsResp.selected : 0;
+    selectedLoadout = loadoutsResp.loadouts[selectedIndex] || loadoutsResp.loadouts.find(l => l != null) || null;
+    console.log('initPlayerLoadout: using SERVER loadout, selected=' + selectedIndex, selectedLoadout);
+  }
+  if (!selectedLoadout && localLoadouts) {
+    selectedIndex = typeof window.currentLoadoutIndex === 'number' ? window.currentLoadoutIndex : 0;
+    selectedLoadout = localLoadouts[selectedIndex] || localLoadouts.find(l => l != null) || null;
+    console.log('initPlayerLoadout: using LOCALSTORAGE loadout, selected=' + selectedIndex, selectedLoadout);
+  }
+  if (!selectedLoadout && Array.isArray(window.currentTeam) && window.currentTeam.length) {
+    selectedLoadout = window.currentTeam;
+    console.log('initPlayerLoadout: using window.currentTeam', selectedLoadout);
+  }
+
+  if (!selectedLoadout || !Array.isArray(selectedLoadout) || selectedLoadout.length === 0) {
+    // No loadout at all — pick first 4 pogs from pogList as defaults
+    console.warn('No saved loadout found. Picking first 4 pogs from pogList as defaults.');
+    const pool = embeddedPogList.filter(p => p && (p.code2 || p.code));
+    for (let i = 0; i < 4; i++) {
+      if (pool[i]) {
+        resolveAndLoadPogSlot(pool[i], i, 'player', playerPogKeys, playerPogMeta);
+      }
+    }
+    console.log('Player loadout (defaults) ->', playerPogKeys, playerPogMeta);
     return;
   }
 
+  // Map each loadout slot to an image
   for (let i = 0; i < 4; i++) {
     const item = selectedLoadout[i];
-    if (!item) {
-      playerPogKeys[i] = 'pog' + (i+1);
+    if (!resolveAndLoadPogSlot(item, i, 'player', playerPogKeys, playerPogMeta)) {
+      playerPogKeys[i] = 'pog' + (i + 1);
       playerPogMeta[i] = null;
-      continue;
-    }
-
-    let lookupId = null;
-    let lookupName = null;
-    if (typeof item === 'object') {
-      lookupId = item.id || item.ID || null;
-      lookupName = item.name || item.displayname || null;
-    } else if (typeof item === 'string' || typeof item === 'number') {
-      // could be ID or name
-      if (String(item).match(/^\d+$/)) lookupId = item;
-      else lookupName = String(item);
-    }
-
-    const pog = (lookupId !== null) ? embeddedPogList.find(p => String(p.id) === String(lookupId)) : (lookupName ? embeddedPogList.find(p => String(p.name) === String(lookupName) || String(p.code) === String(lookupName)) : null);
-
-    if (pog && (pog.code2 || pog.code)) {
-      const code = pog.code2 || pog.code || pog.name;
-      const key = 'player' + (i+1);
-      const candidates = makeCandidatesForCode(code);
-      // small debug to help correlate filenames with your assets
-      try { console.debug('initPlayerLoadout: candidates for', code, candidates.slice(0,6)); } catch (e) {}
-      loadPogImageVariants(key, candidates);
-      playerPogKeys[i] = key;
-      playerPogMeta[i] = { code2: pog.code2, code: pog.code, name: pog.name, id: pog.id };
-    } else {
-      // try to build a filename from name fallback (sanitize)
-      const name = lookupName || (pog && pog.name) || null;
-      if (name) {
-        const safe = String(name).replace(/[^a-z0-9\-_]/gi, '_');
-        const key = 'player' + (i+1);
-        const candidates = makeCandidatesForCode(safe);
-        try { console.debug('initPlayerLoadout: guessed candidates for', name, candidates.slice(0,6)); } catch (e) {}
-        loadPogImageVariants(key, candidates);
-        playerPogKeys[i] = key;
-        playerPogMeta[i] = { guessedName: name };
-      } else {
-        // keep default placeholder
-        playerPogKeys[i] = 'pog' + (i+1);
-        playerPogMeta[i] = null;
-      }
     }
   }
-  console.debug('Player loadout mapped->', playerPogKeys, playerPogMeta);
+  console.log('Player loadout mapped ->', playerPogKeys, playerPogMeta);
 }
 
 // initialize player loadout as soon as possible
-initPlayerLoadout().catch(e => console.warn('initPlayerLoadout failed', e));
+// initialize player loadout and then enemy loadout
+initPlayerLoadout().then(() => {
+  try { initEnemyLoadout(); } catch (e) { console.warn('initEnemyLoadout failed', e); }
+}).catch(e => console.warn('initPlayerLoadout failed', e));
+
+function initEnemyLoadout() {
+  // For now, pick 4 random pogs from the list (skip the first 4 used by player defaults)
+  const usedIds = new Set(playerPogMeta.filter(Boolean).map(m => String(m.id || '')));
+  const pool = embeddedPogList.filter(p => p && (p.code2 || p.code) && !usedIds.has(String(p.id)));
+  // Shuffle and pick 4
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  for (let i = 0; i < 4; i++) {
+    const pog = shuffled[i] || null;
+    if (pog) {
+      resolveAndLoadPogSlot(pog, i, 'enemy', enemyPogKeys, enemyPogMeta);
+    }
+  }
+  console.log('Enemy loadout ->', enemyPogKeys, enemyPogMeta);
+}
 
 /*
      ##### ##      ##### /    ##     /###           / /###           /   # ###        ##### #     ##      #######    
@@ -571,16 +642,16 @@ function render() {
   // players (image-backed). We map these to the user's selected loadout via
   // `playerPogKeys` which initPlayerLoadout() populates. If a key has no
   // loaded image, drawPogImage will fallback to a colored circle.
-  drawPogImage(playerPogKeys[0] || 'pog1', 200, 700, 50, '#00ff00');
-  drawPogImage(playerPogKeys[1] || 'pog2', 500, 700, 50, '#0000ff');
-  drawPogImage(playerPogKeys[2] || 'pog3', 800, 700, 50, '#ff0000'); // red pog
-  drawPogImage(playerPogKeys[3] || 'pog4', 1100, 700, 50, '#ffff00');
+  drawPogImage(playerPogKeys[0] || 'pog1', 200, 700, 80, '#00ff00');
+  drawPogImage(playerPogKeys[1] || 'pog2', 500, 700, 80, '#0000ff');
+  drawPogImage(playerPogKeys[2] || 'pog3', 800, 700, 80, '#ff0000'); // red pog
+  drawPogImage(playerPogKeys[3] || 'pog4', 1100, 700, 80, '#ffff00');
 
-  // enemies
-  drawPogImage('enemy1', 800, 200, 50, '#00ffff');
-  drawPogImage('enemy2', 1100, 200, 50, '#ff00ff');
-  drawPogImage('enemy3', 1400, 200, 50, '#ffffff');
-  drawPogImage('enemy4', 1700, 200, 50, '#888888');
+  // enemies (use mapped enemy keys)
+  drawPogImage(enemyPogKeys[0] || 'enemy1', 800, 200, 80, '#00ffff');
+  drawPogImage(enemyPogKeys[1] || 'enemy2', 1100, 200, 80, '#ff00ff');
+  drawPogImage(enemyPogKeys[2] || 'enemy3', 1400, 200, 80, '#ffffff');
+  drawPogImage(enemyPogKeys[3] || 'enemy4', 1700, 200, 80, '#888888');
 
   // UI (buttons)
   drawCircle(1650, 800, 60, '', '#ffffff');
@@ -596,6 +667,14 @@ drawAutoBattleIconA(1650, 50, 40, '#ffffff');
 
   roundRect(ctx, 1613, 845, 75, 25, 40, 'black', 'white', 2, 'Basic', { color: '#ffffff', font: 'bold 14px sans-serif' });
   roundRect(ctx, 1763, 745, 75, 25, 40, 'black', 'white', 2, 'Skill', { color: '#ffffff', font: 'bold 14px sans-serif' });
+
+  // Skill points
+  drawFourPointStar(ctx, 1300, 800, 25, 5, 'white', '#ffffff', 1);
+  drawFourPointStar(ctx, 1360, 800, 25, 5, 'white', '#ffffff', 1);
+  drawFourPointStar(ctx, 1420, 800, 25, 5, 'white', '#ffffff', 1);
+  // used skill points (outline only)
+  drawFourPointStar(ctx, 1480, 800, 25, 5, '', '#ffffff', 1);
+  drawFourPointStar(ctx, 1540, 800, 25, 5, '', '#ffffff', 1);
 
   // draw projectiles on top
   for (const prj of gameState.projectiles) renderProjectile(prj);
