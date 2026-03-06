@@ -29,15 +29,15 @@ let crates = (userdata && userdata.crates) ? userdata.crates : [
             },
             {
                 name: "Uncommon",
-                chance: 0.15
+                chance: 0.2
             },
             {
                 name: "Mythic",
-                chance: 0.055
+                chance: 0.007
             },
             {
                 name: "Unique",
-                chance: 0.005    // new tiny chance for Unique
+                chance: 0.003    // new tiny chance for Unique
             }
         ]
     },

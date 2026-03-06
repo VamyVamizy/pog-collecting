@@ -110,3 +110,13 @@ document.querySelectorAll(".pogCont").forEach(pog => {
         det.style.display = 'flex';
     });
 });
+
+document.getElementById("add").addEventListener("click", function() {
+    const create = document.getElementById("createCont");
+    create.style.display = "flex";
+});
+
+document.getElementById("cancel").addEventListener("click", function() {
+    const create = document.getElementById("createCont");
+    create.style.display = "none";
+});
