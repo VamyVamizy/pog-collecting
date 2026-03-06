@@ -219,7 +219,13 @@ app.get('/playerbase', (req, res) => {
                 console.error('Error while printing banned list for admin:', e);
             }
 
-            res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+            res.render('playerbase', {
+                userdata: req.session.user,
+                maxPogs: pogCount,
+                pogList: results,
+                scores: rows,
+                bannedList: (bannedListModule && typeof bannedListModule.getBannedList === 'function') ? bannedListModule.getBannedList() : []
+            });
         }
     );
 });
@@ -474,6 +480,29 @@ app.post('/api/ban', express.json(), (req, res) => {
         return res.json({ ok: true });
     } catch (e) {
         console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// unban user
+app.post('/api/unban', express.json(), (req, res) => {
+    const adminIds = [73,44,87,43];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.removeBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to remove banned user', e);
         return res.status(500).json({ ok: false });
     }
 });
