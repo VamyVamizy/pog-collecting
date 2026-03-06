@@ -23,24 +23,16 @@ const crateRef = require("../modules/backend_js/crateRef.js");
 function isAuthenticated(req, res, next) {
     console.log("Authenticating...");
 
-    // Helper to pick a safe auth redirect target. If AUTH_URL isn't configured
-    // (dev mode), fall back to the local `/login` route which was added as a
-    // developer fallback.
     const makeAuthRedirect = (refreshToken) => {
-        if (AUTH_URL) {
-            if (refreshToken) return `${AUTH_URL}/oauth?refreshToken=${encodeURIComponent(refreshToken)}&redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
-            return `${AUTH_URL}/oauth?redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
+        if (refreshToken && AUTH_URL) {
+            return `${AUTH_URL}/oauth?refreshToken=${encodeURIComponent(refreshToken)}&redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
         }
-        // No external auth configured — go to local login page
+        // No token at all — show local login page
         return '/login';
     };
 
-    // If there's no token in session, try to bootstrap from a short-lived
-    // fallback cookie (set during the login redirect). This helps avoid a
-    // race where the browser hasn't yet sent the session cookie back.
     const tokenData = req.session && req.session.token;
     if (!tokenData) {
-        // Try fallback cookie (cookie-parser must be enabled in app.js)
         try {
             if (req.cookies && req.cookies.fb_token) {
                 // fb_token was stored as a JSON string of the token object.
@@ -60,7 +52,9 @@ function isAuthenticated(req, res, next) {
         }
 
         // No token available; redirect to auth (or local login)
-        return res.redirect(makeAuthRedirect());
+        const dest = makeAuthRedirect();
+        console.log('[AUTH] No token, redirecting to:', dest);
+        return res.redirect(dest);
     }
 
     // We have tokenData — make sure it is valid before continuing.
@@ -68,12 +62,16 @@ function isAuthenticated(req, res, next) {
         const currentTime = Math.floor(Date.now() / 1000);
         if (tokenData.exp && tokenData.exp < currentTime) {
             // token expired, attempt refresh flow if refresh token exists
-            return res.redirect(makeAuthRedirect(tokenData.refreshToken));
+            const dest = makeAuthRedirect(tokenData.refreshToken);
+            console.log('[AUTH] Token expired, redirecting to:', dest);
+            return res.redirect(dest);
         }
         return next();
     } catch (err) {
         console.error('Error during token validation in isAuthenticated:', err);
-        return res.redirect(makeAuthRedirect());
+        const dest = makeAuthRedirect();
+        console.log('[AUTH] Error fallback, redirecting to:', dest);
+        return res.redirect(dest);
     }
 }
 // The following isAuthenticated function checks when the access token expires and promptly retrieves a new one using the user's refresh token.

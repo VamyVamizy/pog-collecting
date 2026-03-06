@@ -58,10 +58,10 @@ router.get('/login', (req, res) => {
             return res.redirect('/');
         });
     } else {
-        // If no token in the query, start auth with the external provider if
-        // configured, otherwise go to local login fallback
-        if (AUTH_URL) return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-        return res.redirect('/login');
+        // Show a local login page with a button that starts the OAuth flow
+        const oauthLink = AUTH_URL ? `${AUTH_URL}/oauth?redirectURL=${encodeURIComponent(THIS_URL || '/')}` : '/login';
+        console.log('[LOGIN] Rendering local login page. OAuth link:', oauthLink);
+        return res.render('login', { authURL: oauthLink });
     };
 });
 
