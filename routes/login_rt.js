@@ -17,6 +17,9 @@ const crateRef = require("../modules/backend_js/crateRef.js");
 router.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token);
+        // Persist token into session and set a short-lived fallback cookie in
+        // case the browser hasn't yet stored/sent the session cookie on the
+        // next request (avoids race conditions during redirect).
         req.session.token = tokenData;
         req.session.user = {
             displayName: tokenData.displayName,
@@ -40,9 +43,25 @@ router.get('/login', (req, res) => {
             crates: tokenData.crates || crateRef,
             pfp: tokenData.pfp || "static/icons/pfp/defaultpfp.png"
         };
-        res.redirect('/');
+
+        // Save the session to ensure the session store has the token before
+        // redirecting. Also set a very short-lived httpOnly cookie as a
+        // fallback (bootstrapped by middleware) if the session cookie hasn't
+        // been set by the browser yet.
+        req.session.save(err => {
+            if (err) console.error('Failed to save session after login:', err);
+            try {
+                res.cookie('fb_token', JSON.stringify(tokenData), { httpOnly: true, maxAge: 60 * 1000 });
+            } catch (e) {
+                console.error('Failed to set fb_token cookie:', e);
+            }
+            return res.redirect('/');
+        });
     } else {
-        res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
+        // If no token in the query, start auth with the external provider if
+        // configured, otherwise go to local login fallback
+        if (AUTH_URL) return res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
+        return res.redirect('/login');
     };
 });
 

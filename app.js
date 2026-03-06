@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const digio = require('socket.io-client');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 //debug
 process.on('uncaughtException', (err) => {
@@ -116,6 +117,7 @@ app.set('trust proxy', true);
 app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -148,14 +150,39 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
-    const redirectAfter = encodeURIComponent(THIS_URL);
+    let logoutTarget = '/login';
+    try {
+        const myIpEnv = process.env.MY_IP;
+        if (myIpEnv && typeof myIpEnv === 'string' && myIpEnv.trim() !== '') {
+            let base = myIpEnv.trim();
+            if (!/^https?:\/\//i.test(base)) {
+                // no scheme — assume http and add default port 3000 if missing
+                if (!base.includes(':')) base = `${base}:3000`;
+                base = `http://${base}`;
+            }
+            base = base.replace(/\/$/, '');
+            logoutTarget = `${base}/login`;
+        } else if (THIS_URL && typeof THIS_URL === 'string' && THIS_URL.trim() !== '') {
+            const base = THIS_URL.replace(/\/$/, '');
+            logoutTarget = `${base}/login`;
+        }
+    } catch (e) {
+        logoutTarget = '/login';
+    }
 
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
         res.clearCookie("connect.sid");
 
-        // Force auth provider logout
-        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+        // If the client expects JSON (fetch/XHR), return the redirect URL as JSON
+        // so the client can navigate the top-level window. Otherwise perform a
+        // server-side redirect which works for form POSTs and normal browser
+        // navigations.
+        const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+        if (wantsJson) {
+            return res.json({ redirect: logoutTarget });
+        }
+        return res.redirect(logoutTarget);
     });
 });
 
@@ -203,7 +230,7 @@ app.get('/playerbase', (req, res) => {
             // If current user is an admin, print the banned list to server console for debugging
             try {
                 const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
-                const adminIds = [73,84,44,87];
+                const adminIds = [73,84,44,87,43];
                 if (currentId && adminIds.includes(currentId)) {
                     console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
                 }
@@ -334,7 +361,7 @@ app.post('/api/digipogs/transfer', (req, res) => {
     const id = req.session.user.fid; // Formbar user ID of payer from session
     
     // carter and vincent ids for testing respectively
-    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87;
+    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87 || id === 43;
     
     if (isAdmin) {
         // For admins, return success without processing actual transaction
@@ -440,11 +467,10 @@ app.post('/api/user/sync-inventory', express.json(), (req, res) => {
         return res.json({ ok: true, changes: this.changes });
     });
 });
-
-// Admin: ban a user (add to banned list)
+// ban hammer (from Phighting!)
 app.post('/api/ban', express.json(), (req, res) => {
     // Simple admin check (same test used elsewhere)
-    const adminIds = [73,44,87];
+    const adminIds = [73,44,87,43];
     const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
     if (!currentId || !adminIds.includes(currentId)) {
         return res.status(403).json({ ok: false, message: 'forbidden' });
@@ -456,7 +482,7 @@ app.post('/api/ban', express.json(), (req, res) => {
     if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
 
     // Protect certain internal/admin FIDs from being banned.
-    const PROTECTED_FIDS = [73, 44, 87];
+    const PROTECTED_FIDS = [73, 44, 87, 43];
     if (fid && PROTECTED_FIDS.includes(fid)) {
         return res.status(400).json({ ok: false, message: 'cannot ban this user' });
     }

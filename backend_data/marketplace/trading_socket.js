@@ -18,6 +18,44 @@ module.exports = function(io) {
     };
 
     // Helper functions
+    function ensurePogMetadata(item) {
+        if (!item) return item;
+        try {
+            // If item is a JSON string, try to parse it
+            if (typeof item === 'string') {
+                try { item = JSON.parse(item); } catch (e) { item = { name: String(item) }; }
+            }
+        } catch (e) {
+            item = { name: String(item) };
+        }
+
+        const rarityMap = {
+            Trash: { income: 2, color: 'red' },
+            Common: { income: 7, color: 'yellow' },
+            Uncommon: { income: 13, color: 'lime' },
+            Mythic: { income: 20, color: 'fuchsia' },
+            Unique: { income: 28, color: 'lightgray' }
+        };
+
+        try {
+            if (!('income' in item) || typeof item.income !== 'number') {
+                if (item && item.rarity && rarityMap[item.rarity]) {
+                    item.income = rarityMap[item.rarity].income;
+                } else {
+                    item.income = 5;
+                }
+            }
+            if (!('color' in item) || !item.color) {
+                if (item && item.rarity && rarityMap[item.rarity]) {
+                    item.color = rarityMap[item.rarity].color;
+                }
+            }
+        } catch (e) {
+            item.income = item.income || 5;
+        }
+
+        return item;
+    }
     function completeAuction(auction, winnerId, winnerName, winnerPfp, finalBid) {
         usdb.run(`UPDATE market SET AuctionStatus = ?, winner_id = ?, winner_name = ?, winner_pfp = ?, winner_bid = ? 
                   WHERE user_id = ? AND pog = ?`,
@@ -115,7 +153,6 @@ module.exports = function(io) {
                     }
                 }
 
-                // 1) Remove pog from seller inventory (best-effort), update seller score
                 getUserInventory(auction.user_id, (sErr, sellerInv) => {
                     if (sErr) {
                         console.error('Failed to load seller inventory for auction completion:', auction.user_id, sErr);
@@ -623,12 +660,15 @@ socket.on('buy it now', (data) => {
                     traderInventory.splice(traderItemIndex, 1);
 
                     const accepterItemIndex = accepterInventory.findIndex(item => item.name === trade.receiving_item_name);
-                    const requestedItem = accepterInventory[accepterItemIndex];
+                    let requestedItem = accepterInventory[accepterItemIndex];
+                    // Ensure transferred items carry pog metadata to avoid NaN income
+                    requestedItem = ensurePogMetadata(requestedItem);
                     traderInventory.push(requestedItem);
 
                     // Remove requested item from accepter, add offered item to accepter
                     accepterInventory.splice(accepterItemIndex, 1);
-                    accepterInventory.push(offeredItem);
+                    let offeredToAdd = ensurePogMetadata(offeredItem);
+                    accepterInventory.push(offeredToAdd);
 
                     // Update both inventories in database
                     updateUserInventory(trade.userId, traderInventory, (err) => {

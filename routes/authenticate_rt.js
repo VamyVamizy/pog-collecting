@@ -22,20 +22,58 @@ const crateRef = require("../modules/backend_js/crateRef.js");
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
     console.log("Authenticating...");
-    if (req.session.user) {
-        const tokenData = req.session.token;
-        try {
-            // Check if the token has expired
-            const currentTime = Math.floor(Date.now() / 1000);
-            if (tokenData.exp < currentTime) {
-                throw new Error('Token has expired');
-            }
-            next();
-        } catch (err) {
-            res.redirect(`${AUTH_URL}/oauth?refreshToken=${tokenData.refreshToken}&redirectURL=${THIS_URL}`);
+
+    // Helper to pick a safe auth redirect target. If AUTH_URL isn't configured
+    // (dev mode), fall back to the local `/login` route which was added as a
+    // developer fallback.
+    const makeAuthRedirect = (refreshToken) => {
+        if (AUTH_URL) {
+            if (refreshToken) return `${AUTH_URL}/oauth?refreshToken=${encodeURIComponent(refreshToken)}&redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
+            return `${AUTH_URL}/oauth?redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
         }
-    } else {
-        res.redirect(`${AUTH_URL}/oauth?redirectURL=${THIS_URL}`);
+        // No external auth configured — go to local login page
+        return '/login';
+    };
+
+    // If there's no token in session, try to bootstrap from a short-lived
+    // fallback cookie (set during the login redirect). This helps avoid a
+    // race where the browser hasn't yet sent the session cookie back.
+    const tokenData = req.session && req.session.token;
+    if (!tokenData) {
+        // Try fallback cookie (cookie-parser must be enabled in app.js)
+        try {
+            if (req.cookies && req.cookies.fb_token) {
+                // fb_token was stored as a JSON string of the token object.
+                const cookieVal = req.cookies.fb_token;
+                let parsed = null;
+                try { parsed = JSON.parse(cookieVal); } catch (e) { parsed = null; }
+                if (parsed) {
+                    req.session.token = parsed;
+                    // remove fallback cookie after bootstrapping
+                    res.clearCookie('fb_token');
+                    console.log('Bootstrapped session.token from fb_token cookie');
+                    return next();
+                }
+            }
+        } catch (err) {
+            console.error('Error while bootstrapping fb_token cookie:', err);
+        }
+
+        // No token available; redirect to auth (or local login)
+        return res.redirect(makeAuthRedirect());
+    }
+
+    // We have tokenData — make sure it is valid before continuing.
+    try {
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (tokenData.exp && tokenData.exp < currentTime) {
+            // token expired, attempt refresh flow if refresh token exists
+            return res.redirect(makeAuthRedirect(tokenData.refreshToken));
+        }
+        return next();
+    } catch (err) {
+        console.error('Error during token validation in isAuthenticated:', err);
+        return res.redirect(makeAuthRedirect());
     }
 }
 // The following isAuthenticated function checks when the access token expires and promptly retrieves a new one using the user's refresh token.

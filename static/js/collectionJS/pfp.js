@@ -40,13 +40,27 @@ document.getElementById("userCont").addEventListener("click", () => {
 /*document.getElementById("logout").addEventListener("click", async () => {
     const choose = confirm("Would you like to log out of your account?")
     if (!choose) return
-    await fetch("/logout", {
+    const resp = await fetch("/logout", {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        headers: {
+            'Accept': 'application/json'
+        }
     });
 
-    window.location.href = "/";
-});*/
+    // If server returned JSON with a redirect target, navigate there. If not,
+    // fall back to the local login page.
+    try {
+        const body = await resp.json();
+        if (body && body.redirect) {
+            window.location.href = body.redirect;
+            return;
+        }
+    } catch (e) {
+        // Not JSON — fall back to known login path
+    }
+    window.location.href = '/login';
+});
 
 console.log(theme_col);
 document.getElementById("picker").value = theme_col;

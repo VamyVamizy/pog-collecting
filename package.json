@@ -1,13 +1,14 @@
 {
   "scripts": {
-  "start": "node app.js",
-  "dev": "nodemon app.js",
-  "init": "node data/db-cli.js init",
-  "help": "node data/db-cli.js help",
-  "migrate": "node data/db-cli.js migrate"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "init": "node data/db-cli.js init",
+    "help": "node data/db-cli.js help",
+    "migrate": "node data/db-cli.js migrate"
   },
   "dependencies": {
     "cjs": "^0.0.11",
+    "cookie-parser": "^1.4.7",
     "csv": "^6.4.1",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.3",
@@ -21,6 +22,7 @@
     "session": "^0.1.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "stack": "^0.1.0"
   }
 }
