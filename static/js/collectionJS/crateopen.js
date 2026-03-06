@@ -557,7 +557,14 @@ async function openCrateWithAnimation(index) {
         return;
     }
 
-    const result = calculatePogResult(index);
+    // Check for whether to use clarity preview or not
+    let result = useClarityPreview();
+    
+    // If no predetermined result, calculate normally
+    if (!result) {
+        result = calculatePogResult(index);
+    }
+    
     if (!result) return;
 
     addPogToInventory(result);
@@ -601,6 +608,7 @@ async function openMultipleCratesWithAnimation(index, count) {
 
     results.forEach(result => addPogToInventory(result));
     cratesOpened += count;
+    useClarityPreview(count);
     refreshInventory();
 
     // IMPORTANT: Clean up any leftover state first

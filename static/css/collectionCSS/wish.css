@@ -45,6 +45,8 @@
     border-radius: 5px;
     text-align: center;
     color: red;
+    transform: translateY(0);
+    transition: transform 0.5s ease-in-out;
 }
 
 .confirmbtn {

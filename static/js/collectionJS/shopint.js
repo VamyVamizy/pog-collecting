@@ -76,16 +76,20 @@ function purchase(price, reason, pin, amount) {
     }).then(response => response.json())
         .then(data => {
             if (data.success) {
-                // add purchased item effect here
+                // purchase item effect
                 implement(reason, amount);
                 save();
-                alert(`Purchase successful! (-${price} Digipogs)`);
+                
+                const crateNames = ['Trash Crate', 'Common Crate', 'Uncommon Crate', 'Mythic Crate'];
+                const crateName = crateNames[reason] || 'Crate';
+                showPurchaseSuccess(`${crateName} purchased! Good luck! (-${abbreviateNumber(price)} Digipogs) 🎁`);
             } else {
-                alert(`Purchase failed: ${data.message}`);
+                showPurchaseError(`Purchase failed: ${data.message} 💸`);
             }
         })
         .catch(err => {
             console.error("Error during purchase:", err);
+            showPurchaseError("An error occurred during purchase. Please try again later. 🔌");
         })
 };
 /* !
@@ -110,11 +114,11 @@ document.getElementById("slotAmount").addEventListener("change", () => {
 document.getElementById("purchaseBtn_S").addEventListener("click", () => {
     const amount = parseInt(document.getElementById("slotAmount").value);
     if (amount < 1 || amount > 100 || isNaN(amount)) {
-        alert("Please select a valid amount of slots (1-100).");
+        showPurchaseError("Please select a valid amount of slots (1-100) 📝");
         return;
     }
     if (Isize + amount > 100) {
-        alert("You cannot have more than 100 inventory slots.");
+        showPurchaseError("No more than 100 inventory slots are allowed! 📦");
         return;
     }
     const slotPrice = calcSlot(amount);
@@ -145,12 +149,63 @@ function purchaseSlots(price, reason, pin, amount) {
                 Isize += amount;
                 refreshInventory();
                 save();
-                alert(`Purchase successful! (-${price} Digipogs)`);
+                showPurchaseSuccess(`Inventory expanded! +${amount} slots added! (-${abbreviateNumber(price)} Digipogs) 📦`);
             } else {
-                alert(`Purchase failed: ${data.message}`);
-            }
+                showPurchaseError(`Slot purchase failed: ${data.message} 💰`);            }
         })
         .catch(err => {
             console.error("Error during purchase:", err);
+            showPurchaseError("An connection error occurred. Please try again later. 🔌");
         })
 };
+
+//successful purchase
+function showPurchaseSuccess(message) {
+    document.getElementById("errorText").innerText = message;
+    const errorMessage = document.getElementById("errorMessage");
+    
+    // Green styling for success
+    errorMessage.style.backgroundColor = "#4CAF50";
+    errorMessage.style.borderColor = "#45a049";
+    errorMessage.style.color = "white";
+    
+    errorMessage.style.display = "block";
+    errorMessage.style.opacity = "0";
+    setTimeout(() => {
+        errorMessage.style.opacity = "1";
+    }, 10);
+    setTimeout(() => {
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.display = "none";
+            errorMessage.style.backgroundColor = ""; 
+            errorMessage.style.borderColor = "";
+            errorMessage.style.color = "";
+        }, 1000);
+    }, 5000);
+}
+// failed purchase
+function showPurchaseError(message) {
+    document.getElementById("errorText").innerText = message;
+    const errorMessage = document.getElementById("errorMessage");
+    
+    // red styling for errors
+    errorMessage.style.backgroundColor = "#f44336";
+    errorMessage.style.borderColor = "#d32f2f";
+    errorMessage.style.color = "white";
+    
+    errorMessage.style.display = "block";
+    errorMessage.style.opacity = "0";
+    setTimeout(() => {
+        errorMessage.style.opacity = "1";
+    }, 10);
+    setTimeout(() => {
+        errorMessage.style.opacity = "0";
+        setTimeout(() => {
+            errorMessage.style.display = "none";
+            errorMessage.style.backgroundColor = ""; 
+            errorMessage.style.borderColor = "";
+            errorMessage.style.color = "";
+        }, 1000);
+    }, 5000);
+}
