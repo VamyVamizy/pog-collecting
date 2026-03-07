@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const digio = require('socket.io-client');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 //debug
 process.on('uncaughtException', (err) => {
@@ -116,6 +117,7 @@ app.set('trust proxy', true);
 app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -148,15 +150,21 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
-    const redirectAfter = encodeURIComponent(THIS_URL);
-
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
         res.clearCookie("connect.sid");
 
-        // Force auth provider logout
-        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+        const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+        if (wantsJson) {
+            return res.json({ redirect: '/logged-out' });
+        }
+        return res.redirect('/logged-out');
     });
+});
+
+// logged-out landing page
+app.get('/logged-out', (req, res) => {
+    res.render('loggedout');
 });
 
 // patch notes page
@@ -203,7 +211,7 @@ app.get('/playerbase', (req, res) => {
             // If current user is an admin, print the banned list to server console for debugging
             try {
                 const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
-                const adminIds = [73,84,44,87];
+                const adminIds = [73,84,44,87,43];
                 if (currentId && adminIds.includes(currentId)) {
                     console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
                 }
@@ -211,7 +219,13 @@ app.get('/playerbase', (req, res) => {
                 console.error('Error while printing banned list for admin:', e);
             }
 
-            res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+            res.render('playerbase', {
+                userdata: req.session.user,
+                maxPogs: pogCount,
+                pogList: results,
+                scores: rows,
+                bannedList: (bannedListModule && typeof bannedListModule.getBannedList === 'function') ? bannedListModule.getBannedList() : []
+            });
         }
     );
 });
@@ -334,7 +348,7 @@ app.post('/api/digipogs/transfer', (req, res) => {
     const id = req.session.user.fid; // Formbar user ID of payer from session
     
     // carter and vincent ids for testing respectively
-    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87;
+    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87 || id === 43;
     
     if (isAdmin) {
         // For admins, return success without processing actual transaction
@@ -440,11 +454,10 @@ app.post('/api/user/sync-inventory', express.json(), (req, res) => {
         return res.json({ ok: true, changes: this.changes });
     });
 });
-
-// Admin: ban a user (add to banned list)
+// ban hammer (from Phighting!)
 app.post('/api/ban', express.json(), (req, res) => {
     // Simple admin check (same test used elsewhere)
-    const adminIds = [73,44,87];
+    const adminIds = [73,44,87,43];
     const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
     if (!currentId || !adminIds.includes(currentId)) {
         return res.status(403).json({ ok: false, message: 'forbidden' });
@@ -456,7 +469,7 @@ app.post('/api/ban', express.json(), (req, res) => {
     if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
 
     // Protect certain internal/admin FIDs from being banned.
-    const PROTECTED_FIDS = [73, 44, 87];
+    const PROTECTED_FIDS = [73, 44, 87, 43];
     if (fid && PROTECTED_FIDS.includes(fid)) {
         return res.status(400).json({ ok: false, message: 'cannot ban this user' });
     }
@@ -467,6 +480,29 @@ app.post('/api/ban', express.json(), (req, res) => {
         return res.json({ ok: true });
     } catch (e) {
         console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// unban user
+app.post('/api/unban', express.json(), (req, res) => {
+    const adminIds = [73,44,87,43];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.removeBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to remove banned user', e);
         return res.status(500).json({ ok: false });
     }
 });

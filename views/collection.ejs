@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="../static/css/collectionCSS/gamemodes.css">
     <link rel="stylesheet" href="../static/css/collectionCSS/teamSelect.css">
     <link rel="stylesheet" href="../static/css/collectionCSS/message.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/wishcarousel.css">
 </head>
 
 <body>
@@ -38,6 +39,26 @@
             <button class="confirmbtn" id="customConfirmNo">No</button>
         </div>
     </div>
+    <!--Wish Carousel-->
+    <div id="wishCarousel" style="display:none;">
+        <div class="wish-container">
+            <button class="wish-cursor" id="leftCursor">←</button>
+        
+            <div class="wish-display">
+                <div class="wish-circle">
+                    <img id="wishIcon" src="../static/icons/wishes/incomewish.png" alt="Current Wish">
+                </div>
+                <div class="wish-info">
+                    <h3 id="wishName">Wish of Wealth</h3>
+                    <p id="wishDescription">+30% income for 5 minutes</p>
+                </div>
+            </div>
+        
+            <button class="wish-cursor" id="rightCursor">→</button>
+        </div>
+    </div>
+
+
     <!--Team Select-->
     <%- include("collectionEJS/teamSelect.ejs") %>
     <!--Shop-->
@@ -48,7 +69,7 @@
     <div id="pfpChanger" style="display: none;">
         <div id="toppfp">
             <h2><%= userdata.displayName %></h2>
-            <!--<button id="logout">Log Out</button>-->
+            <button id="logout">Log Out</button>
         </div>
         <h3 style="margin-top: -15px; font-weight: normal;">Choose your Profile Preferences</h3>
         <div style="display: flex; gap: 20px;">

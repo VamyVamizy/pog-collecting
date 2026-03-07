@@ -62,45 +62,73 @@ radios.forEach(radio => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll(".ban").forEach(button => {
-        button.addEventListener("click", function () {
-            const playerCont = this.closest(".playerCont");
-            const confirmBox = playerCont.querySelector(".banConf");
-            document.querySelectorAll(".banConf").forEach(box => {
-                if (box !== confirmBox) {
-                    box.style.display = "none";
-                }
-            });
-            if (playerCont.querySelector(".banConf").style.display == "flex") {
-                playerCont.querySelector(".banConf").style.display = "none";
-            } else {
-                playerCont.querySelector(".banConf").style.display = "flex";
-            }
+    // Toggle confirm box for ban/unban buttons
+    document.querySelectorAll('.ban, .unban').forEach(button => {
+        button.addEventListener('click', function () {
+            const playerCont = this.closest('.playerCont');
+            if (!playerCont) return;
+            const confirmBox = playerCont.querySelector('.banConf');
+            const confirmBtn = confirmBox.querySelector('.confirm_yes');
+            const isUnban = this.classList.contains('unban');
+            const action = isUnban ? 'unban' : 'ban';
+            const heading = confirmBox.querySelector('h3');
+            if (heading) heading.textContent = isUnban ? 'Unban user?' : 'Ban user?';
+            if (confirmBtn) confirmBtn.setAttribute('data-action', action);
+
+            // hide other confirm boxes
+            document.querySelectorAll('.banConf').forEach(box => { if (box !== confirmBox) box.style.display = 'none'; });
+
+            // toggle this box
+            confirmBox.style.display = (confirmBox.style.display === 'flex') ? 'none' : 'flex';
         });
     });
-    // confirm ban buttons
+
+    // confirm ban/unban buttons
     document.querySelectorAll('.confirm_yes').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             const playerCont = this.closest('.playerCont');
             if (!playerCont) return;
             const fid = playerCont.getAttribute('data-fid');
             const name = playerCont.getAttribute('data-name');
-            // send ban request to server
-            fetch('/api/ban', {
+            const action = this.getAttribute('data-action') || 'ban';
+            const url = action === 'unban' ? '/api/unban' : '/api/ban';
+
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fid: fid, displayname: name })
             }).then(r => r.json()).then(res => {
                 if (res && res.ok) {
-                    // hide confirm box and optionally show a notice
+                    // hide confirm box
                     playerCont.querySelector('.banConf').style.display = 'none';
-                    alert(`Banned ${name}`);
+
+                    // update the button in the options area
+                    const optBtn = playerCont.querySelector('.ban, .unban');
+                    if (optBtn) {
+                        const img = optBtn.querySelector('img');
+                        if (action === 'ban') {
+                            optBtn.classList.remove('ban');
+                            optBtn.classList.add('unban');
+                            if (img) { img.style.filter = 'grayscale(100%)'; img.style.opacity = '0.6'; }
+                            // update confirm action
+                            const confirmBtn = playerCont.querySelector('.confirm_yes');
+                            if (confirmBtn) confirmBtn.setAttribute('data-action', 'unban');
+                        } else {
+                            optBtn.classList.remove('unban');
+                            optBtn.classList.add('ban');
+                            if (img) { img.style.filter = ''; img.style.opacity = ''; }
+                            const confirmBtn = playerCont.querySelector('.confirm_yes');
+                            if (confirmBtn) confirmBtn.setAttribute('data-action', 'ban');
+                        }
+                    }
+
+                    alert(action === 'ban' ? `Banned ${name}` : `Unbanned ${name}`);
                 } else {
-                    alert('Failed to ban user');
+                    alert(action === 'ban' ? 'Failed to ban user' : 'Failed to unban user');
                 }
             }).catch(err => {
-                console.error('Ban request failed', err);
-                alert('Failed to ban user');
+                console.error('Ban/unban request failed', err);
+                alert(action === 'ban' ? 'Failed to ban user' : 'Failed to unban user');
             });
         });
     });

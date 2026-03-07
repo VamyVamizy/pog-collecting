@@ -22,20 +22,56 @@ const crateRef = require("../modules/backend_js/crateRef.js");
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
     console.log("Authenticating...");
-    if (req.session.user) {
-        const tokenData = req.session.token;
-        try {
-            // Check if the token has expired
-            const currentTime = Math.floor(Date.now() / 1000);
-            if (tokenData.exp < currentTime) {
-                throw new Error('Token has expired');
-            }
-            next();
-        } catch (err) {
-            res.redirect(`${AUTH_URL}/oauth?refreshToken=${tokenData.refreshToken}&redirectURL=${THIS_URL}`);
+
+    const makeAuthRedirect = (refreshToken) => {
+        if (refreshToken && AUTH_URL) {
+            return `${AUTH_URL}/oauth?refreshToken=${encodeURIComponent(refreshToken)}&redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
         }
-    } else {
-        res.redirect(`${AUTH_URL}/oauth?redirectURL=${THIS_URL}`);
+        // No token at all — show local login page
+        return '/login';
+    };
+
+    const tokenData = req.session && req.session.token;
+    if (!tokenData) {
+        try {
+            if (req.cookies && req.cookies.fb_token) {
+                // fb_token was stored as a JSON string of the token object.
+                const cookieVal = req.cookies.fb_token;
+                let parsed = null;
+                try { parsed = JSON.parse(cookieVal); } catch (e) { parsed = null; }
+                if (parsed) {
+                    req.session.token = parsed;
+                    // remove fallback cookie after bootstrapping
+                    res.clearCookie('fb_token');
+                    console.log('Bootstrapped session.token from fb_token cookie');
+                    return next();
+                }
+            }
+        } catch (err) {
+            console.error('Error while bootstrapping fb_token cookie:', err);
+        }
+
+        // No token available; redirect to auth (or local login)
+        const dest = makeAuthRedirect();
+        console.log('[AUTH] No token, redirecting to:', dest);
+        return res.redirect(dest);
+    }
+
+    // We have tokenData — make sure it is valid before continuing.
+    try {
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (tokenData.exp && tokenData.exp < currentTime) {
+            // token expired, attempt refresh flow if refresh token exists
+            const dest = makeAuthRedirect(tokenData.refreshToken);
+            console.log('[AUTH] Token expired, redirecting to:', dest);
+            return res.redirect(dest);
+        }
+        return next();
+    } catch (err) {
+        console.error('Error during token validation in isAuthenticated:', err);
+        const dest = makeAuthRedirect();
+        console.log('[AUTH] Error fallback, redirecting to:', dest);
+        return res.redirect(dest);
     }
 }
 // The following isAuthenticated function checks when the access token expires and promptly retrieves a new one using the user's refresh token.

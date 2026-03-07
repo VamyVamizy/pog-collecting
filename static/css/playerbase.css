@@ -163,6 +163,14 @@ li {
     background: linear-gradient(130deg, rgb(252, 61, 61), rgb(145, 56, 56));
 }
 
+/* Slightly darker grey for the unban (greyed) icon to improve contrast */
+.playerCont .unban img {
+    /* keep it grayscale but make it a touch darker */
+    filter: grayscale(100%) brightness(75%);
+    opacity: 0.6;
+    transition: filter 0.12s ease, opacity 0.12s ease;
+}
+
 .playerCont #pfp {
     position: absolute;
     z-index: 4;
