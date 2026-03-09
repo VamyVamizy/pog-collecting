@@ -25,7 +25,8 @@ function isAuthenticated(req, res, next) {
 
     const makeAuthRedirect = (refreshToken) => {
         if (refreshToken && AUTH_URL) {
-            return `${AUTH_URL}/oauth?refreshToken=${encodeURIComponent(refreshToken)}&redirectURL=${encodeURIComponent(THIS_URL || '/')}`;
+            // NOTE: Formbar expects raw (non-encoded) redirectURL
+            return `${AUTH_URL}/oauth?refreshToken=${refreshToken}&redirectURL=${THIS_URL}`;
         }
         // No token at all — show local login page
         return '/login';
