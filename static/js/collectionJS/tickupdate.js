@@ -10,8 +10,7 @@ function update() {
     document.getElementById("XPTxt").style.borderRadius = xpHover ? "20px" : "40px";
     document.getElementById("XPTxt").innerText = xpHover ? `${xp} / ${maxXP} XP` : level;
 
-    // update income Txt
-    document.getElementById("income").innerText = `($${abbreviateNumber(getTotalIncome())}/s)`;
+    // income display is handled by income.js — do not update here
 
     //update pog / pog
     document.getElementById("pogCount").innerText = `${Math.round((pogAmount.length / maxBinder) * 100)}%`;

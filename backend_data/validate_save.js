@@ -69,7 +69,11 @@ function validateSave(incoming, current, pogList) {
     // but missing from the new inventory — calculate their actual sell value).
     const currentInv = Array.isArray(current.inventory) ? current.inventory : [];
     const newInv = Array.isArray(s.inventory) ? s.inventory : [];
-    const realIncome = actualInventoryIncome(currentInv);
+    const rawIncome = actualInventoryIncome(currentInv);
+    // Account for level multiplier: 1 + (level/16)^(level/100)
+    const prevLvl = Number(current.level) || 1;
+    const incomeMult = 1 + Math.pow(prevLvl / 16, prevLvl / 100);
+    const realIncome = Math.floor(rawIncome * incomeMult);
     const maxIncomeGain = Math.max(realIncome * 7, 500);
 
     // Build a set of item IDs in the new inventory
@@ -252,15 +256,18 @@ function validateSave(incoming, current, pogList) {
 
     // ── 7. Income must match inventory ───────────────────────────────────────
     // Recalculate expected income from the (validated) inventory
-    const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
     const calcIncome = (Array.isArray(s.inventory) ? s.inventory : []).reduce((sum, item) => {
         return sum + (Number(item.income) || 0);
     }, 0);
+    // Account for level multiplier: 1 + (level/16)^(level/100)
+    const serverLevel = Number(s.level) || 1;
+    const levelMult = 1 + Math.pow(serverLevel / 16, serverLevel / 100);
+    const expectedIncome = Math.floor(calcIncome * levelMult);
     const newIncome = Number(s.income);
     // Allow up to 50% variance for wish boost + combo bonuses
-    if (isFiniteNum(newIncome) && newIncome > calcIncome * 2 + 100) {
-        warnings.push(`Income ${newIncome} seems too high for inventory (calc ~${calcIncome}); clamping`);
-        s.income = Math.floor(calcIncome * 1.5);
+    if (isFiniteNum(newIncome) && newIncome > expectedIncome * 1.5 + 100) {
+        warnings.push(`Income ${newIncome} seems too high for inventory (expected ~${expectedIncome}); clamping`);
+        s.income = Math.floor(expectedIncome * 1.5);
     }
 
     // ── 8. Crates structure ──────────────────────────────────────────────────
