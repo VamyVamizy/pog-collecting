@@ -5,6 +5,7 @@ body, h1, h2, h3, h4, h5 {
 body {
     margin-top: 80px;
     user-select: none;
+    overflow-x: none;
     overflow-y: auto;
     background:
         radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
