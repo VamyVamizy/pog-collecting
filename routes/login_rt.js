@@ -59,7 +59,8 @@ router.get('/login', (req, res) => {
         });
     } else {
         // Show a local login page with a button that starts the OAuth flow
-        const oauthLink = AUTH_URL ? `${AUTH_URL}/oauth?redirectURL=${encodeURIComponent(THIS_URL || '/')}` : '/login';
+        // NOTE: THIS_URL must NOT be encoded — Formbar expects the raw URL.
+        const oauthLink = AUTH_URL ? `${AUTH_URL}/oauth?redirectURL=${THIS_URL}` : '/login';
         console.log('[LOGIN] Rendering local login page. OAuth link:', oauthLink);
         return res.render('login', { authURL: oauthLink });
     };

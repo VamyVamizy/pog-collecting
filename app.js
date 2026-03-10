@@ -27,6 +27,7 @@ process.on('exit', (code) => {
 const achievements = require("./modules/backend_js/trophyList.js");
 const crateRef = require("./modules/backend_js/crateRef.js");
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
+const { validateSave } = require('./backend_data/validate_save.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
 // banned list helper (used to print/inspect banned users)
@@ -276,7 +277,14 @@ app.get('/api/auctions/active', (req, res) => {
 
 // save data route
 app.post('/datasave', (req, res) => {
-    const userSave = {
+    if (!req.session || !req.session.user || !req.session.user.displayName) {
+        return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+
+    // 1. Build the raw incoming save object from the client
+    const incoming = {
         theme: req.body.lightMode,
         score: req.body.money,
         inventory: req.body.inventory,
@@ -295,15 +303,41 @@ app.post('/datasave', (req, res) => {
         wish: req.body.wish,
         crates: req.body.crates,
         pfp: req.body.pfp
-    }
+    };
 
-    // save to session
-    req.session.save(err => {
+    // 2. Fetch the current DB row so we can compare for cheating
+    usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
         if (err) {
-            console.error('Error saving session:', err);
-            return res.status(500).json({ message: 'Error saving session' });
-        } else {
-                const params = [
+            console.error('Error reading current user for validation:', err);
+            return res.status(500).json({ message: 'Error reading user data' });
+        }
+
+        // Parse JSON columns from the DB row
+        let current = {};
+        if (row) {
+            current = { ...row };
+            try { current.inventory = JSON.parse(row.inventory || '[]'); } catch (e) { current.inventory = []; }
+            try { current.pogamount = JSON.parse(row.pogamount || '[]'); } catch (e) { current.pogamount = []; }
+            try { current.achievements = JSON.parse(row.achievements || '[]'); } catch (e) { current.achievements = []; }
+            try { current.tiers = JSON.parse(row.tiers || '[]'); } catch (e) { current.tiers = []; }
+            try { current.crates = JSON.parse(row.crates || '[]'); } catch (e) { current.crates = []; }
+        }
+
+        // 3. Validate & sanitize
+        const { sanitized: userSave, warnings } = validateSave(incoming, current, results);
+
+        if (warnings.length > 0) {
+            console.warn(`[DATASAVE] Validation warnings for ${displayName}:`, warnings);
+        }
+
+        // 4. Persist to DB
+        req.session.save(saveErr => {
+            if (saveErr) {
+                console.error('Error saving session:', saveErr);
+                return res.status(500).json({ message: 'Error saving session' });
+            }
+
+            const params = [
                 req.session.user.fid,
                 userSave.theme,
                 userSave.score,
@@ -316,25 +350,120 @@ app.post('/datasave', (req, res) => {
                 userSave.totalSold,
                 userSave.cratesOpened,
                 JSON.stringify(userSave.pogamount),
-                JSON.stringify(userSave.achievements),
-                JSON.stringify(userSave.tiers),
+                JSON.stringify(userSave.achievements || incoming.achievements),
+                JSON.stringify(userSave.tiers || incoming.tiers),
                 userSave.mergeCount,
-                req.session.user.highestCombo,
+                userSave.highestCombo,
                 userSave.wish,
                 JSON.stringify(userSave.crates),
                 userSave.pfp,
-                req.session.user.displayName
-            ]
-            usdb.run(`UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`, params, function (err) {
-                if (err) {
-                    console.error('Error updating user settings:', err);
-                    return res.status(500).json({ message: 'Error updating user settings' });
+                displayName
+            ];
+
+            usdb.run(
+                `UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`,
+                params,
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating user settings:', dbErr);
+                        return res.status(500).json({ message: 'Error updating user settings' });
+                    }
+                    req.session.user = { ...req.session.user, ...userSave };
+                    return res.json({ message: 'Data saved successfully' });
                 }
-                req.session.user = { ...req.session.user, ...userSave };
-                return res.json({ message: 'Data saved successfully' });
-            });
-        }
+            );
+        });
     });
+});
+
+// ── Server-side crate opening ─────────────────────────────────────────────
+// The client calls this instead of rolling RNG locally.
+// Returns the pog result; the client is responsible for calling save() after.
+app.post('/api/open-crate', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const crateIndex = Number(req.body.crateIndex);
+    if (!Number.isFinite(crateIndex) || crateIndex < 0 || crateIndex >= crateRef.length) {
+        return res.status(400).json({ error: 'Invalid crate index' });
+    }
+
+    const crate = crateRef[crateIndex];
+    const pogListLocal = results; // server's master pog list
+    if (!pogListLocal || !pogListLocal.length) {
+        return res.status(500).json({ error: 'Pog list not loaded' });
+    }
+
+    const norm = s => String(s || '').trim().toLowerCase();
+
+    // Apply drop rate boost if client reports it (trust-but-verify: only allow 1.5x max)
+    let multiplier = 1.0;
+    if (req.body.dropRateBoost === true) {
+        multiplier = 1.5;
+    }
+
+    // Roll RNG server-side
+    let rand = Math.random();
+    let cumulativeChance = 0;
+    let pogResult = null;
+
+    for (const tier of crate.rarities) {
+        const boostedChance = (Number(tier.chance) || 0) * multiplier;
+        cumulativeChance += boostedChance;
+        if (rand < cumulativeChance) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
+            if (candidates.length === 0) continue;
+
+            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+            const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
+            const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+
+            pogResult = {
+                locked: false,
+                pogid: chosen.id || null,
+                name: chosen.name,
+                id: Date.now() + Math.floor(Math.random() * 10000),
+                rarity: chosen.rarity,
+                pogcol: chosen.color || 'white',
+                color: meta.color || 'white',
+                income: meta.income || 5,
+                description: chosen.description || '',
+                creator: chosen.creator || ''
+            };
+            break;
+        }
+    }
+
+    // Fallback if roll missed all tiers
+    if (!pogResult) {
+        const fallbackTier = crate.rarities[crate.rarities.length - 1];
+        if (fallbackTier) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
+            if (candidates.length > 0) {
+                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+                pogResult = {
+                    locked: false,
+                    pogid: chosen.id || null,
+                    name: chosen.name,
+                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    rarity: chosen.rarity,
+                    pogcol: chosen.color || 'white',
+                    color: meta.color || 'white',
+                    income: meta.income || 5,
+                    description: chosen.description || '',
+                    creator: chosen.creator || ''
+                };
+            }
+        }
+    }
+
+    if (!pogResult) {
+        return res.status(500).json({ error: 'Failed to generate pog result' });
+    }
+
+    return res.json({ ok: true, pogResult });
 });
 
 // Express route to handle digipog transfer requests
