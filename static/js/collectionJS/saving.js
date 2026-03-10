@@ -24,7 +24,18 @@ function save() {
             highestCombo: window.highestCombo,
             wish: wish,
             crates: crates,
-            pfp: pfpimg
+            pfp: pfpimg,
+
+            // wish state fields so players don't lose their buff when they refresh
+            incomeWishActive: incomeWishActive,
+            incomeWishEndTime: incomeWishEndTime,
+            dropRateWishActive: dropRateWishActive,
+            dropRateWishEndTime: dropRateWishEndTime,
+            clarityWishActive: clarityWishActive,
+            clarityWishEndTime: clarityWishEndTime,
+            clarityPreviews: clarityPreviews,
+            clarityResults: clarityResults,
+            clarityUsedCount: clarityUsedCount
         })
     })
         .then(response => response.json())
@@ -150,7 +161,7 @@ document.getElementById("practice").addEventListener("click", () => {
         return;
     }
     save();
-    //window.location.href = "/battle";
+    window.location.href = "/battle";
 });
 
 document.getElementById("playerBtn").addEventListener("click", () => {

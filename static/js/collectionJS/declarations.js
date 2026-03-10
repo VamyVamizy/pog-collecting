@@ -12,6 +12,70 @@ try {
 }
 // ensure a global achievements object exists early so other scripts can read it
 window.achievements = window.achievements || userdata.achievements || [];
+// cookie helper functions for wish persistence
+function setCookie(name, value, minutes) {
+    const date = new Date();
+    date.setTime(date.getTime() + (minutes * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + JSON.stringify(value) + ";" + expires + ";path=/";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+            try {
+                return JSON.parse(c.substring(nameEQ.length, c.length));
+            } catch (e) {
+                return null;
+            }
+        }
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+}
+
+// Save wish states to cookies
+function saveWishStatesToCookies() {
+    const wishStates = {
+        incomeWishActive,
+        incomeWishEndTime,
+        dropRateWishActive,
+        dropRateWishEndTime,
+        clarityWishActive,
+        clarityWishEndTime,
+        clarityPreviews,
+        clarityResults,
+        clarityUsedCount
+    };
+    
+    // Save for 24 hours (wishes are max 5 minutes, but this gives buffer)
+    setCookie('wishStates', wishStates, 1440);
+}
+
+// Load wish states from cookies
+function loadWishStatesFromCookies() {
+    const saved = getCookie('wishStates');
+    if (saved) {
+        incomeWishActive = saved.incomeWishActive || false;
+        incomeWishEndTime = saved.incomeWishEndTime || 0;
+        dropRateWishActive = saved.dropRateWishActive || false;
+        dropRateWishEndTime = saved.dropRateWishEndTime || 0;
+        clarityWishActive = saved.clarityWishActive || false;
+        clarityWishEndTime = saved.clarityWishEndTime || 0;
+        clarityPreviews = saved.clarityPreviews || [];
+        clarityResults = saved.clarityResults || [];
+        clarityUsedCount = saved.clarityUsedCount || 0;
+        
+        console.log('Loaded wish states from cookies:', saved);
+    }
+}
 // reference pogs from ejs
 let maxPogs = 0;
 try {
@@ -58,29 +122,32 @@ let theme_col = userdata.theme || "black";
 // wish
 let wish = userdata.wish || 0;
 
-// new timer variables for income wish
+// Initialize wish variables (will be loaded from cookies)
 let incomeWishActive = false;
 let incomeWishEndTime = 0;
-// variables for drop rate wish
 let dropRateWishActive = false;
 let dropRateWishEndTime = 0;
-// clarity wish variables 
 let clarityWishActive = false;
 let clarityWishEndTime = 0;
 let clarityPreviews = [];
 let clarityResults = [];
 let clarityUsedCount = 0;
 
+// Load wish states from cookies on page load
+loadWishStatesFromCookies();
+
 const WISH_DURATION = 5 * 60 * 1000; 
 
 // checking if wishes have expired 
 function checkWishTimers() {
     const now = Date.now();
-    
+    let statesChanged = false;
+
     // check income wish
     if (incomeWishActive && now >= incomeWishEndTime) {
         incomeWishActive = false;
-        
+        statesChanged = true;
+
         document.getElementById("errorText").innerText = "Income Boost Expired! Your +30% income bonus has ended.";
         const errorMessage = document.getElementById("errorMessage");
         errorMessage.style.display = "block";
@@ -100,6 +167,7 @@ function checkWishTimers() {
     // Check drop rate wish  
     if (dropRateWishActive && now >= dropRateWishEndTime) {
         dropRateWishActive = false;
+        statesChanged = true;
 
         // show expiration message
         document.getElementById("errorText").innerText = "Drop Rate Boost Expired! Your better drop rates bonus has ended.";
@@ -123,6 +191,7 @@ function checkWishTimers() {
         clarityWishActive = false;
         clarityPreviews = [];
         clarityUsedCount = 0;
+        statesChanged = true;
         updateClarityDisplay(); // removal of any previews
 
         document.getElementById("errorText").innerText = "Clarity Wish Expired! The exact rarity display for the next 5 crates has ended.";
@@ -140,10 +209,68 @@ function checkWishTimers() {
         }, 5000);
         console.log("Clarity wish expired!");
     }
+    // saving to cookies if any states changed
+    if (statesChanged) {
+        saveWishStatesToCookies();
+    }
+
     // update drop rate display
     updateDropRateDisplay();
 }
+// checking if wishes should be initialized on page load (in case they expired while offline or to show remaining time)
+function initializeWishStates() {
+    const now = Date.now();
+    let needsSave = false;
+    
+    // Check if saved wishes have expired during offline time
+    if (incomeWishActive && now >= incomeWishEndTime) {
+        incomeWishActive = false;
+        needsSave = true;
+        console.log("Income wish expired during offline time");
+    }
+    if (dropRateWishActive && now >= dropRateWishEndTime) {
+        dropRateWishActive = false;
+        needsSave = true;
+        console.log("Drop rate wish expired during offline time");
+    }
+    if (clarityWishActive && now >= clarityWishEndTime) {
+        clarityWishActive = false;
+        clarityPreviews = [];
+        clarityResults = [];
+        clarityUsedCount = 0;
+        needsSave = true;
+        console.log("Clarity wish expired during offline time");
+    }
+    
+    // Update displays based on loaded states
+    updateDropRateDisplay();
+    updateClarityDisplay();
+    
+    // Save any changes from expired wishes
+    if (needsSave) {
+        save();
+    }
+    
+    // Show recovery messages for active wishes
+    if (incomeWishActive) {
+        const remaining = Math.ceil((incomeWishEndTime - now) / 1000 / 60);
+        console.log(`Income boost recovered! ${remaining} minutes remaining`);
+    }
+    if (dropRateWishActive) {
+        const remaining = Math.ceil((dropRateWishEndTime - now) / 1000 / 60);
+        console.log(`Drop rate boost recovered! ${remaining} minutes remaining`);
+    }
+    if (clarityWishActive) {
+        const remaining = Math.ceil((clarityWishEndTime - now) / 1000 / 60);
+        const previewsLeft = clarityPreviews.length - clarityUsedCount;
+        console.log(`Clarity recovered! ${remaining} minutes, ${previewsLeft} previews remaining`);
+    }
+}
 
+// Call this after the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initializeWishStates, 500); // Small delay to ensure everything is loaded
+});
 
 //check timers every second
 setInterval(checkWishTimers, 1000);
@@ -532,3 +659,39 @@ function useClarityPreview() {
     }
     return null;
 }
+// initialize wish states on page load and handle any expirations that occurred while offline
+function initializeWishStates() {
+    const now = Date.now();
+    let statesChanged = false;
+    
+    // Check if loaded wishes have expired
+    if (incomeWishActive && now >= incomeWishEndTime) {
+        incomeWishActive = false;
+        statesChanged = true;
+    }
+    if (dropRateWishActive && now >= dropRateWishEndTime) {
+        dropRateWishActive = false;
+        statesChanged = true;
+    }
+    if (clarityWishActive && now >= clarityWishEndTime) {
+        clarityWishActive = false;
+        clarityPreviews = [];
+        clarityResults = [];
+        clarityUsedCount = 0;
+        statesChanged = true;
+    }
+    
+    // Update displays
+    updateDropRateDisplay();
+    updateClarityDisplay();
+    
+    // Clean up expired cookies
+    if (statesChanged) {
+        saveWishStatesToCookies();
+    }
+}
+
+// Call on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initializeWishStates, 100);
+});
