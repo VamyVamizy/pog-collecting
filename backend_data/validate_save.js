@@ -8,8 +8,8 @@
  *   1. Money can only increase by plausible income ticks + sell revenue.
  *   2. Inventory items must reference valid pog IDs from the master list.
  *   3. Level / XP must follow the levelup() formula (maxXP *= 1.4 each level).
- *   4. Isize can only go up by 1 at a time (bought slot).
- *   5. Wish count can only decrease (spent) or increase by 1 (traded a pog).
+ *   4. Isize can only increase via /api/buy-slots; save can never raise it.
+ *   5. Wish count can only decrease (spent) via save; increases only via /api/trade-wish.
  *   6. cratesOpened can only go up, never down.
  *   7. No field can be NaN / Infinity / negative (where inappropriate).
  */
@@ -52,6 +52,11 @@ function validateSave(incoming, current, pogList) {
     const warnings = [];
     const s = { ...incoming }; // shallow copy we'll mutate
 
+    // ── Admin bypass: skip anti-cheat for fid 44 (VincentL) ──────────────────
+    if (Number(current.fid) === 44) {
+        return { ok: true, sanitized: s, warnings };
+    }
+
     // ── 1. Money (score) ─────────────────────────────────────────────────────
     const prevMoney = Number(current.score) || 0;
     const newMoney = Number(s.score);
@@ -59,20 +64,30 @@ function validateSave(incoming, current, pogList) {
         warnings.push(`Invalid money value ${s.score}, keeping previous ${prevMoney}`);
         s.score = prevMoney;
     }
-    // Allow money to increase by a plausible amount based on ACTUAL inventory
-    // income (not a theoretical max).  Be generous: 3x combo + 1.3x wish
-    // boost over 300 seconds, plus a sell-revenue buffer.
+    // Anti-cheat: trigger if money gained exceeds 7× the player's actual income.
+    // Also allow money from items that were sold (items in previous inventory
+    // but missing from the new inventory — calculate their actual sell value).
     const currentInv = Array.isArray(current.inventory) ? current.inventory : [];
+    const newInv = Array.isArray(s.inventory) ? s.inventory : [];
     const realIncome = actualInventoryIncome(currentInv);
-    // Max income per second = realIncome * 3 (combo cap) * 1.3 (wish boost)
-    const maxPerSec = Math.max(realIncome * 3 * 1.3, 1000);   // floor of 1000/s for new players
-    // Allow up to 300 seconds of max income + generous sell buffer
-    // Sell value ≈ income * 2.94 * (level/1.6) ^ ((level/100)+1) per item, cap generously
-    const curLevel = Number(current.level) || 1;
-    const sellBuffer = currentInv.length * 1000000 * Math.max(curLevel, 1); // generous per-item sell cap
-    const maxIncomeBurst = (maxPerSec * 300) + sellBuffer;
-    if (newMoney - prevMoney > maxIncomeBurst && prevMoney > 0) {
-        warnings.push(`Money jumped suspiciously from ${prevMoney} to ${newMoney}; reverting to ${prevMoney}`);
+    const maxIncomeGain = Math.max(realIncome * 7, 500);
+
+    // Build a set of item IDs in the new inventory
+    const newInvIds = new Set(newInv.map(item => item.id));
+    // Items that were in previous inventory but are now gone = sold items
+    const sellLevel = Number(current.level) || 1;
+    const soldItemsValue = currentInv.reduce((sum, item) => {
+        if (!newInvIds.has(item.id)) {
+            const inc = Number(item.income) || 0;
+            const sellVal = Math.round((inc * 5.921));
+            return sum + sellVal;
+        }
+        return sum;
+    }, 0);
+
+    const maxAllowed = maxIncomeGain + soldItemsValue;
+    if (newMoney - prevMoney > maxAllowed && prevMoney > 0) {
+        warnings.push(`Money jumped suspiciously from ${prevMoney} to ${newMoney} (allowed: ${maxAllowed}); reverting to ${prevMoney}`);
         s.score = prevMoney;
     }
 
@@ -104,58 +119,106 @@ function validateSave(incoming, current, pogList) {
     }
 
     // ── 3. Inventory size (Isize) ────────────────────────────────────────────
+    // Isize can ONLY increase via the server-side /api/buy-slots endpoint.
+    // The client save should never send a higher Isize than the DB has.
+    // Isize can stay the same or (shouldn't) go down.
     const prevIsize = Number(current.Isize) || 10;
     const newIsize = Number(s.Isize);
     if (!isFiniteNum(newIsize) || newIsize < 10 || newIsize > 100) {
-        warnings.push(`Invalid Isize ${s.Isize}, resetting to 10`);
-        s.Isize = 10;
-    } else if (newIsize > prevIsize + 5) {
-        // Cheated – reset to 10 as punishment
-        warnings.push(`Isize jumped from ${prevIsize} to ${newIsize}; resetting to 10`);
-        s.Isize = 10;
+        warnings.push(`Invalid Isize ${s.Isize}, keeping previous ${prevIsize}`);
+        s.Isize = prevIsize;
+    } else if (newIsize > prevIsize) {
+        // Client tried to increase Isize outside the API — revert
+        warnings.push(`Isize increased via save (${prevIsize} → ${newIsize}); reverting to ${prevIsize}`);
+        s.Isize = prevIsize;
     }
 
     // ── 4. Level / XP ────────────────────────────────────────────────────────
+    // Level is server-authoritative. The client sends XP; the server computes
+    // any level-ups using the same formula as the client's levelup().
     const prevLevel = Number(current.level) || 1;
-    const newLevel = Number(s.level);
-    if (!isFiniteNum(newLevel) || newLevel < 1 || newLevel > 101) {
-        warnings.push(`Invalid level ${s.level}, keeping ${prevLevel}`);
-        s.level = prevLevel;
-    }
-    // Levels can only go up, not down
-    if (newLevel < prevLevel) {
-        warnings.push(`Level went down from ${prevLevel} to ${newLevel}; keeping ${prevLevel}`);
-        s.level = prevLevel;
-    }
-    // XP must be non-negative
-    const newXP = Number(s.xp);
-    if (!isFiniteNum(newXP) || newXP < 0) {
+    const prevMaxXP = expectedMaxXP(prevLevel);
+    const prevXP = Number(current.xp) || 0;
+
+    // XP is only earned from opening crates.
+    // Client formula: xp += Math.floor(pogResult.income * (15 * level / 15))
+    //               = Math.floor(pogResult.income * level)
+    // Calculate max XP by looking at new items added to inventory (from crates)
+    // and using their actual income values with the exact client formula.
+    const currentInvIds = new Set(currentInv.map(item => item.id));
+    const newItems = newInv.filter(item => !currentInvIds.has(item.id));
+    // Each new item could have been opened at any level between prevLevel and
+    // the client's claimed level. Use the client's claimed level as the upper
+    // bound (generous) since level increases as crates are opened.
+    const claimedLevel = Math.min(Number(s.level) || prevLevel, 101);
+    const maxXPGain = newItems.reduce((sum, item) => {
+        const inc = Number(item.income) || 0;
+        return sum + Math.floor(inc * (15 * claimedLevel / 15));
+    }, 0);
+
+    let curXP = Number(s.xp);
+    if (!isFiniteNum(curXP) || curXP < 0) {
         warnings.push(`Invalid XP ${s.xp}, setting to 0`);
-        s.xp = 0;
+        curXP = 0;
     }
-    // maxxp should match the level formula
-    const correctMaxXP = expectedMaxXP(s.level);
-    if (Number(s.maxxp) !== correctMaxXP) {
-        warnings.push(`maxXP mismatch: got ${s.maxxp}, expected ${correctMaxXP} for level ${s.level}; correcting`);
-        s.maxxp = correctMaxXP;
+
+    // Calculate how much raw XP was gained (accounting for level-ups the client did)
+    // Client's raw XP gain = (clientLevel - prevLevel) worth of maxXP thresholds + (curXP - prevXP)
+    let clientRawXPGain = curXP - prevXP;
+    const clientLevel = Number(s.level) || prevLevel;
+    // Add back XP spent on level-ups between prevLevel and clientLevel
+    let tempMaxXP = prevMaxXP;
+    for (let l = prevLevel; l < Math.min(clientLevel, 101); l++) {
+        clientRawXPGain += tempMaxXP;
+        tempMaxXP = Math.floor(tempMaxXP * 1.4);
+    }
+
+    if (clientRawXPGain > maxXPGain + 1) {
+        // XP was cheated — revert to previous XP and level
+        warnings.push(`XP gain too high (${clientRawXPGain} vs max ${maxXPGain} from ${newItems.length} new items); reverting to previous`);
+        curXP = prevXP;
+        s.level = prevLevel;
+        s.xp = prevXP;
+        s.maxxp = prevMaxXP;
+    } else {
+        // XP is legitimate — simulate level-ups server-side
+        // Start from prevLevel/prevXP and add the raw XP gain, then simulate
+        let totalXP = prevXP + clientRawXPGain;
+        let curLevel = prevLevel;
+        let curMaxXP = prevMaxXP;
+
+        while (totalXP >= curMaxXP && curLevel < 101) {
+            totalXP -= curMaxXP;
+            curLevel++;
+            curMaxXP = Math.floor(curMaxXP * 1.4);
+        }
+        if (curLevel >= 101) {
+            curLevel = 101;
+            totalXP = Math.min(totalXP, curMaxXP);
+        }
+        curXP = totalXP;
+
+        if (clientLevel !== curLevel) {
+            warnings.push(`Level mismatch: client sent ${clientLevel}, server computed ${curLevel}; using server value`);
+        }
+        s.level = curLevel;
+        s.xp = curXP;
+        s.maxxp = curMaxXP;
     }
 
     // ── 5. Wish ──────────────────────────────────────────────────────────────
+    // Wishes can ONLY increase via the server-side /api/trade-wish endpoint.
+    // The client save should never send a higher wish value than the DB has.
+    // Wish can stay the same or go down (spent wishes).
     const prevWish = Number(current.wish) || 0;
     const newWish = Number(s.wish);
     if (!isFiniteNum(newWish) || newWish < 0) {
-        warnings.push(`Invalid wish ${s.wish}, resetting to 0`);
-        s.wish = 0;
-    }
-    // Wish can increase by at most the number of pogs that disappeared from
-    // inventory (traded), and decrease by multiples of 7 (used).
-    // Be generous: allow wish to change by up to inventory-count + 7
-    const prevInvLen = Array.isArray(current.inventory) ? current.inventory.length : 0;
-    const wishDelta = newWish - prevWish;
-    if (wishDelta > prevInvLen + 7) {
-        // Cheated – reset to 0 as punishment
-        warnings.push(`Wish increased suspiciously from ${prevWish} to ${newWish}; resetting to 0`);
-        s.wish = 0;
+        warnings.push(`Invalid wish ${s.wish}, keeping previous ${prevWish}`);
+        s.wish = prevWish;
+    } else if (newWish > prevWish) {
+        // Client tried to increase wish outside the API — cheat
+        warnings.push(`Wish increased via save (${prevWish} → ${newWish}); reverting to ${prevWish}`);
+        s.wish = prevWish;
     }
 
     // ── 6. Counters (can only go up) ─────────────────────────────────────────

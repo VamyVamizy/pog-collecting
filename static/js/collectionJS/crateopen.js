@@ -316,7 +316,7 @@ async function calculatePogResult(index) {
   }
 }
 
-function addPogToInventory(pogResult) {
+function addPogToInventory(pogResult, skipSave = false) {
     if (!pogResult) return;
     
     console.log("🟢 BEFORE adding pog:", pogResult.name, "Inventory size:", inventory.length);
@@ -337,11 +337,14 @@ function addPogToInventory(pogResult) {
     inventory.push(pogResult);
     refreshInventory();
     xp += Math.floor(pogResult.income * (15 * level / 15));
+    cratesOpened++;
     sorting();
     levelup();
-    console.log("🟡 AFTER adding pog, before save. Inventory size:", inventory.length);
-    save();
-    console.log("🔵 AFTER save completed. Inventory size:", inventory.length);
+    if (!skipSave) {
+        console.log("🟡 AFTER adding pog, before save. Inventory size:", inventory.length);
+        save();
+        console.log("🔵 AFTER save completed. Inventory size:", inventory.length);
+    }
 }
 
 // ===== SKIP ANIMATION SYSTEM =====
@@ -500,7 +503,6 @@ async function openCrateWithAnimation(index) {
     if (!result) return;
 
     addPogToInventory(result);
-    cratesOpened++;
     refreshInventory();
     
     // IMPORTANT: Clean up any leftover state first
@@ -538,8 +540,8 @@ async function openMultipleCratesWithAnimation(index, count) {
         rarityOrder[pog.rarity] > rarityOrder[highest.rarity] ? pog : highest
     );
 
-    results.forEach(result => addPogToInventory(result));
-    cratesOpened += count;
+    results.forEach(result => addPogToInventory(result, true));
+    save(); // single save after all pogs added
     useClarityPreview(count);
     refreshInventory();
 

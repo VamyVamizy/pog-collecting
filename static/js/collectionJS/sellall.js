@@ -4,7 +4,6 @@ document.getElementById("sellAll").addEventListener("click", () => {
     if (confirmation == false) {
         return;
     }
-    save()
     if (!searching) {
         const initialInv = inventory.length
         for (let i = initialInv - 1; i >= 0; i--) {
@@ -16,7 +15,7 @@ document.getElementById("sellAll").addEventListener("click", () => {
                 break;
             }
             console.log(`Item sold at index: ${i} (name: ${inventory[i].name}), and lock is: ${inventory[i].locked}`)
-            sellItem(inventory[i].id, Math.round((inventory[i].income * 2.94 * (level / 1.6))**((level / 100) + 1)), inventory[i].locked)
+            sellItem(inventory[i].id, Math.round(inventory[i].income * 5.921), inventory[i].locked, true)
         }
     } else {
         const filteredItems = inventory.filter(item => item.name.toLowerCase().includes(itemSearched));
@@ -28,9 +27,11 @@ document.getElementById("sellAll").addEventListener("click", () => {
                 continue;
             }
             if (indexInInventory !== -1) {
-                sellItem(item.id, Math.round((item.income * 2.94 * (level / 1.6))**((level / 100) + 1)), item.locked); //sellvalue
+                sellItem(item.id, Math.round(item.income * 5.921), item.locked, true); 
             }
         }
     }
     userIncome = getTotalIncome();
+    // Single save after all items are sold
+    save();
 });
