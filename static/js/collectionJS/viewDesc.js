@@ -8,7 +8,7 @@ document.getElementById("inventory").addEventListener("click", (e) => {
     const id = itemDiv.dataset.id;
     const item = inventory.find(i => i.id == id);
     if (!item) return; // defensive: item not found
-    let sellvalue = Math.round((item.income * 2.94 * (level / 1.6))**((level / 100) + 1));
+    let sellvalue = Math.round((item.income * 5.921));
     selectedID = item.id;
     refreshInventory();
     viewDesc(

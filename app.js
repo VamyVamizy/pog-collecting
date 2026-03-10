@@ -369,10 +369,161 @@ app.post('/datasave', (req, res) => {
                         return res.status(500).json({ message: 'Error updating user settings' });
                     }
                     req.session.user = { ...req.session.user, ...userSave };
-                    return res.json({ message: 'Data saved successfully' });
+                    return res.json({
+                        message: 'Data saved successfully',
+                        corrected: warnings.length > 0 ? {
+                            money: userSave.score,
+                            Isize: userSave.Isize,
+                            wish: userSave.wish,
+                            xp: userSave.xp,
+                            maxXP: userSave.maxxp,
+                            level: userSave.level,
+                            cratesOpened: userSave.cratesOpened,
+                            totalSold: userSave.totalSold,
+                            mergeCount: userSave.mergeCount,
+                            highestCombo: userSave.highestCombo
+                        } : null
+                    });
                 }
             );
         });
+    });
+});
+
+// ── Server-side slot purchase ─────────────────────────────────────────────
+// Handles Digipog payment AND updates Isize in the DB atomically.
+// Client calls this instead of modifying Isize locally.
+app.post('/api/buy-slots', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const fid = req.session.user.fid;
+    const amount = Number(req.body.amount);
+    const pin = req.body.pin;
+
+    if (!Number.isFinite(amount) || amount < 1 || amount > 90) {
+        return res.status(400).json({ success: false, message: 'Invalid slot amount' });
+    }
+
+    // Check current Isize in DB first
+    usdb.get('SELECT Isize FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err || !row) {
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        const currentIsize = Number(row.Isize) || 10;
+        if (currentIsize + amount > 100) {
+            return res.status(400).json({ success: false, message: 'Would exceed 100 slots' });
+        }
+
+        const slotPrice = 25 * amount;
+        const isAdmin = fid === 73 || fid === 44 || fid === 87 || fid === 26 || fid === 43 || fid === 1 || fid === 127;
+
+        // Helper to finalize the DB update after payment succeeds
+        function finalizeSlotPurchase() {
+            const newIsize = currentIsize + amount;
+            usdb.run(
+                'UPDATE userSettings SET Isize = ? WHERE displayname = ?',
+                [newIsize, displayName],
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating Isize:', dbErr);
+                        return res.status(500).json({ success: false, message: 'Database error' });
+                    }
+                    console.log(`[BUY-SLOTS] ${displayName} bought ${amount} slots. Isize: ${currentIsize} → ${newIsize}`);
+                    return res.json({ success: true, message: `+${amount} slots`, Isize: newIsize });
+                }
+            );
+        }
+
+        if (isAdmin) {
+            // Admins skip payment
+            console.log('Admin slot purchase bypassed cost deduction.');
+            return finalizeSlotPurchase();
+        }
+
+        // Process Digipog payment
+        const paydesc = {
+            from: fid,
+            to: 30,
+            amount: slotPrice,
+            reason: `Pogglebar - Slots x${amount}`,
+            pin: pin,
+            pool: true
+        };
+
+        fetch(`${process.env.AUTH_URL}/api/digipogs/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paydesc),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                finalizeSlotPurchase();
+            } else {
+                res.json({ success: false, message: data.message || 'Payment failed' });
+            }
+        })
+        .catch(err => {
+            console.error('Error during slot payment:', err);
+            res.status(500).json({ success: false, message: 'Payment error' });
+        });
+    });
+});
+
+// ── Server-side wish trade ────────────────────────────────────────────────
+// The client calls this instead of modifying wish/inventory locally.
+// Verifies a Dragon Ball exists in the DB inventory, removes it, increments wish.
+app.post('/api/trade-wish', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const dragonBallId = Number(req.body.dragonBallId);
+
+    if (!Number.isFinite(dragonBallId)) {
+        return res.status(400).json({ error: 'Invalid Dragon Ball ID' });
+    }
+
+    usdb.get('SELECT inventory, wish FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) {
+            console.error('Error reading user for wish trade:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!row) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let inventory;
+        try { inventory = JSON.parse(row.inventory || '[]'); } catch (e) { inventory = []; }
+        const currentWish = Number(row.wish) || 0;
+
+        // Find the Dragon Ball by its unique item id
+        const dbIndex = inventory.findIndex(item => item.id === dragonBallId && item.name === 'Dragon Ball');
+        if (dbIndex === -1) {
+            return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+        }
+
+        // Remove the Dragon Ball and increment wish
+        inventory.splice(dbIndex, 1);
+        const newWish = currentWish + 1;
+
+        usdb.run(
+            'UPDATE userSettings SET inventory = ?, wish = ? WHERE displayname = ?',
+            [JSON.stringify(inventory), newWish, displayName],
+            function (dbErr) {
+                if (dbErr) {
+                    console.error('Error saving wish trade:', dbErr);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (id: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
+                return res.json({ wish: newWish, inventory: inventory });
+            }
+        );
     });
 });
 

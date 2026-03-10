@@ -127,35 +127,33 @@ document.getElementById("purchaseBtn_S").addEventListener("click", () => {
     document.getElementById("slotOver").style.display = "none";
 });
 
-//buy slots function
+//buy slots function — server-side
 function purchaseSlots(price, reason, pin, amount) {
-    fetch('/api/digipogs/transfer', {
-        // post is to use app.post with the route /api/digipogs/transfer
+    fetch('/api/buy-slots', {
         method: 'POST',
-        // credentials include to send cookies
         credentials: 'include',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            price: price,
-            reason: `Pogglebar - ${reason}`,
+            amount: amount,
             pin: pin
         })
     }).then(response => response.json())
         .then(data => {
             if (data.success) {
-                // add purchased item effect here
-                Isize += amount;
+                // Apply server-authoritative Isize
+                Isize = data.Isize;
                 refreshInventory();
                 save();
                 showPurchaseSuccess(`Inventory expanded! +${amount} slots added! (-${abbreviateNumber(price)} Digipogs) 📦`);
             } else {
-                showPurchaseError(`Slot purchase failed: ${data.message} 💰`);            }
+                showPurchaseError(`Slot purchase failed: ${data.message} 💰`);
+            }
         })
         .catch(err => {
             console.error("Error during purchase:", err);
-            showPurchaseError("An connection error occurred. Please try again later. 🔌");
+            showPurchaseError("A connection error occurred. Please try again later. 🔌");
         })
 };
 
