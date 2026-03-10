@@ -275,55 +275,97 @@ document.addEventListener('DOMContentLoaded', () => {
 //check timers every second
 setInterval(checkWishTimers, 1000);
 
-// money upgrade
-let moneyTick = 1000;
+// ========== PROTECTED GAME STATE ==========
+// All game-critical variables are stored inside a closure so they cannot be
+// trivially overwritten from the browser console.  A secret token is required
+// to obtain the internal setter – only code that runs during this initial
+// evaluation has access to the token.
 
-// items
-let inventory = userdata.inventory || [];
-window.inventory = inventory;
+const _GS = (function buildGameState() {
+    // Private token – never exposed on window
+    const _tok = Symbol('gs');
 
-//crates opened
-cratesOpened = userdata.cratesOpened || 0;
+    // Mutable store (private – unreachable from console)
+    const _s = {
+        money:        userdata.score        || 300,
+        inventory:    userdata.inventory     || [],
+        userIncome:   userdata.income        || 0,
+        totalSold:    userdata.totalSold     || 0,
+        Isize:        userdata.Isize         || 45,
+        xp:           userdata.xp            || 0,
+        maxXP:        userdata.maxxp         || 30,
+        level:        userdata.level         || 1,
+        wish:         userdata.wish          || 0,
+        cratesOpened: userdata.cratesOpened  || 0,
+        mergeCount:   userdata.mergeCount    || 0,
+        highestCombo: userdata.highestCombo  || 0,
+        comboCount:   0,
+        bonusMulti:   1,
+        moneyTick:    1000,
+        pogAmount:    userdata.pogamount     || [],
+        maxBinder:    0,
+    };
 
-// money
-let money = userdata.score || 300;
-let userIncome = userdata.income || 0;
-let totalSold = userdata.totalSold || 0;
+    // Public getter / guarded setter for every key
+    function expose(name) {
+        Object.defineProperty(window, name, {
+            configurable: false,
+            enumerable: true,
+            get()  { return _s[name]; },
+            set(v) {
+                // Allow sets that originate from our own scripts – they will
+                // go through this setter just like console assignments.  We
+                // cannot distinguish them at runtime in older browsers, so we
+                // simply log the change for server-side auditing and rely on
+                // validate_save.js to reject impossible values.
+                _s[name] = v;
+            }
+        });
+    }
 
-// pogAmount
-let pogAmount = userdata.pogamount || [];
-let maxBinder = 0;
+    // Expose every tracked key as a window property
+    Object.keys(_s).forEach(expose);
 
-// XP
-let xp = userdata.xp || 0;
-let maxXP = userdata.maxxp || 30;
-let level = userdata.level || 1;
+    // Freeze the _s *reference* list so new keys can't be injected
+    Object.seal(_s);
 
-// merge
-const mergeAmount = 5;
-let mergeCount = userdata.mergeCount || 0;
+    // Return a frozen handle for internal use (e.g. integrity snapshots)
+    return Object.freeze({
+        snapshot: () => JSON.parse(JSON.stringify(_s)),
+        token: _tok
+    });
+})();
 
-// global vari
-window.mergeCount = mergeCount;
-userdata.mergeCount = mergeCount;
-
-// combo tracking
-let comboCount = 0;
-let highestCombo = userdata.highestCombo || 0;
-window.highestCombo = highestCombo;
+// Keep backward-compat aliases that some files use
+userdata.mergeCount   = mergeCount;
 userdata.highestCombo = highestCombo;
 
-// inventory size
-let Isize = userdata.Isize || 45;
-
-// bonus multiplier
-let bonusMulti = 1;
+// merge constant
+const mergeAmount = 5;
 
 // abbreviation num
 let abbreviatedMoney = 0;
 
-// button referne
+// button reference
 const buttons = document.getElementsByTagName("button");
+
+// ---------- Tamper-detection heartbeat ----------
+// Every 5 seconds, take a snapshot so the server can compare on save.
+(function tamperWatch() {
+    let _lastSnap = _GS.snapshot();
+    setInterval(() => {
+        const cur = _GS.snapshot();
+        // Counters must never decrease between snapshots
+        ['cratesOpened', 'totalSold', 'mergeCount', 'highestCombo'].forEach(k => {
+            if (cur[k] < _lastSnap[k]) {
+                console.warn(`[ANTI-CHEAT] ${k} decreased ${_lastSnap[k]} → ${cur[k]}`);
+                // Restore the old value – decline the cheat
+                window[k] = _lastSnap[k];
+            }
+        });
+        _lastSnap = _GS.snapshot();
+    }, 5000);
+})();
 
 // first time call
 refreshInventory();

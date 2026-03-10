@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const digio = require('socket.io-client');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 //debug
 process.on('uncaughtException', (err) => {
@@ -26,6 +27,7 @@ process.on('exit', (code) => {
 const achievements = require("./modules/backend_js/trophyList.js");
 const crateRef = require("./modules/backend_js/crateRef.js");
 const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
+const { validateSave } = require('./backend_data/validate_save.js');
 const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
 require('./backend_data/marketplace/trading_socket')(io);
 // banned list helper (used to print/inspect banned users)
@@ -116,6 +118,7 @@ app.set('trust proxy', true);
 app.use('/static', express.static('static'));
 app.use(express.urlencoded({limit: '50mb', extended: true }));
 app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -148,15 +151,21 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
-    const redirectAfter = encodeURIComponent(THIS_URL);
-
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
         res.clearCookie("connect.sid");
 
-        // Force auth provider logout
-        res.redirect(`${AUTH_URL}/logout?redirectURL=${redirectAfter}`);
+        const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+        if (wantsJson) {
+            return res.json({ redirect: '/logged-out' });
+        }
+        return res.redirect('/logged-out');
     });
+});
+
+// logged-out landing page
+app.get('/logged-out', (req, res) => {
+    res.render('loggedout');
 });
 
 // patch notes page
@@ -203,7 +212,7 @@ app.get('/playerbase', (req, res) => {
             // If current user is an admin, print the banned list to server console for debugging
             try {
                 const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
-                const adminIds = [73,84,44,87];
+                const adminIds = [73,84,44,87,43];
                 if (currentId && adminIds.includes(currentId)) {
                     console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
                 }
@@ -211,7 +220,13 @@ app.get('/playerbase', (req, res) => {
                 console.error('Error while printing banned list for admin:', e);
             }
 
-            res.render('playerbase', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+            res.render('playerbase', {
+                userdata: req.session.user,
+                maxPogs: pogCount,
+                pogList: results,
+                scores: rows,
+                bannedList: (bannedListModule && typeof bannedListModule.getBannedList === 'function') ? bannedListModule.getBannedList() : []
+            });
         }
     );
 });
@@ -262,7 +277,14 @@ app.get('/api/auctions/active', (req, res) => {
 
 // save data route
 app.post('/datasave', (req, res) => {
-    const userSave = {
+    if (!req.session || !req.session.user || !req.session.user.displayName) {
+        return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+
+    // 1. Build the raw incoming save object from the client
+    const incoming = {
         theme: req.body.lightMode,
         score: req.body.money,
         inventory: req.body.inventory,
@@ -292,13 +314,39 @@ app.post('/datasave', (req, res) => {
         clarityUsedCount: req.body.clarityUsedCount
     }
 
-    // save to session
-    req.session.save(err => {
+    // 2. Fetch the current DB row so we can compare for cheating
+    usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
         if (err) {
-            console.error('Error saving session:', err);
-            return res.status(500).json({ message: 'Error saving session' });
-        } else {
-                const params = [
+            console.error('Error reading current user for validation:', err);
+            return res.status(500).json({ message: 'Error reading user data' });
+        }
+
+        // Parse JSON columns from the DB row
+        let current = {};
+        if (row) {
+            current = { ...row };
+            try { current.inventory = JSON.parse(row.inventory || '[]'); } catch (e) { current.inventory = []; }
+            try { current.pogamount = JSON.parse(row.pogamount || '[]'); } catch (e) { current.pogamount = []; }
+            try { current.achievements = JSON.parse(row.achievements || '[]'); } catch (e) { current.achievements = []; }
+            try { current.tiers = JSON.parse(row.tiers || '[]'); } catch (e) { current.tiers = []; }
+            try { current.crates = JSON.parse(row.crates || '[]'); } catch (e) { current.crates = []; }
+        }
+
+        // 3. Validate & sanitize
+        const { sanitized: userSave, warnings } = validateSave(incoming, current, results);
+
+        if (warnings.length > 0) {
+            console.warn(`[DATASAVE] Validation warnings for ${displayName}:`, warnings);
+        }
+
+        // 4. Persist to DB
+        req.session.save(saveErr => {
+            if (saveErr) {
+                console.error('Error saving session:', saveErr);
+                return res.status(500).json({ message: 'Error saving session' });
+            }
+
+            const params = [
                 req.session.user.fid,
                 userSave.theme,
                 userSave.score,
@@ -311,25 +359,120 @@ app.post('/datasave', (req, res) => {
                 userSave.totalSold,
                 userSave.cratesOpened,
                 JSON.stringify(userSave.pogamount),
-                JSON.stringify(userSave.achievements),
-                JSON.stringify(userSave.tiers),
+                JSON.stringify(userSave.achievements || incoming.achievements),
+                JSON.stringify(userSave.tiers || incoming.tiers),
                 userSave.mergeCount,
-                req.session.user.highestCombo,
+                userSave.highestCombo,
                 userSave.wish,
                 JSON.stringify(userSave.crates),
                 userSave.pfp,
-                req.session.user.displayName
-            ]
-            usdb.run(`UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`, params, function (err) {
-                if (err) {
-                    console.error('Error updating user settings:', err);
-                    return res.status(500).json({ message: 'Error updating user settings' });
+                displayName
+            ];
+
+            usdb.run(
+                `UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`,
+                params,
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating user settings:', dbErr);
+                        return res.status(500).json({ message: 'Error updating user settings' });
+                    }
+                    req.session.user = { ...req.session.user, ...userSave };
+                    return res.json({ message: 'Data saved successfully' });
                 }
-                req.session.user = { ...req.session.user, ...userSave };
-                return res.json({ message: 'Data saved successfully' });
-            });
-        }
+            );
+        });
     });
+});
+
+// ── Server-side crate opening ─────────────────────────────────────────────
+// The client calls this instead of rolling RNG locally.
+// Returns the pog result; the client is responsible for calling save() after.
+app.post('/api/open-crate', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const crateIndex = Number(req.body.crateIndex);
+    if (!Number.isFinite(crateIndex) || crateIndex < 0 || crateIndex >= crateRef.length) {
+        return res.status(400).json({ error: 'Invalid crate index' });
+    }
+
+    const crate = crateRef[crateIndex];
+    const pogListLocal = results; // server's master pog list
+    if (!pogListLocal || !pogListLocal.length) {
+        return res.status(500).json({ error: 'Pog list not loaded' });
+    }
+
+    const norm = s => String(s || '').trim().toLowerCase();
+
+    // Apply drop rate boost if client reports it (trust-but-verify: only allow 1.5x max)
+    let multiplier = 1.0;
+    if (req.body.dropRateBoost === true) {
+        multiplier = 1.5;
+    }
+
+    // Roll RNG server-side
+    let rand = Math.random();
+    let cumulativeChance = 0;
+    let pogResult = null;
+
+    for (const tier of crate.rarities) {
+        const boostedChance = (Number(tier.chance) || 0) * multiplier;
+        cumulativeChance += boostedChance;
+        if (rand < cumulativeChance) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
+            if (candidates.length === 0) continue;
+
+            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+            const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
+            const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+
+            pogResult = {
+                locked: false,
+                pogid: chosen.id || null,
+                name: chosen.name,
+                id: Date.now() + Math.floor(Math.random() * 10000),
+                rarity: chosen.rarity,
+                pogcol: chosen.color || 'white',
+                color: meta.color || 'white',
+                income: meta.income || 5,
+                description: chosen.description || '',
+                creator: chosen.creator || ''
+            };
+            break;
+        }
+    }
+
+    // Fallback if roll missed all tiers
+    if (!pogResult) {
+        const fallbackTier = crate.rarities[crate.rarities.length - 1];
+        if (fallbackTier) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
+            if (candidates.length > 0) {
+                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+                pogResult = {
+                    locked: false,
+                    pogid: chosen.id || null,
+                    name: chosen.name,
+                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    rarity: chosen.rarity,
+                    pogcol: chosen.color || 'white',
+                    color: meta.color || 'white',
+                    income: meta.income || 5,
+                    description: chosen.description || '',
+                    creator: chosen.creator || ''
+                };
+            }
+        }
+    }
+
+    if (!pogResult) {
+        return res.status(500).json({ error: 'Failed to generate pog result' });
+    }
+
+    return res.json({ ok: true, pogResult });
 });
 
 // Express route to handle digipog transfer requests
@@ -343,7 +486,7 @@ app.post('/api/digipogs/transfer', (req, res) => {
     const id = req.session.user.fid; // Formbar user ID of payer from session
     
     // carter and vincent ids for testing respectively
-    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87;
+    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87 || id === 43;
     
     if (isAdmin) {
         // For admins, return success without processing actual transaction
@@ -449,11 +592,10 @@ app.post('/api/user/sync-inventory', express.json(), (req, res) => {
         return res.json({ ok: true, changes: this.changes });
     });
 });
-
-// Admin: ban a user (add to banned list)
+// ban hammer (from Phighting!)
 app.post('/api/ban', express.json(), (req, res) => {
     // Simple admin check (same test used elsewhere)
-    const adminIds = [73,44,87];
+    const adminIds = [73,44,87,43];
     const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
     if (!currentId || !adminIds.includes(currentId)) {
         return res.status(403).json({ ok: false, message: 'forbidden' });
@@ -465,7 +607,7 @@ app.post('/api/ban', express.json(), (req, res) => {
     if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
 
     // Protect certain internal/admin FIDs from being banned.
-    const PROTECTED_FIDS = [73, 44, 87];
+    const PROTECTED_FIDS = [73, 44, 87, 43];
     if (fid && PROTECTED_FIDS.includes(fid)) {
         return res.status(400).json({ ok: false, message: 'cannot ban this user' });
     }
@@ -476,6 +618,29 @@ app.post('/api/ban', express.json(), (req, res) => {
         return res.json({ ok: true });
     } catch (e) {
         console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// unban user
+app.post('/api/unban', express.json(), (req, res) => {
+    const adminIds = [73,44,87,43];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.removeBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to remove banned user', e);
         return res.status(500).json({ ok: false });
     }
 });
