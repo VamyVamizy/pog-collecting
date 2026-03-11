@@ -302,8 +302,17 @@ app.post('/datasave', (req, res) => {
         highestCombo: req.body.highestCombo,
         wish: req.body.wish,
         crates: req.body.crates,
-        pfp: req.body.pfp
-    };
+        pfp: req.body.pfp,
+        incomeWishActive: req.body.incomeWishActive,
+        incomeWishEndTime: req.body.incomeWishEndTime,
+        dropRateWishActive: req.body.dropRateWishActive,
+        dropRateWishEndTime: req.body.dropRateWishEndTime,
+        clarityWishActive: req.body.clarityWishActive,
+        clarityWishEndTime: req.body.clarityWishEndTime,
+        clarityPreviews: req.body.clarityPreviews,
+        clarityResults: req.body.clarityResults,
+        clarityUsedCount: req.body.clarityUsedCount
+    }
 
     // 2. Fetch the current DB row so we can compare for cheating
     usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {

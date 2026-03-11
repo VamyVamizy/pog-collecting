@@ -55,6 +55,7 @@ document.getElementById("useWish").addEventListener("click", async () => {
             
             wish -= 7;
             save();
+            saveWishStatesToCookies();
             document.getElementById('wishCarousel').style.display = 'none';
         };
     } else {

@@ -84,7 +84,7 @@ li {
     padding: 0 20px 0 20px;
     display: grid;
     margin-top: 20px;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     height: 75vh;
     overflow-x: auto;
     overflow-y: auto;
@@ -180,7 +180,7 @@ li {
     transform-origin: bottom right;
     margin-top: -20px;
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 1;
     box-shadow: 0 0 5px black;
 }
 
