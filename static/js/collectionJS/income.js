@@ -26,6 +26,7 @@ userIncome = getTotalIncome();
 
 // Toggle state: false = show final income, true = show base + multiplier
 let showBaseIncome = false;
+let _lastFinalText = '';
 
 //update income display
 function updateIncomeDisplay() {
@@ -40,36 +41,43 @@ function updateIncomeDisplay() {
     const multiplier = 1 + (level / 16) ** (level / 100);
     const multDisplay = multiplier.toFixed(2);
 
-    const incomeEl = document.getElementById("income");
+    const widget = document.getElementById("income");
+    const finalEl = widget.querySelector('.iw-final');
+    const detailEl = widget.querySelector('.iw-detail');
 
-    let text;
-    if (showBaseIncome) {
-        // Detailed view: base × multiplier
-        text = `$${abbreviateNumber(baseIncome)}/s × ${multDisplay}`;
-        if (incomeWishActive && Date.now() < incomeWishEndTime) {
-            text += ` × 1.3🌟`;
+    // Build text
+    const finalText = `$${abbreviateNumber(currentIncome)}/s`;
+    const wishActive = incomeWishActive && Date.now() < incomeWishEndTime;
+    const multStr = wishActive ? `×${multDisplay} ×1.3🌟` : `×${multDisplay}`;
+    const detailHTML = `$${abbreviateNumber(baseIncome)}/s <span class="iw-mult">${multStr}</span>`;
+
+    // Only update DOM when changed
+    if (finalEl.textContent !== finalText) {
+        finalEl.textContent = finalText;
+        // Pulse the icon glow
+        if (_lastFinalText !== '') {
+            widget.classList.remove('income-pulse');
+            void widget.offsetWidth;
+            widget.classList.add('income-pulse');
         }
-    } else {
-        // Default view: final income
-        text = `$${abbreviateNumber(currentIncome)}/s`;
+        _lastFinalText = finalText;
     }
-    // Only update DOM if text actually changed to avoid flashing
-    if (incomeEl.textContent !== text) {
-        incomeEl.textContent = text;
+    if (detailEl.innerHTML !== detailHTML) {
+        detailEl.innerHTML = detailHTML;
     }
 }
 
-// Click to toggle between final income and base + multiplier
-document.getElementById("income").style.cursor = "pointer";
-document.getElementById("income").addEventListener("click", () => {
+// Click toggles between final and detail via CSS class
+const incomeWidget = document.getElementById("income");
+incomeWidget.addEventListener('click', () => {
     showBaseIncome = !showBaseIncome;
-    updateIncomeDisplay();
+    incomeWidget.classList.toggle('show-detail', showBaseIncome);
 });
 
 // update income display every second
 setInterval(() => {
-    money += getTotalIncome(); // This will now include the multiplier + wish boost
-    updateIncomeDisplay(); // Update the display too
+    money += getTotalIncome();
+    updateIncomeDisplay();
 }, 1000);
 
 // update display on page load
