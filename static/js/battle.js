@@ -373,19 +373,19 @@ const gameState = {
   flash: null
 };
 
-// positions matching your render() draws:
+// positions matching render() draws:
 const playerPogsPos = [
   { x: 200, y: 700 },
   { x: 500, y: 700 },
-  { x: 800, y: 700 }, // red pog: index 2 in your spawn call (but you used 2 -> check)
+  { x: 800, y: 700 }, // red pog: index 2 in your spawn call (but 2 -> check was used)
   { x: 1100, y: 700 }
 ];
 
 const enemyPogsPos = [
-  { x: 800, y: 200 },
-  { x: 1100, y: 200 },
-  { x: 1400, y: 200 },
-  { x: 1700, y: 200 }
+  { x: 800, y: 200 }, // void stalker
+  { x: 1100, y: 200 }, // shadow beast
+  { x: 1400, y: 200 }, // crystal golem
+  { x: 1700, y: 200 } // dark sentinel (defeated)
 ];
 
 function render() {
@@ -396,20 +396,16 @@ function render() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // draw pogs / UI 
-  // players
-  drawCircle(200, 700, 50, '#00ff00');
-  drawCircle(500, 700, 50, '#0000ff');
-  drawCircle(800, 700, 50, '#ff0000'); // red pog
-  drawCircle(1100, 700, 50, '#ffff00');
+  // Draw enemy panel (replaces simple enemy circles)
+  drawEnemyPanelUI();
 
-  // enemies
-  drawCircle(800, 200, 50, '#00ffff');
-  drawCircle(1100, 200, 50, '#ff00ff');
-  drawCircle(1400, 200, 50, '#ffffff');
-  drawCircle(1700, 200, 50, '#888888');
+  // Draw character panel
+  drawCharacterPanelUI();
 
-  // UI (buttons)
+  // draw turn timeline
+  drawTurnTimeline();
+
+  // UI buttons (keep existing)
   drawCircle(1650, 800, 60, '', '#ffffff');
   drawCircle(1800, 700, 60, '', '#ffffff');
   drawCircle(1850, 50, 40, '', '#ffffff');
@@ -417,16 +413,23 @@ function render() {
   drawCircle(1650, 50, 40, '', '#ffffff');
 
   drawPauseIcon(1850, 50, 40, '#ffffff');
-drawDoubleTriangleIcon(1750, 50, 40, '#ffffff', '#ffffff');
-drawAutoBattleIconA(1650, 50, 40, '#ffffff');
-
+  drawDoubleTriangleIcon(1750, 50, 40, '#ffffff', '#ffffff');
+  drawAutoBattleIconA(1650, 50, 40, '#ffffff');
 
   roundRect(ctx, 1613, 845, 75, 25, 40, 'black', 'white', 2, 'Basic', { color: '#ffffff', font: 'bold 14px sans-serif' });
   roundRect(ctx, 1763, 745, 75, 25, 40, 'black', 'white', 2, 'Skill', { color: '#ffffff', font: 'bold 14px sans-serif' });
 
+  // Skill points (keep existing)
+  drawFourPointStar(ctx, 1300, 800, 25, 5, 'white', '#ffffff', 1);
+  drawFourPointStar(ctx, 1360, 800, 25, 5, 'white', '#ffffff', 1);
+  drawFourPointStar(ctx, 1420, 800, 25, 5, 'white', '#ffffff', 1);
+  drawFourPointStar(ctx, 1480, 800, 25, 5, '', '#ffffff', 1);
+  drawFourPointStar(ctx, 1540, 800, 25, 5, '', '#ffffff', 1);
+
   // draw projectiles on top
   for (const prj of gameState.projectiles) renderProjectile(prj);
 }
+
 
 function update(dt) { 
   for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
@@ -513,3 +516,508 @@ function renderProjectile(prj) {
     drawCircle(pos.x, pos.y, 12 * (prj.size || 1), '#ff6600');
   }
 }
+/*
+   ##### /  ##     ##### ##    # ###      ##### ##      ##### ######## ##### #####   
+######  /####   ######  /### /  /###   ######  /##   ######  /#######/ ####/ ####    
+#   /  / ###   /#   /  / ###/  /  ###  /#   /  / ##  /#   /  /##   /   ###  /##      
+   /  /   ##  /    /  /   ##  /    ###    /  /   ## /    /  / ##  /    ##  /##       
+  ## ##    ## ##  /##/    ##  ##     ##   ## ##   ## ##  /##/ ## /     ## /##        
+  ## ##    ##    /##      ## ###     ##   ## ##   ##    /##  ##/      ##/##         
+  ## ######/    /##       ## ##      ##   ## ##   ##   /##   ##       ###           
+  ## #####     /##        ## ##      ##   ## ##   ##  /##    ##       ##            
+  ## ##       /##         ## ##      ##   ## ##   ## /##     ##       ##            
+  ## ##      /##          ## ##      ##   ## ##   ##/##      ##       ##            
+  #  ##     /##           #  ##      ##   #  ##   ###       ##        ##            
+     /     /##               /      ##       /     ##        /         ##            
+/##/     /##            /##/      ##    /##/      ##    /##/          ##             
+######  /##            ######    ##    ######    ##   ######         ##              
+###   /##               ###     ##      ###     ##     ###           ##              
+*/
+
+// Character data structure
+const characters = [
+    {
+        name: "Character 1",
+        maxHp: 100,
+        currentHp: 85,
+        maxEnergy: 100,
+        currentEnergy: 60,
+        color: '#00ff00',
+        position: { x: 200, y: 700 }
+    },
+    {
+        name: "Character 2", 
+        maxHp: 120,
+        currentHp: 120,
+        maxEnergy: 80,
+        currentEnergy: 20,
+        color: '#0000ff',
+        position: { x: 500, y: 700 }
+    },
+    {
+        name: "Character 3",
+        maxHp: 90,
+        currentHp: 45,
+        maxEnergy: 120,
+        currentEnergy: 100,
+        color: '#ff0000',
+        position: { x: 800, y: 700 }
+    },
+    {
+        name: "Character 4",
+        maxHp: 110,
+        currentHp: 110,
+        maxEnergy: 90,
+        currentEnergy: 75,
+        color: '#ffff00',
+        position: { x: 1100, y: 700 }
+    }
+];
+// enemy data structure 
+const enemies = [
+  {
+    name: "Void Stalker",
+    maxHp: 150,
+    currentHp: 120,
+    color: '#00ffff',
+    position: { x: 800, y: 200 }
+  },
+  {
+    name: "Shadow beast",
+    maxHp: 200,
+    currentHp: 200,
+    color: '#ff00ff',
+    position: { x: 1100, y: 200 }
+  },
+  {
+    name: "Crystal Golem",
+    maxHp: 300,
+    currentHp: 75,
+    color: '#ffffff',
+    position: { x: 1400, y: 200 }
+  },
+  {
+    name: "Dark Sentinel",
+    maxHp: 180,
+    currentHp: 0,
+    color: '#888888',
+    position: { x: 1700, y: 200 }
+  }
+];
+/*
+##### ###  ### ##     ###  ### ##### /          ##### ##    ##### ###    ##### #####  ##### ##    
+####  /###/ ####     ###  / ######  /        ######  /### ######  /### ######  /### ######  /###  
+###  /  ###  ###    ###  /  /#   /  /        /#   /  / ## #   /  / ### #   /  / ### #   /  / ##   
+##  /    ##  ##    ###  /      /  /             /  /  ##    /  /   ##    /  /   ##    /  /  ##    
+## ##     ## ##   ###  /      ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+## ##     ## ##  ###  /       ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+## ##     ## ## ###  /        ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+## ##     ## ######/          ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+## ##     ## ####             ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+## ##     ## ##               ## ##            ## ##  ##   ## ##   ##   ## ##   ##   ## ##  ##    
+#  ##     ## ##               #  ##            #  ##  ##   #  ##   ##   #  ##   ##   #  ##  ##    
+   /      ## ##                  /                /   ##      /    ##      /    ##      /   ##    
+/##/      ## ##              /##/            /##/    ##  /##/     ##  /##/     ##  /##/    ##     
+######    ## ##             ######          ######   ## ######    ## ######    ## ######   ##     
+###       ## ##              ###             ###     ##  ###      ##  ###      ##  ###     ##     
+*/
+
+// Turn order and speed system
+const turnOrder = {
+    queue: [], // Array of turn participants
+    currentTurn: 0,
+    turnCounter: 1
+};
+
+// Speed values for characters and enemies
+const speedStats = {
+    characters: [
+        { id: 'char1', speed: 120, name: 'Character 1' },
+        { id: 'char2', speed: 95, name: 'Character 2' },
+        { id: 'char3', speed: 110, name: 'Character 3' },
+        { id: 'char4', speed: 85, name: 'Character 4' }
+    ],
+    enemies: [
+        { id: 'enemy1', speed: 100, name: 'Void Stalker' },
+        { id: 'enemy2', speed: 90, name: 'Shadow beast' },
+        { id: 'enemy3', speed: 75, name: 'Crystal Golem' },
+        { id: 'enemy4', speed: 0, name: 'Dark Sentinel' } // Defeated = 0 speed
+    ]
+};
+
+// Calculate turn order based on speed
+function calculateTurnOrder() {
+    const allUnits = [];
+    
+    // Add alive characters
+    speedStats.characters.forEach((char, index) => {
+        if (characters[index].currentHp > 0) {
+            allUnits.push({
+                ...char,
+                type: 'character',
+                index: index,
+                color: characters[index].color,
+                hp: characters[index].currentHp,
+                maxHp: characters[index].maxHp
+            });
+        }
+    });
+    
+    // Add alive enemies
+    speedStats.enemies.forEach((enemy, index) => {
+        if (enemies[index].currentHp > 0) {
+            allUnits.push({
+                ...enemy,
+                type: 'enemy',
+                index: index,
+                color: enemies[index].color,
+                hp: enemies[index].currentHp,
+                maxHp: enemies[index].maxHp
+            });
+        }
+    });
+    
+    // Sort by speed (highest first)
+    allUnits.sort((a, b) => b.speed - a.speed);
+    
+    // Create extended queue (show next 8-10 turns)
+    turnOrder.queue = [];
+    for (let i = 0; i < 10; i++) {
+        turnOrder.queue.push(...allUnits);
+    }
+    
+    return turnOrder.queue.slice(0, 10); // Return first 10 turns
+}
+
+// Draw character health bar
+function drawHealthBar(x, y, width, height, currentHp, maxHp, bgColor = '#333', fillColor = '#4CAF50') {
+    // Background
+    roundRect(ctx, x, y, width, height, 4, bgColor, '#666', 1);
+    
+    // Health fill
+    const healthPercent = Math.max(0, currentHp / maxHp);
+    const fillWidth = (width - 4) * healthPercent;
+    
+    if (fillWidth > 0) {
+        // Color based on health percentage
+        let healthColor = fillColor;
+        if (healthPercent < 0.25) healthColor = '#f44336'; // Red for low health
+        else if (healthPercent < 0.5) healthColor = '#ff9800'; // Orange for medium health
+        
+        roundRect(ctx, x + 2, y + 2, fillWidth, height - 4, 2, healthColor);
+    }
+    
+    // Health text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${currentHp}/${maxHp}`, x + width/2, y + height/2);
+}
+
+// Draw energy bar (smaller, below health)
+function drawEnergyBar(x, y, width, height, currentEnergy, maxEnergy) {
+    // Background
+    roundRect(ctx, x, y, width, height, 3, '#1a1a2e', '#444', 1);
+    
+    // Energy fill
+    const energyPercent = Math.max(0, currentEnergy / maxEnergy);
+    const fillWidth = (width - 2) * energyPercent;
+    
+    if (fillWidth > 0) {
+        // Purple/blue gradient for energy
+        const gradient = ctx.createLinearGradient(x, y, x + width, y);
+        gradient.addColorStop(0, '#9c27b0');
+        gradient.addColorStop(1, '#3f51b5');
+        
+        roundRect(ctx, x + 1, y + 1, fillWidth, height - 2, 2, gradient);
+    }
+}
+
+// Draw character portrait circle with health info
+function drawCharacterPanel(character, index) {
+    const { position, color, name, currentHp, maxHp, currentEnergy, maxEnergy } = character;
+    const { x, y } = position;
+    
+    // Character circle (existing)
+    drawCircle(x, y, 50, color, '#fff');
+    
+    // Health bar above character
+    const barWidth = 120;
+    const barHeight = 16;
+    const barX = x - barWidth/2;
+    const barY = y - 80;
+    
+    drawHealthBar(barX, barY, barWidth, barHeight, currentHp, maxHp);
+    
+    // Energy bar below health bar
+    const energyHeight = 8;
+    const energyY = barY + barHeight + 4;
+    
+    drawEnergyBar(barX, energyY, barWidth, energyHeight, currentEnergy, maxEnergy);
+    
+    // Character name
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(name, x, y + 60);
+    
+    // Status effects area (placeholder)
+    // will add stuff here later
+}
+
+// Draw entire character panel
+function drawCharacterPanelUI() {
+    // Semi-transparent background for the entire panel
+    const panelY = 600;
+    const panelHeight = 290;
+    
+    roundRect(ctx, 0, panelY, canvas.width, panelHeight, 0, 'rgba(0, 20, 40, 0.7)', 'rgba(255, 255, 255, 0.1)', 2);
+    
+    // Draw each character
+    characters.forEach((character, index) => {
+        drawCharacterPanel(character, index);
+    });
+}
+/*
+##### #     ##      ##### ###    # ###  ###  ### ##### ##    # ###        ##### /          ##### ##    
+####  /#    #### / ######  /### /  /###/ ###/ #######  /### /  /###  /  ######  /        ######  /### / 
+###  / ##    ###/ /#   /  / ###/  /  ###  ###/ /#   /  / ###/  /  ###/  /#   /  /        /#   /  / ###/  
+##  /  ##    # # /    /  /   ##  /    ###  ##/     /  /   ##  /    ###      /  /        /    /  /   ##   
+## /   ##    #  /    /  /       /      ##  ##     ## ##   ##  ##     ##     /  /             /  /         
+##/    ##    # ##   /##/      ##       ## ##      ## ##   ##  ##     ##    ## ##            ## ##         
+##     ##    # ##  /##        ##       ## ##      ## ##   ##  ##     ##    ## ##            ## ##         
+##     ##    # ## /##         ##       ## ##      ## ##   ##  ##     ##    ## ##            ## ######     
+##     ##    # ##/##          ##       ## ##      ## ##   ##  ##     ##    ## ##            ## #####      
+##     ##    # ###            ##       ## ##      ## ##   ##  ##     ##    ## ##            ## ##         
+#      ##    # ##             ##       ## ##      ## ##   ##  ##     ##    #  ##            #  ##         
+       /     #                ##       #  /       #  /    #    /     ##       /                /          
+   /##/      #            /##/##       /  /       /  /          /##/##    /##/           / /##/         / 
+  /  ####    #           /  ####      /  /       /  /          /  ####   /  ############/ /  ##########/  
+ /    ##     #          /    ##      /  /       /  /          /    ##   /     #########  /     ######     
+ #            #         #            /  /       /  /          #         #                #                
+  ##           ##        ##         ## /       ## /            ##        ##               ##               
+*/
+
+// Draw enemy health bar (different style from character bars)
+function drawEnemyHealthBar(x, y, width, height, currentHp, maxHp, enemyName) {
+    // Background with darker theme for enemies
+    roundRect(ctx, x, y, width, height, 6, 'rgba(40, 0, 0, 0.8)', '#800000', 2);
+    
+    // Health fill
+    const healthPercent = Math.max(0, currentHp / maxHp);
+    const fillWidth = (width - 6) * healthPercent;
+    
+    if (fillWidth > 0 && currentHp > 0) {
+        // Enemy health colors (red theme)
+        let healthColor = '#ff4444';
+        if (healthPercent < 0.25) healthColor = '#cc0000'; // Dark red for low health
+        else if (healthPercent < 0.5) healthColor = '#ff6666'; // Medium red
+        else healthColor = '#ff4444'; // Normal red
+        
+        roundRect(ctx, x + 3, y + 3, fillWidth, height - 6, 3, healthColor);
+    }
+    
+    // Health text
+    ctx.fillStyle = currentHp <= 0 ? '#666' : '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    if (currentHp <= 0) {
+        ctx.fillText('DEFEATED', x + width/2, y + height/2);
+    } else {
+        ctx.fillText(`${currentHp}/${maxHp}`, x + width/2, y + height/2);
+    }
+}
+
+// Draw individual enemy with health bar
+function drawEnemyPanel(enemy, index) {
+    const { position, color, name, currentHp, maxHp } = enemy;
+    const { x, y } = position;
+    
+    // Enemy circle (existing) - dim if defeated
+    const enemyColor = currentHp <= 0 ? '#333' : color;
+    const strokeColor = currentHp <= 0 ? '#666' : '#fff';
+    drawCircle(x, y, 50, enemyColor, strokeColor);
+    
+    // Add defeated overlay
+    if (currentHp <= 0) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.arc(x, y, 50, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // X mark for defeated enemies
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x - 20, y - 20);
+        ctx.lineTo(x + 20, y + 20);
+        ctx.moveTo(x + 20, y - 20);
+        ctx.lineTo(x - 20, y + 20);
+        ctx.stroke();
+    }
+    
+    // Health bar above enemy
+    const barWidth = 140;
+    const barHeight = 18;
+    const barX = x - barWidth/2;
+    const barY = y - 85;
+    
+    drawEnemyHealthBar(barX, barY, barWidth, barHeight, currentHp, maxHp, name);
+    
+    // Enemy name above health bar
+    ctx.fillStyle = currentHp <= 0 ? '#666' : '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(name, x, barY - 5);
+    
+    // Level or threat indicator (optional)
+    if (currentHp > 0) {
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`Lv.${15 + index * 2}`, x, y + 55);
+    }
+}
+
+// Draw entire enemy panel
+function drawEnemyPanelUI() {
+    // Semi-transparent background for enemy area
+    const panelY = 50;
+    const panelHeight = 200;
+    
+    roundRect(ctx, 0, panelY, canvas.width, panelHeight, 0, 'rgba(40, 0, 0, 0.3)', 'rgba(255, 100, 100, 0.1)', 1);
+    
+    // Draw each enemy
+    enemies.forEach((enemy, index) => {
+        drawEnemyPanel(enemy, index);
+    });
+}
+
+// Draw turn order portrait
+function drawTurnPortrait(x, y, size, unit, isActive = false) {
+    const radius = size / 2;
+    
+    // Active turn highlight
+    if (isActive) {
+        // Glowing border for active turn
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 15;
+        drawCircle(x, y, radius + 5, 'rgba(255, 255, 0, 0.3)', '#ffff00');
+        ctx.shadowBlur = 0;
+    }
+    
+    // Unit portrait circle
+    drawCircle(x, y, radius, unit.color, '#fff');
+    
+    // Health indicator (small bar below)
+    const healthPercent = unit.hp / unit.maxHp;
+    const barWidth = size * 0.8;
+    const barHeight = 4;
+    const barX = x - barWidth / 2;
+    const barY = y + radius + 8;
+    
+    // Health bar background
+    roundRect(ctx, barX, barY, barWidth, barHeight, 2, '#333', '#666', 1);
+    
+    // Health fill
+    if (healthPercent > 0) {
+        const fillWidth = barWidth * healthPercent;
+        let healthColor = unit.type === 'character' ? '#4CAF50' : '#ff4444';
+        if (healthPercent < 0.25) healthColor = '#f44336';
+        else if (healthPercent < 0.5) healthColor = '#ff9800';
+        
+        roundRect(ctx, barX, barY, fillWidth, barHeight, 2, healthColor);
+    }
+    
+    // Speed indicator
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(unit.speed.toString(), x, y + radius + 15);
+}
+
+// Draw the entire turn timeline
+function drawTurnTimeline() {
+    const timelineX = canvas.width - 120;
+    const timelineY = 100;
+    const timelineWidth = 100;
+    const timelineHeight = 500;
+    
+    // Timeline background
+    roundRect(ctx, timelineX, timelineY, timelineWidth, timelineHeight, 10, 
+              'rgba(20, 20, 40, 0.8)', 'rgba(255, 255, 255, 0.2)', 2);
+    
+    // Timeline title
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Turn Order', timelineX + timelineWidth/2, timelineY + 10);
+    
+    // Calculate current turn order
+    const currentQueue = calculateTurnOrder();
+    
+    // Draw turn portraits
+    const portraitSize = 40;
+    const spacing = 50;
+    const startY = timelineY + 40;
+    
+    currentQueue.slice(0, 8).forEach((unit, index) => {
+        const portraitX = timelineX + timelineWidth/2;
+        const portraitY = startY + (index * spacing);
+        
+        // Check if this is the active turn
+        const isActive = index === turnOrder.currentTurn;
+        
+        drawTurnPortrait(portraitX, portraitY, portraitSize, unit, isActive);
+        
+        // Turn number indicator
+        ctx.fillStyle = isActive ? '#ffff00' : '#aaa';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${index + 1}`, portraitX - portraitSize/2 - 15, portraitY);
+    });
+    
+    // Current turn indicator
+    ctx.fillStyle = '#ffff00';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`Turn ${turnOrder.turnCounter}`, timelineX + timelineWidth/2, timelineY + timelineHeight - 10);
+}
+// Advance to next turn
+function nextTurn() {
+    turnOrder.currentTurn++;
+    
+    // start new round if all units have been gone through
+    const aliveUnits = calculateTurnOrder().slice(0, 8);
+    if (turnOrder.currentTurn >= aliveUnits.length) {
+        turnOrder.currentTurn = 0;
+        turnOrder.turnCounter++;
+    }
+    
+    // Get current acting unit
+    const currentUnit = aliveUnits[turnOrder.currentTurn];
+    console.log(`Turn ${turnOrder.turnCounter}: ${currentUnit.name} (${currentUnit.type}) is acting`);
+    
+    return currentUnit;
+}
+
+// Initialize turn order
+function initializeTurnOrder() {
+    calculateTurnOrder();
+    turnOrder.currentTurn = 0;
+    turnOrder.turnCounter = 1;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeTurnOrder();
+});
