@@ -28,7 +28,22 @@ function save() {
         })
     })
         .then(response => response.json())
-        .then(() => {
+        .then((data) => {
+            // If server corrected any values (anti-cheat), apply them locally
+            if (data && data.corrected) {
+                const c = data.corrected;
+                if (c.money !== undefined)        money = c.money;
+                if (c.Isize !== undefined)        Isize = c.Isize;
+                if (c.wish !== undefined)         wish = c.wish;
+                if (c.xp !== undefined)           xp = c.xp;
+                if (c.maxXP !== undefined)        maxXP = c.maxXP;
+                if (c.level !== undefined)        level = c.level;
+                if (c.cratesOpened !== undefined)  cratesOpened = c.cratesOpened;
+                if (c.totalSold !== undefined)     totalSold = c.totalSold;
+                if (c.mergeCount !== undefined)    mergeCount = c.mergeCount;
+                if (c.highestCombo !== undefined)  highestCombo = c.highestCombo;
+                console.warn('[ANTI-CHEAT] Server corrected values:', c);
+            }
         })
         .catch(err => {
             console.error("Error saving data:", err);
@@ -162,3 +177,5 @@ document.getElementById("pediaBtn").addEventListener("click", () => {
     save();
     window.location.href = "/pogipedia";
 });
+
+setInterval(save, 1000); 

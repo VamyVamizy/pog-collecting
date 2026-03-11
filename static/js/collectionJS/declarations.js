@@ -257,17 +257,30 @@ function lock(id) {
     save();
 }
 
-//trade for 1/7 wish
+//trade for 1/7 wish — server-side
 function trade(id, locked) {
     if (!locked) {
-        const index = inventory.findIndex(item => item.id === id);
-        inventory.splice(index, 1);
-        wish++;
-        userIncome = getTotalIncome();
-        refreshInventory();
-        save();
+        fetch('/api/trade-wish', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dragonBallId: id })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                console.warn('Trade failed:', data.error);
+                return;
+            }
+            // Apply server-authoritative values
+            wish = data.wish;
+            inventory = data.inventory;
+            userIncome = getTotalIncome();
+            refreshInventory();
+            document.getElementById("descPanel").innerHTML = "";
+        })
+        .catch(err => console.error('Trade error:', err));
     }
-    document.getElementById("descPanel").innerHTML = "";
 }
 
 // color key toggle

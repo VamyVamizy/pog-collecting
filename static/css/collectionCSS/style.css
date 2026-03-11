@@ -40,9 +40,12 @@ h1 {
  
 #income {
     margin-top: 0;
-    
+    padding: 4px 7px;
+    border-radius: 10px;
+    background-color: #d9ff0020;
     font-style: bold;
     font-size: 20px;
+    white-space: nowrap;
 }
 
 h4 {
