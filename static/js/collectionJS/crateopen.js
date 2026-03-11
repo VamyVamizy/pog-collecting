@@ -291,97 +291,29 @@ function validateCrateOpening(count) {
 }
 
 // crateopen.js (client-side)
-function calculatePogResult(index) {
-  console.log(`🎲 Attempting to calculate pog result for index ${index}`);
-
-  // ensure crates is an array (coming from server-side render)
-  if (!Array.isArray(window.userCrates) && Array.isArray(window.crates)) {
-    window.userCrates = window.crates;
-  }
-  const cratesArr = Array.isArray(window.userCrates) ? window.userCrates : (Array.isArray(window.crates) ? window.crates : crates);
-
-  const crate = cratesArr[index];
-  if (!crate || !Array.isArray(crate.rarities)) {
-    console.error("Invalid crate index or configuration:", index, crate);
+async function calculatePogResult(index) {
+  console.log(`🎲 Requesting server-side crate roll for index ${index}`);
+  try {
+    const resp = await fetch('/api/open-crate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        crateIndex: index,
+        dropRateBoost: !!(typeof dropRateWishActive !== 'undefined' && dropRateWishActive && Date.now() < dropRateWishEndTime)
+      })
+    });
+    const data = await resp.json();
+    if (data && data.ok && data.pogResult) {
+      console.log('✅ Server returned pog:', data.pogResult.name, data.pogResult.rarity);
+      return data.pogResult;
+    }
+    console.error('Server crate open failed:', data);
+    return null;
+  } catch (err) {
+    console.error('Network error opening crate:', err);
     return null;
   }
-  console.log(`✅ Using crate ${crate.name || index} with rarities:`, crate.rarities);
-
-  // Ensure pogList exists on the client
-  const localPogList = Array.isArray(window.pogList) ? window.pogList : (typeof pogList !== 'undefined' ? pogList : []);
-  if (!localPogList.length) {
-    console.warn("pogList empty on client — cannot open crates");
-    return null;
-  }
-
-  // helper: normalized string compare
-  const norm = s => String(s || "").trim().toLowerCase();
-
-  // roll
-  let rand = Math.random();
-  let cumulativeChance = 0;
-
-  for (const item of crate.rarities) {
-    cumulativeChance += Number(item.chance) || 0;
-    if (rand < cumulativeChance) {
-      // find candidates using case-insensitive match
-      const candidates = localPogList.filter(p => norm(p.rarity) === norm(item.name));
-
-      // debug output (unique, deduped rarity list)
-      console.log("Looking for rarity:", item.name);
-      console.log("Available pog rarities:", [...new Set(localPogList.map(p => p.rarity))]);
-
-      if (candidates.length === 0) {
-        console.warn(`No pogs for rarity "${item.name}", skipping this rarity (roll continues)`);
-        // continue looping: this lets another rarer/cheaper tier be used if present
-        continue;
-      }
-
-      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-      console.log("Chosen pog:", chosen);
-
-      const meta = (typeof rarityColor !== 'undefined' ? rarityColor : []).find(r => norm(r.name) === norm(chosen.rarity)) || {};
-
-      return {
-        locked: false,
-        pogid: chosen.id || null,
-        name: chosen.name,
-        id: Date.now() + Math.floor(Math.random() * 10000),
-        rarity: chosen.rarity,
-        pogcol: chosen.color || 'white',
-        color: meta.color || 'white',
-        income: meta.income || 5,
-        description: chosen.description || '',
-        creator: chosen.creator || ''
-      };
-    }
-  }
-
-  // fallback: choose from the crate's last rarity bucket if present
-  const fallbackRarity = crate.rarities[crate.rarities.length - 1];
-  if (fallbackRarity) {
-    const fallbackCandidates = localPogList.filter(p => norm(p.rarity) === norm(fallbackRarity.name));
-    if (fallbackCandidates.length > 0) {
-      const chosen = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
-      const meta = (typeof rarityColor !== 'undefined' ? rarityColor : []).find(r => norm(r.name) === norm(chosen.rarity)) || {};
-      console.warn("Using fallback rarity because roll missed:", fallbackRarity.name);
-      return {
-        locked: false,
-        pogid: chosen.id || null,
-        name: chosen.name,
-        id: Date.now() + Math.floor(Math.random() * 10000),
-        rarity: chosen.rarity,
-        pogcol: chosen.color || 'white',
-        color: meta.color || 'white',
-        income: meta.income || 5,
-        description: chosen.description || '',
-        creator: chosen.creator || ''
-      };
-    }
-  }
-
-  console.error("No pog could be selected — crate misconfigured:", crate);
-  return null;
 }
 
 function addPogToInventory(pogResult) {
@@ -560,9 +492,9 @@ async function openCrateWithAnimation(index) {
     // Check for whether to use clarity preview or not
     let result = useClarityPreview();
     
-    // If no predetermined result, calculate normally
+    // If no predetermined result, get from server
     if (!result) {
-        result = calculatePogResult(index);
+        result = await calculatePogResult(index);
     }
     
     if (!result) return;
@@ -596,7 +528,7 @@ async function openMultipleCratesWithAnimation(index, count) {
 
     const results = [];
     for (let i = 0; i < count; i++) {
-        const result = calculatePogResult(index);
+        const result = await calculatePogResult(index);
         if (result) results.push(result);
     }
 

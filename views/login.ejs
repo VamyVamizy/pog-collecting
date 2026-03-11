@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pogglebar – Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: #16213e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 420px;
+            width: 90%;
+        }
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: #aaa;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.85rem 2.5rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #fff;
+            background: #0f3460;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:hover {
+            background: #e94560;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pogglebar</h1>
+        <p class="subtitle">Sign in to start collecting!</p>
+        <a href="<%= authURL %>" class="btn">Login with Formbar</a>
+    </div>
+</body>
+</html>
