@@ -109,11 +109,32 @@
     <%- include("collectionEJS/banner_rightstuff.ejs") %>
     <div id="centerlayout" style="text-align: center;">
         <div id="invcont">
-            <div id="topCont">
-                <div id="space">0/10</div>
+            <div id="searchCont">
+                    <label class="search-widget" for="searchbox">
+                        <button type="button" class="sw-icon" aria-label="Search">🔎</button>
+                        <div class="sw-body">
+                            <input id="searchbox" name="search" type="text" placeholder="Search Pogs..." autocomplete="off">
+                        </div>
+                        <!-- keep the original button id for existing handlers; hide visually -->
+                        <img id="searchbtn" src="../static/icons/buttons_main/search.png" width="20" height="20" title="Search Pogs" style="display:none;">
+                    </label>
+                    <select id="selectSort">
+                        <hr />
+                        <option value="nameAZ">Sort by Name (a-z) &#8593;</option>
+                        <option value="nameZA">Sort by Name (z-a) &#8595;</option>
+                        <hr />
+                        <option value="rarityHf">Sort by Rarity (trash to unique) &#8593;</option>
+                        <option value="rarityLf">Sort by Rarity (unique to trash) &#8595;</option>
+                        <hr />
+                        <option value="svHf">Sort by Sell Value (high to low) &#8593;</option>
+                        <option value="svLf">Sort by Sell Value (low to high) &#8595;</option>
+                        <hr />
+                    </select>
                 <button id="sellAll">Sell All</button>
             </div>
-            <div id="inventory"></div>
+            <div id="inventory">
+                <div id="space">0/10</div>
+            </div>
         </div>
         <!--Settings and Crate-->
         <%- include("collectionEJS/info_right.ejs") %>
@@ -170,6 +191,50 @@
         // 2. Save value when the selection changes
         mySel.addEventListener("change", function () {
             localStorage.setItem(storageKey, this.value);
+        });
+    });
+</script>
+
+<!-- small wiring for the new search widget: icon focuses input and Enter triggers existing handlers -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const icon = document.querySelector('.search-widget .sw-icon');
+        const input = document.getElementById('searchbox');
+        const hiddenBtn = document.getElementById('searchbtn');
+        if (!input) return;
+
+        function triggerSearch() {
+            const q = input.value || '';
+            if (typeof window.performSearch === 'function') {
+                window.performSearch(q);
+            } else if (hiddenBtn) {
+                hiddenBtn.click();
+            } else {
+                document.dispatchEvent(new CustomEvent('search-inventory', { detail: { q } }));
+            }
+        }
+
+        if (icon) {
+            icon.addEventListener('click', (e) => {
+                e.preventDefault();
+                // focus + perform search (icon acts like submit)
+                input.focus();
+                triggerSearch();
+            });
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = input.value || '';
+                if (typeof window.performSearch === 'function') {
+                    window.performSearch(q);
+                } else if (hiddenBtn) {
+                    hiddenBtn.click();
+                } else {
+                    document.dispatchEvent(new CustomEvent('search-inventory', { detail: { q } }));
+                }
+            }
         });
     });
 </script>

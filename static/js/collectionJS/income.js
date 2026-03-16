@@ -69,7 +69,8 @@ function updateIncomeDisplay() {
 
 // Click toggles between final and detail via CSS class
 const incomeWidget = document.getElementById("income");
-incomeWidget.addEventListener('click', () => {
+const incomeIcon = document.getElementById("incomeIcon");
+incomeIcon.addEventListener('click', () => {
     showBaseIncome = !showBaseIncome;
     incomeWidget.classList.toggle('show-detail', showBaseIncome);
 });
