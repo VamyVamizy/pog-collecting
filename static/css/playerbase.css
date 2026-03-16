@@ -115,7 +115,7 @@ li {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     font-weight: bold;
     min-width: 200px;
     height: 160px;
@@ -140,7 +140,7 @@ li {
     font-weight: bold;
     box-shadow: 0 0 5px black;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -197,7 +197,7 @@ li {
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #filter:hover {
@@ -315,7 +315,7 @@ li {
     background: #1a1d2e;
     padding: 8px;
     border-radius: 10px;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     width: 95%;
 }
 

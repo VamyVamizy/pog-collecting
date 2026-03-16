@@ -28,7 +28,7 @@
     background: transparent;
     border: transparent;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #burger_btn:hover {
@@ -103,7 +103,7 @@
     width: 60px;
     height: 60px;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 .redirect_bar div:hover {
@@ -145,7 +145,7 @@
 }
 
 #play_btn:hover {
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     scale: 1.4;
 }
 

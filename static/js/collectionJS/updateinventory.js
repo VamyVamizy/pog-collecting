@@ -77,13 +77,22 @@ function refreshInventory() {
             // show trade button
             canTrade = item.name === "Dragon Ball",
             // return html
-            `<div data-index=${index} data-id=${item.id} class="item ${hasBonus ? 'highlight' : ''} ${item.locked ? 'locked' : ''} ${selected ? 'select' : ''}" style="border: 4px solid ${unique ? "lightgray" : "black"}; background-color: ${isBronze ? '#CD7F32' : isSilver ? '#C0C0C0' : isGold ? '#FFDF00' : isDiamond ? '#4EE2EC' : isAstral ? '#8A2BE2' : isGod ? 'white' : 'rgb(66, 51, 66)'};">
-            <img id="lock" style="background-color: ${item.locked ? "white" : "rgba(200, 200, 200, 1)"}" src="../static/icons/buttons_main/lock.png" onclick="lock(${item.id})" width="11" height="12" title="Lock (can't be sold when locked)">
-            <h1 class="name" style="color: ${item.color};">${item.name}</h1>
+            `<div data-index=${index} data-id=${item.id} class="item ${hasBonus ? 'highlight' : ''} ${item.locked ? 'locked' : ''} ${selected ? 'select' : ''}">
+            <div id="lock-bc" onclick="lock(${item.id})" style="opacity: ${item.locked ? 1 : 0}; background-color: ${item.locked ? "white" : "rgba(200, 200, 200, 1)"}">
+                <img id="lock" src="../static/icons/buttons_main/lock.png" width="22" height="24" title="Lock (can't be sold when locked)">
+            </div>
+            <img 
+                class="pogImg" 
+                src="../static/icons/images/pogs/${item.code2}.webp" 
+                width="50" 
+                height="50" 
+                loading="lazy" 
+                decoding="async" 
+            >
             <h2 class="multiplier" style="display: ${multiplier > 1 ? "block" : "none"}">${showMultiplier}</h2>
             <br>
-            ${canMerge ? `<button class="mergebtn" onclick="merge(${isBronze}, ${isSilver}, ${isGold}, ${isDiamond}, ${isAstral})">Merge (${mergeAmount})</button>` : ""}
-            ${canTrade ? `<button class="mergebtn" onclick="trade(${item.id}, ${item.locked})">Trade (1)</button>` : ""}
+            ${canMerge ? `<button style="z-index: 2" class="mergebtn" onclick="merge(${isBronze}, ${isSilver}, ${isGold}, ${isDiamond}, ${isAstral})">Merge (${mergeAmount})</button>` : ""}
+            ${canTrade ? `<button style="z-index: 2" class="mergebtn" onclick="trade(${item.id}, ${item.locked})">Trade (1)</button>` : ""}
         </div>`;
     }).join("");
 inventoryDiv.innerHTML = inventoryDiv.innerHTML +

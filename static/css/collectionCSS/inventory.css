@@ -18,7 +18,7 @@
     width: 100%;
     font-size: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, 220px);
+    grid-template-columns: repeat(auto-fill, 200px);
     justify-content: center;
     place-items: center;
     overflow-y: auto;
@@ -26,7 +26,7 @@
     min-height: 175px;
     max-height: 80vh;
     flex: 1;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #inventory::-webkit-scrollbar {
@@ -104,7 +104,7 @@
     border-radius: 10px;
     cursor: pointer;
     font-weight: bold;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -122,12 +122,14 @@
     border-radius: 45px;
     padding: 8px;
     width: 100px;
+    position: absolute;
+    bottom: 0;
     text-align: center;
     font-style: bold;
     font-size: 15px;
     cursor: pointer;
     scale: 0.8;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 .mergebtn:hover {
@@ -145,7 +147,7 @@
     border-radius: 10px;
     cursor: pointer;
     font-weight: bold;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -158,33 +160,36 @@
 
 /* inventory items */
 .item {
-    border: 4px solid black;
-    box-shadow:
-        /* 1. Outer shadow to ground the object on the page */
-        0 8px 5px rgba(0, 0, 0, 0.365),
-        /* 2. Inner dark shadow: creates the 'drop' from the border rim */
-        inset 0 6px 12px rgba(0, 0, 0, 0.5),
-        /* 3. Inner light highlight: creates a 'lip' on the opposite edge */
-        inset 0 -2px 8px rgba(255, 255, 255, 0.2);
-    background:
-        /* The "3D Printed" Streaks Layer */
-        repeating-radial-gradient(circle at 50% 50%,
-            rgba(0, 0, 0, 0.08) 0px,
-            rgba(0, 0, 0, 0.08) 1px,
-            transparent 1px,
-            transparent 3px);
+    border: transparent;
+    background-color: rgba(0,0,0,0.25);
+    border-radius: 300px;
+    box-shadow: inset 0 7px 6px rgba(0,0,0,0.5),
+                inset 0 -1px 2px rgba(255,255,255,0.04);
     border-radius: 300px;
     padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    position: relative;
     font-size: 15px;
     min-width: 220px;
     min-height: 220px;
     max-height: 260px;
     cursor: pointer;
     transform: scale(0.8) translateY(0);
+    transition: all 0.3s ease;
+}
+
+.item .pogImg {
+    width: 90%;
+    height: 90%;
+    position: absolute;
+    z-index: 1;
+    filter:
+        drop-shadow(0 8px 5px rgba(0,0,0,0.365))
+        drop-shadow(0 6px 12px rgba(0,0,0,0.5))
+        drop-shadow(0 -2px 8px rgba(255,255,255,0.2));
     transition: all 0.3s ease;
 }
 
@@ -205,7 +210,7 @@
     max-height: 260px;
     pointer-events: none;
     scale: 0.8;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #buySlot {
@@ -230,7 +235,7 @@
     min-width: 220px;
     min-height: 220px;
     max-height: 260px;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #buySlot:hover {
@@ -246,45 +251,32 @@
     scale: 0.7;
 }
 
-.item:hover {
-    transform: scale(0.8) translateY(4px);
-    box-shadow:
-        /* 1. Outer shadow to ground the object on the page */
-        0 2px 5px rgba(0, 0, 0, 0.365),
-        /* 2. Inner dark shadow: creates the 'drop' from the border rim */
-        inset 0 6px 12px rgba(0, 0, 0, 0.5),
-        /* 3. Inner light highlight: creates a 'lip' on the opposite edge */
-        inset 0 -2px 8px rgba(255, 255, 255, 0.2);
+.item:hover .pogImg {
+    transform: scale(0.95);
+    filter:
+        drop-shadow(0 2px 5px rgba(0,0,0,0.365))
+        drop-shadow(0 6px 12px rgba(0,0,0,0.5))
+        drop-shadow(0 -2px 8px rgba(255,255,255,0.2));
 }
 
-.item:hover:active {
-    transform: scale(0.8) translateY(6px);
-    box-shadow:
-        /* 1. Outer shadow to ground the object on the page */
-        0 0px 5px rgba(0, 0, 0, 0.365),
-        /* 2. Inner dark shadow: creates the 'drop' from the border rim */
-        inset 0 6px 12px rgba(0, 0, 0, 0.5),
-        /* 3. Inner light highlight: creates a 'lip' on the opposite edge */
-        inset 0 -2px 8px rgba(255, 255, 255, 0.2);
+.item:hover:active .pogImg {
+    transform: scale(0.9);
+    filter:
+        drop-shadow(0 0px 5px rgba(0,0,0,0.365))
+        drop-shadow(0 6px 12px rgba(0,0,0,0.5))
+        drop-shadow(0 -2px 8px rgba(255,255,255,0.2));
 }
 
-.item:hover #lock {
-    opacity: 1;
-}
-
-.item.highlight {
-    outline: 3px solid white;
-    outline-offset: -3px;
-    border-radius: 300px;
-    box-shadow: 0 0 20px rgba(255, 255, 255);
+.item:hover #lock-bc {
+    opacity: 1 !important;
 }
 
 .item.locked {
-    filter: brightness(0.6);
+    filter: brightness(0.2);
 }
 
 .item.locked.select {
-    filter: brightness(1.4);
+    filter: brightness(0.6);
 }
 
 .item.select {
@@ -296,19 +288,28 @@ hr {
     margin: 10px 0;
 }
 
-#lock {
+#lock-bc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    position: absolute;
     padding: 4px 15px 4px 15px;
+    top: 30px;
+    right: 30px;
+    height: 30px;
+    width: 12px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     opacity: 0;
     scale: 1.1;
+    z-index: 2;
 }
 
-#lock:hover {
+#lock-bc:hover {
     box-shadow: none;
-    transform: translateY(2px);
+    transform: scale(1.1);
 }
 
 #left_cont {
