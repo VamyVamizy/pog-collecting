@@ -23,7 +23,7 @@
     place-items: center;
     overflow-y: auto;
     min-height: 175px;
-    max-height: 560px;
+    max-height: 568px;
     flex: 1;
     transition: all 0.1s ease;
 }

@@ -202,6 +202,29 @@ document.addEventListener('click', (e) => {
                     // copy server tiers into window.tiers if present
                     if (typeof window !== 'undefined') window.tiers = json.tiers;
                 }
+                // If server granted a perk, notify the user and update local userdata/session copy
+                if (json && json.grantedPerk) {
+                    const perk = json.grantedPerk;
+                    // update in-memory userdata and server-rendered userdata element if present
+                    try {
+                        const udEl = document.getElementById('userdata');
+                        let ud = (typeof window !== 'undefined' && window.userdata) ? window.userdata : (udEl ? JSON.parse(udEl.textContent || '{}') : {});
+                        ud.perks = ud.perks || [];
+                        // normalize perks array to objects with name
+                        const has = ud.perks.some(p => (p && (p.name === perk.name)) || (typeof p === 'string' && p === perk.name));
+                        if (!has) ud.perks.push(perk);
+                        window.userdata = ud;
+                        if (udEl) udEl.textContent = JSON.stringify(ud);
+                    } catch (e) {
+                        console.warn('Failed to update client userdata perks:', e);
+                    }
+
+                    // show notification toast
+                    try { showPerkNotification(perk); } catch (e) { alert(`You received perk: ${perk.name}`); }
+
+                    // If the perks view is open, refresh it so the new perk shows as owned
+                    try { if (typeof viewPerkCollection === 'function') viewPerkCollection(); } catch (e) { /* ignore */ }
+                }
             }).catch(err => {
                 console.error('Error saving tier claim:', err);
                 // revert UI and local state on failure
@@ -226,3 +249,48 @@ setInterval(() => {
         }
     }
 }, 100);
+function showPerkNotification(perk) {
+    if (!perk) return;
+    const id = 'perk-toast';
+    // remove existing
+    const prev = document.getElementById(id);
+    if (prev) prev.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = id;
+    wrap.style.position = 'fixed';
+    wrap.style.right = '20px';
+    wrap.style.top = '20px';
+    wrap.style.background = 'linear-gradient(90deg,#6b3df0,#9d42f7)';
+    wrap.style.color = 'white';
+    wrap.style.padding = '12px 16px';
+    wrap.style.borderRadius = '10px';
+    wrap.style.boxShadow = '0 6px 18px rgba(0,0,0,0.3)';
+    wrap.style.zIndex = 99999;
+    wrap.style.fontWeight = '700';
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '10px';
+
+    const icon = document.createElement('img');
+    icon.src = '/static/icons/perks/Perk_Card_Icon.png';
+    icon.alt = 'perk';
+    icon.style.width = '36px';
+    icon.style.height = '36px';
+    icon.style.borderRadius = '6px';
+    icon.style.flex = '0 0 auto';
+
+    const text = document.createElement('div');
+    text.innerHTML = `You received a perk: <span style="font-weight:900;">${perk.name}</span>`;
+
+    wrap.appendChild(icon);
+    wrap.appendChild(text);
+    document.body.appendChild(wrap);
+
+    setTimeout(() => {
+        wrap.style.transition = 'opacity 300ms ease, transform 300ms ease';
+        wrap.style.opacity = '0';
+        wrap.style.transform = 'translateY(-8px)';
+    }, 3500);
+    setTimeout(() => wrap.remove(), 3800);
+}

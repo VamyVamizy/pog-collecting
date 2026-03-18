@@ -141,6 +141,17 @@ app.use((req, res, next) => {
 const { runMigrations } = require('./data/migrations.js');
 
 const usdb = new sqlite3.Database('./data/usersettings.sqlite');
+// reduce SQLITE_BUSY errors under concurrent access by setting a busy timeout
+try {
+    if (typeof usdb.configure === 'function') {
+        usdb.configure('busyTimeout', 10000);
+    }
+    // Enable WAL journal mode to reduce writer/reader contention
+    usdb.run('PRAGMA journal_mode = WAL');
+    usdb.run('PRAGMA synchronous = NORMAL');
+} catch (e) {
+    console.warn('Failed to set sqlite pragmas/busyTimeout:', e);
+}
 
 // Run migrations on startup
 runMigrations(usdb).catch(err => {
@@ -848,26 +859,119 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                             console.error('Error saving tiers after adding column for', displayName, err2);
                             return res.status(500).json({ error: 'db' });
                         }
-                        // ensure session is saved before responding
-                        req.session.save(saveErr => {
-                            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-                            console.log('Tiers saved and session saved (after ALTER) for', displayName);
-                            return res.json({ tiers: req.session.user.tiers });
-                        });
+                        // after tiers saved, possibly grant a perk if this tier awards one
+                        handlePostTierSave(req, res, idx, status, displayName);
                     });
                 });
                 return;
             }
             return res.status(500).json({ error: 'db' });
         }
-        // ensure session is saved before responding
-        req.session.save(saveErr => {
-            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-            console.log('Tiers saved and session saved for', displayName);
-            return res.json({ tiers: req.session.user.tiers });
-        });
+        // after tiers saved, possibly grant a perk if this tier awards one
+        handlePostTierSave(req, res, idx, status, displayName);
     });
 });
+
+    // helper to handle optional perk granting after tiers were saved
+    function handlePostTierSave(reqParam, resParam, idxParam, statusParam, displayNameParam) {
+        // ensure session is saved before continuing
+        reqParam.session.save(saveErr => {
+            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
+            console.log('Tiers saved and session saved for', displayNameParam);
+
+            // check whether this tier grants a perk
+            try {
+                const claimedTier = reqParam.session.user.tiers && reqParam.session.user.tiers[idxParam] ? reqParam.session.user.tiers[idxParam] : null;
+                const rewardType = claimedTier && claimedTier.reward ? String(claimedTier.reward) : null;
+                // only proceed if the reward is a "Perk" and the client marked it claimed
+                if (rewardType === 'Perk' && statusParam) {
+                    // helper to process an authoritative perks array and attempt to grant one
+                    function processPerksArray(existingPerks) {
+                        existingPerks = Array.isArray(existingPerks) ? existingPerks : [];
+                        // build set of owned perk names
+                        const owned = new Set((existingPerks || []).map(p => p && p.name).filter(Boolean));
+                        // filter global perks list to those not owned
+                        const available = (perks || []).filter(p => !owned.has(p.name));
+                        if (!available || available.length === 0) {
+                            console.log('No available perks to grant for', displayNameParam);
+                            // still respond with tiers but no grantedPerk
+                            return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: null });
+                        }
+
+                        // choose random available perk
+                        const choice = available[Math.floor(Math.random() * available.length)];
+                        const granted = { name: choice.name, givenAt: Date.now() };
+                        existingPerks.push(granted);
+                        const perksJson = JSON.stringify(existingPerks);
+
+                        // persist perks to DB; if column missing, try to add then retry
+                        usdb.run('UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], function(updateErr) {
+                            if (updateErr) {
+                                console.error('Error saving perks for', displayNameParam, updateErr);
+                                if (updateErr.message && updateErr.message.toLowerCase().includes('no such column')) {
+                                    usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], function(altErr2) {
+                                        if (altErr2) {
+                                            console.error('Failed to add perks column:', altErr2);
+                                            return resParam.status(500).json({ error: 'db' });
+                                        }
+                                        // retry update
+                                        usdb.run('UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], function(err3) {
+                                            if (err3) {
+                                                console.error('Error saving perks after ALTER for', displayNameParam, err3);
+                                                return resParam.status(500).json({ error: 'db' });
+                                            }
+                                            // update session and return granted perk
+                                            reqParam.session.user.perks = existingPerks;
+                                            reqParam.session.save(() => {
+                                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                                            });
+                                        });
+                                    });
+                                    return;
+                                }
+                                return resParam.status(500).json({ error: 'db' });
+                            }
+                            // success: update session and return granted perk
+                            reqParam.session.user.perks = existingPerks;
+                            reqParam.session.save(() => {
+                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                            });
+                        });
+                    }
+
+                    // fetch authoritative perks array from DB
+                    usdb.get('SELECT perks FROM userSettings WHERE displayname = ?', [displayNameParam], (getErr, row) => {
+                        if (getErr) {
+                            // If the column doesn't exist yet, try to add it then proceed with empty array
+                            if (getErr.message && getErr.message.toLowerCase().includes('no such column')) {
+                                console.warn('Perks column missing, attempting to add it for', displayNameParam);
+                                usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], (altErr) => {
+                                    if (altErr) {
+                                        console.error('Failed to add perks column:', altErr);
+                                        return resParam.status(500).json({ error: 'db' });
+                                    }
+                                    // proceed assuming empty perks
+                                    return processPerksArray([]);
+                                });
+                                return;
+                            }
+                            console.error('Failed to read perks for', displayNameParam, getErr);
+                            return resParam.status(500).json({ error: 'db' });
+                        }
+                        let existingPerks = [];
+                        try { existingPerks = row && row.perks ? JSON.parse(row.perks) : []; } catch (e) { existingPerks = []; }
+                        return processPerksArray(existingPerks);
+                    });
+                } else {
+                    // not a perk reward or not claiming a perk; respond with saved tiers only
+                    return resParam.json({ tiers: reqParam.session.user.tiers });
+                }
+            } catch (e) {
+                console.error('Error during post-tier processing for', displayNameParam, e);
+                return resParam.status(500).json({ error: 'server' });
+            }
+        });
+    }
 
 // GET saved tiers (reads DB to confirm persisted data)
 app.get('/api/perk-tiers', (req, res) => {

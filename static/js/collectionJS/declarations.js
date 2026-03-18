@@ -110,8 +110,10 @@ let enabledCrate = false;
 
 // pfp 
 let pfpimg = userdata.pfp || ""
-document.getElementById("userPic").src = pfpimg;
-document.getElementById("bigpfp").src = pfpimg;
+const _userPic = document.getElementById("userPic");
+if (_userPic) _userPic.src = pfpimg;
+const _bigpfp = document.getElementById("bigpfp");
+if (_bigpfp) _bigpfp.src = pfpimg;
 
 //selected pog
 selectedID = 0;
@@ -148,20 +150,19 @@ function checkWishTimers() {
         incomeWishActive = false;
         statesChanged = true;
 
-        document.getElementById("errorText").innerText = "Income Boost Expired! Your +30% income bonus has ended.";
-        const errorMessage = document.getElementById("errorMessage");
-        errorMessage.style.display = "block";
-        errorMessage.style.opacity = "0";
-        setTimeout(() => {
-            errorMessage.style.opacity = "1";
-        }, 10);
-        setTimeout(() => {
-            errorMessage.style.opacity = "0";
+        const _errorText = document.getElementById("errorText");
+        const _errorMessage = document.getElementById("errorMessage");
+        if (_errorText && _errorMessage) {
+            _errorText.innerText = "Income Boost Expired! Your +30% income bonus has ended.";
+            _errorMessage.style.display = "block";
+            _errorMessage.style.opacity = "0";
+            setTimeout(() => { _errorMessage.style.opacity = "1"; }, 10);
             setTimeout(() => {
-                errorMessage.style.display = "none";
-            }, 1000);
-        }, 5000);
-        
+                _errorMessage.style.opacity = "0";
+                setTimeout(() => { _errorMessage.style.display = "none"; }, 1000);
+            }, 5000);
+        }
+
         console.log("Income boost expired!");
     }
     // Check drop rate wish  
@@ -170,19 +171,18 @@ function checkWishTimers() {
         statesChanged = true;
 
         // show expiration message
-        document.getElementById("errorText").innerText = "Drop Rate Boost Expired! Your better drop rates bonus has ended.";
-        const errorMessage = document.getElementById("errorMessage");
-        errorMessage.style.display = "block";
-        errorMessage.style.opacity = "0";
-        setTimeout(() => {
-            errorMessage.style.opacity = "1";
-        }, 10);
-        setTimeout(() => {
-            errorMessage.style.opacity = "0";
+        const _errorText = document.getElementById("errorText");
+        const _errorMessage = document.getElementById("errorMessage");
+        if (_errorText && _errorMessage) {
+            _errorText.innerText = "Drop Rate Boost Expired! Your better drop rates bonus has ended.";
+            _errorMessage.style.display = "block";
+            _errorMessage.style.opacity = "0";
+            setTimeout(() => { _errorMessage.style.opacity = "1"; }, 10);
             setTimeout(() => {
-                errorMessage.style.display = "none";
-            }, 1000);
-        }, 5000);
+                _errorMessage.style.opacity = "0";
+                setTimeout(() => { _errorMessage.style.display = "none"; }, 1000);
+            }, 5000);
+        }
 
         console.log("Drop rate boost expired!");
     }
@@ -192,21 +192,20 @@ function checkWishTimers() {
         clarityPreviews = [];
         clarityUsedCount = 0;
         statesChanged = true;
-        updateClarityDisplay(); // removal of any previews
+        if (typeof updateClarityDisplay === 'function') updateClarityDisplay(); // removal of any previews
 
-        document.getElementById("errorText").innerText = "Clarity Wish Expired! The exact rarity display for the next 5 crates has ended.";
-        const errorMessage = document.getElementById("errorMessage");
-        errorMessage.style.display = "block";
-        errorMessage.style.opacity = "0";
-        setTimeout(() => {
-            errorMessage.style.opacity = "1";
-        }, 10);
-        setTimeout(() => {
-            errorMessage.style.opacity = "0";
+        const _errorText = document.getElementById("errorText");
+        const _errorMessage = document.getElementById("errorMessage");
+        if (_errorText && _errorMessage) {
+            _errorText.innerText = "Clarity Wish Expired! The exact rarity display for the next 5 crates has ended.";
+            _errorMessage.style.display = "block";
+            _errorMessage.style.opacity = "0";
+            setTimeout(() => { _errorMessage.style.opacity = "1"; }, 10);
             setTimeout(() => {
-                errorMessage.style.display = "none";
-            }, 1000);
-        }, 5000);
+                _errorMessage.style.opacity = "0";
+                setTimeout(() => { _errorMessage.style.display = "none"; }, 1000);
+            }, 5000);
+        }
         console.log("Clarity wish expired!");
     }
     // saving to cookies if any states changed
@@ -367,14 +366,15 @@ const buttons = document.getElementsByTagName("button");
     }, 5000);
 })();
 
-// first time call
-refreshInventory();
+// first time call (only if available on this page)
+if (typeof refreshInventory === 'function') refreshInventory();
 
-// display the highest combo
-highestCombo = computeComboStats();
-
-// corrects stats on load
-computeComboStats(); 
+// display the highest combo (only if the helper exists)
+if (typeof computeComboStats === 'function') {
+    highestCombo = computeComboStats();
+    // correct stats on load
+    computeComboStats();
+}
 
 // lock items
 function lock(id) {
@@ -403,24 +403,32 @@ function trade(id, locked) {
             wish = data.wish;
             inventory = data.inventory;
             userIncome = getTotalIncome();
-            refreshInventory();
-            document.getElementById("descPanel").innerHTML = "";
+            if (typeof refreshInventory === 'function') refreshInventory();
+            const _descPanel = document.getElementById("descPanel");
+            if (_descPanel) _descPanel.innerHTML = "";
         })
         .catch(err => console.error('Trade error:', err));
     }
 }
 
-// color key toggle
-document.getElementById("colors").addEventListener("click", () => {
-    const colorKey = document.getElementById("colorKey")
-    const isVisible = colorKey.style.display === "flex";
-    colorKey.style.display = isVisible ? "none" : "flex";
-})
+// color key toggle (only if present on page)
+const _colors = document.getElementById("colors");
+if (_colors) {
+    _colors.addEventListener("click", () => {
+        const colorKey = document.getElementById("colorKey");
+        if (!colorKey) return;
+        const isVisible = colorKey.style.display === "flex";
+        colorKey.style.display = isVisible ? "none" : "flex";
+    });
+}
 
-//report
-document.getElementById("helpButton").addEventListener("click", () => {
-    window.open("https://github.com/CarterQuickel/Pogglebar/issues", "_blank");
-});
+//report (only on pages that include the help button)
+const _helpButton = document.getElementById("helpButton");
+if (_helpButton) {
+    _helpButton.addEventListener("click", () => {
+        window.open("https://github.com/CarterQuickel/Pogglebar/issues", "_blank");
+    });
+}
 
 // number abbreviation function
 function abbreviateNumber(value) {
@@ -430,23 +438,26 @@ function abbreviateNumber(value) {
 
 // alerts for when something good happens to the user
 function showSuccessMessage(message) {
-    document.getElementById("errorText").innerText = message;
-    const errorMessage = document.getElementById("errorMessage");
-    
-    errorMessage.style.backgroundColor = "#4CAF50";
-    errorMessage.style.borderColor = "#45a049";
-    
-    errorMessage.style.display = "block";
-    errorMessage.style.opacity = "0";
+    const _errorText = document.getElementById("errorText");
+    const _errorMessage = document.getElementById("errorMessage");
+    if (!_errorText || !_errorMessage) {
+        // no UI target on this page; fall back to console
+        console.log('SUCCESS:', message);
+        return;
+    }
+
+    _errorText.innerText = message;
+    _errorMessage.style.backgroundColor = "#4CAF50";
+    _errorMessage.style.borderColor = "#45a049";
+    _errorMessage.style.display = "block";
+    _errorMessage.style.opacity = "0";
+    setTimeout(() => { _errorMessage.style.opacity = "1"; }, 10);
     setTimeout(() => {
-        errorMessage.style.opacity = "1";
-    }, 10);
-    setTimeout(() => {
-        errorMessage.style.opacity = "0";
+        _errorMessage.style.opacity = "0";
         setTimeout(() => {
-            errorMessage.style.display = "none";
-            errorMessage.style.backgroundColor = ""; 
-            errorMessage.style.borderColor = "";
+            _errorMessage.style.display = "none";
+            _errorMessage.style.backgroundColor = "";
+            _errorMessage.style.borderColor = "";
         }, 1000);
     }, 5000);
 }

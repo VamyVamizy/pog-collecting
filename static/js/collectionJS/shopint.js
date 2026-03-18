@@ -4,6 +4,7 @@ let defprice = 0
 let defrealprice = 0
 let defamount = 0
 let defreason = ""
+let purchasedSlots = 0
 
 document.getElementById("amountSelect").addEventListener("change", () => {
     const price = defprice;
@@ -113,12 +114,14 @@ document.getElementById("slotAmount").addEventListener("change", () => {
 
 document.getElementById("purchaseBtn_S").addEventListener("click", () => {
     const amount = parseInt(document.getElementById("slotAmount").value);
-    if (amount < 1 || amount > 100 || isNaN(amount)) {
-        showPurchaseError("Please select a valid amount of slots (1-100) 📝");
+    if (amount < 1 || amount > 95 || isNaN(amount)) {
+        showPurchaseError("Please select a valid amount of slots (1-95) 📝");
         return;
+    } else {
+        purchasedSlots += amount;
     }
-    if (Isize + amount > 100) {
-        showPurchaseError("No more than 100 inventory slots are allowed! 📦");
+    if (purchasedSlots > 95) {
+        showPurchaseError("No more than 95 purchased inventory slots are allowed! 📦");
         return;
     }
     const slotPrice = calcSlot(amount);

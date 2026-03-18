@@ -116,11 +116,13 @@ function renderTrade(trade) {
         <div class="trade-header">
             ${pfp ? `<img src="${pfp}" alt="${trade.name}'s profile picture" class="trade-pfp">` : ''}
             <div class="trade-meta">
-                <strong style="color: #ddd">${trade.name || 'Anonymous'}</strong>
-                <span style="color: #ddd; font-size: 0.9em">${timeStr}</span>
+                <div class="trade-meta-left">
+                    <strong class="trade-name">${trade.name || 'Anonymous'}</strong>
+                    <span class="trade-time">${timeStr}</span>
+                </div>
+                ${trade.message ? `<div class="trade-optional">${escapeHtml(trade.message)}</div>` : ''}
             </div>
         </div>
-        ${trade.message ? `<div class="trade-message" style="color: white">${escapeHtml(trade.message)}</div>` : ''}
         <div class="trade-details" style="color: white">
         <div id="givingBox">
             <strong>Giving:</strong> 

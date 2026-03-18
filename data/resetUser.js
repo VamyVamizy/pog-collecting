@@ -20,7 +20,8 @@ const defaults = {
   totalSold: 0,
   cratesOpened: 0,
   pogamount: '[]',
-  achievements: '[]',
+  // Use the canonical achievements data and stringify it so the DB contains valid JSON
+  achievements: JSON.stringify(require('../modules/backend_js/trophyList.js')),
   tiers: '[]',
   mergeCount: 0,
   highestCombo: 0,
