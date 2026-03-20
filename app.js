@@ -43,8 +43,9 @@ let results = [];
 
 async function initApp() {
   try {
-    results = await initializePogDatabase();
+    results = await getAllPogs();
     pogCount = await getPogCount();
+    console.log(results);
     console.log('Pog CSV count:', results.length);
     console.log('DB pog count:', pogCount);
   } catch (err) {
@@ -579,93 +580,86 @@ app.post('/api/trade-wish', express.json(), (req, res) => {
 // ── Server-side crate opening ─────────────────────────────────────────────
 // The client calls this instead of rolling RNG locally.
 // Returns the pog result; the client is responsible for calling save() after.
-app.post('/api/open-crate', express.json(), (req, res) => {
+app.post('/api/open-crate', express.json(), async (req, res) => {
+  try {
+    // 1️⃣ Auth check
     if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: 'Not authenticated' });
     }
 
     const crateIndex = Number(req.body.crateIndex);
     if (!Number.isFinite(crateIndex) || crateIndex < 0 || crateIndex >= crateRef.length) {
-        return res.status(400).json({ error: 'Invalid crate index' });
+      return res.status(400).json({ error: 'Invalid crate index' });
     }
 
     const crate = crateRef[crateIndex];
-    const pogListLocal = results; // server's master pog list
+    const pogListLocal = results; // master pog list
     if (!pogListLocal || !pogListLocal.length) {
-        return res.status(500).json({ error: 'Pog list not loaded' });
+      return res.status(500).json({ error: 'Pog list not loaded' });
     }
 
     const norm = s => String(s || '').trim().toLowerCase();
 
-    // Apply drop rate boost if client reports it (trust-but-verify: only allow 1.5x max)
-    let multiplier = 1.0;
-    if (req.body.dropRateBoost === true) {
-        multiplier = 1.5;
-    }
+    // 2️⃣ Apply drop rate boost (trust-but-verify)
+    const multiplier = req.body.dropRateBoost === true ? 1.5 : 1.0;
 
-    // Roll RNG server-side
+    // 3️⃣ Roll RNG
     let rand = Math.random();
     let cumulativeChance = 0;
-    let pogResult = null;
+    let chosen = null;
 
     for (const tier of crate.rarities) {
-        const boostedChance = (Number(tier.chance) || 0) * multiplier;
-        cumulativeChance += boostedChance;
-        if (rand < cumulativeChance) {
-            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
-            if (candidates.length === 0) continue;
+      const boostedChance = (Number(tier.chance) || 0) * multiplier;
+      cumulativeChance += boostedChance;
+      if (rand < cumulativeChance) {
+        const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
+        if (candidates.length === 0) continue;
 
-            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-            const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
-            const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+        chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        break;
+      }
+    }
 
-            pogResult = {
-                locked: false,
-                pogid: chosen.id || null,
-                name: chosen.name,
-                id: Date.now() + Math.floor(Math.random() * 10000),
-                rarity: chosen.rarity,
-                pogcol: chosen.color || 'white',
-                color: meta.color || 'white',
-                code2: chosen.code2,
-                income: meta.income || 5,
-                description: chosen.description || '',
-                creator: chosen.creator || ''
-            };
-            break;
+    // 4️⃣ Fallback if no tier matched
+    if (!chosen) {
+      const fallbackTier = crate.rarities[crate.rarities.length - 1];
+      if (fallbackTier) {
+        const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
+        if (candidates.length > 0) {
+          chosen = candidates[Math.floor(Math.random() * candidates.length)];
         }
+      }
     }
 
-    // Fallback if roll missed all tiers
-    if (!pogResult) {
-        const fallbackTier = crate.rarities[crate.rarities.length - 1];
-        if (fallbackTier) {
-            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
-            if (candidates.length > 0) {
-                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-                const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
-                pogResult = {
-                    locked: false,
-                    pogid: chosen.id || null,
-                    name: chosen.name,
-                    id: Date.now() + Math.floor(Math.random() * 10000),
-                    rarity: chosen.rarity,
-                    pogcol: chosen.color || 'white',
-                    color: meta.color || 'white',
-                    code2: chosen.code2,
-                    income: meta.income || 5,
-                    description: chosen.description || '',
-                    creator: chosen.creator || ''
-                };
-            }
-        }
+    if (!chosen) {
+      return res.status(500).json({ error: 'Failed to generate pog result' });
     }
 
-    if (!pogResult) {
-        return res.status(500).json({ error: 'Failed to generate pog result' });
-    }
+    // 5️⃣ Build pogResult for frontend (normalized)
+    const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+    const pogResult = {
+      locked: false,
+      pogUid: chosen.uid, // store only UID in inventory
+      displayId: Date.now() + Math.floor(Math.random() * 10000), // temporary frontend ID
+      name: chosen.name,
+      rarity: chosen.rarity,
+      pogcol: chosen.color || 'white',
+      color: meta.color || 'white',
+      code2: chosen.code2,
+      income: meta.income || 5,
+      description: chosen.description || '',
+      creator: chosen.creator || ''
+    };
+
+    // 6️⃣ Add to user inventory (normalized)
+    await addToInventory(req.session.user.uid, pogResult.pogUid);
 
     return res.json({ ok: true, pogResult });
+
+  } catch (err) {
+    console.error("OPEN CRATE ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Express route to handle digipog transfer requests
