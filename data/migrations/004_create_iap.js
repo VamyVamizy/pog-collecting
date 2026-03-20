@@ -6,8 +6,8 @@ module.exports = (db) => {
         perks TEXT,
         equipment TEXT
     )`, (err) => {
-      if (err) reject(err);
-      else resolve();
+      if (err) return reject(err);
+      return resolve();
     });
   });
 };

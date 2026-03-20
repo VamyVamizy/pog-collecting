@@ -5,6 +5,7 @@ body, h1, h2, h3, h4, h5 {
 body {
     margin-top: 80px;
     user-select: none;
+    overflow-x: none;
     overflow-y: auto;
     background:
         radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
@@ -31,7 +32,6 @@ h1 {
 }
 
 #money {
-    
     font-style: bold;
     font-size: 35px;
 }
@@ -39,9 +39,117 @@ h1 {
  
 #income {
     margin-top: 0;
-    
-    font-style: bold;
+    white-space: nowrap;
+}
+
+
+.income-widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px 7px 10px;
+    /* inset / carved look */
+    background: rgba(0,0,0,0.25);
+    border: none;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5),
+                inset 0 -1px 2px rgba(255,255,255,0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+/* icon circle */
+.iw-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    font-size: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 5px 6px rgba(0, 0, 0, 0.445);
+    cursor: pointer;
+}
+
+.iw-icon:hover {
+    background: linear-gradient(135deg, #3a3f6a, #1f2230);
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* text column */
+.iw-body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.iw-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: rgba(200,190,255,0.5);
+    margin-bottom: 2px;
+}
+
+/* container for both views — uses grid so both overlap and the box sizes to the larger one */
+.iw-values {
+    display: grid;
+}
+
+.iw-final, .iw-detail {
+    grid-area: 1 / 1;
+    transition: opacity 200ms ease, transform 200ms ease;
+    white-space: nowrap;
+}
+
+/* final income */
+.iw-final {
     font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(168,130,255,0.25);
+}
+
+/* detail: base + multiplier */
+.iw-detail {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e2e0ff;
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
+}
+
+.iw-mult {
+    font-size: 12px;
+    font-weight: 700;
+    color: #a78bfa;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* toggle states driven by a class on the widget */
+.income-widget.show-detail .iw-final {
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+}
+.income-widget.show-detail .iw-detail {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* pulse on income change */
+.income-pulse .iw-icon {
+    animation: iw-pulse 600ms ease-out;
+}
+@keyframes iw-pulse {
+    0%   { box-shadow: 0 0 8px rgba(124,58,237,0.4); }
+    40%  { box-shadow: 0 0 18px rgba(168,130,255,0.7); }
+    100% { box-shadow: 0 0 8px rgba(124,58,237,0.4); }
 }
 
 h4 {

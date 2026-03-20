@@ -141,6 +141,46 @@ app.use((req, res, next) => {
 const { runMigrations } = require('./data/migrations.js');
 
 const usdb = new sqlite3.Database('./data/usersettings.sqlite');
+// reduce SQLITE_BUSY errors under concurrent access by setting a busy timeout
+try {
+    if (typeof usdb.configure === 'function') {
+        usdb.configure('busyTimeout', 10000);
+    }
+    // Enable WAL journal mode to reduce writer/reader contention
+    usdb.run('PRAGMA journal_mode = WAL');
+    usdb.run('PRAGMA synchronous = NORMAL');
+} catch (e) {
+    console.warn('Failed to set sqlite pragmas/busyTimeout:', e);
+}
+
+// Helper utilities: lightweight retry wrappers to handle transient SQLITE_BUSY errors
+function runWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.run(sql, params, function(err) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, this);
+        });
+    }
+    once();
+}
+
+function getWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.get(sql, params, function(err, row) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, row);
+        });
+    }
+    once();
+}
 
 // Run migrations on startup
 runMigrations(usdb).catch(err => {
@@ -378,10 +418,161 @@ app.post('/datasave', (req, res) => {
                         return res.status(500).json({ message: 'Error updating user settings' });
                     }
                     req.session.user = { ...req.session.user, ...userSave };
-                    return res.json({ message: 'Data saved successfully' });
+                    return res.json({
+                        message: 'Data saved successfully',
+                        corrected: warnings.length > 0 ? {
+                            money: userSave.score,
+                            Isize: userSave.Isize,
+                            wish: userSave.wish,
+                            xp: userSave.xp,
+                            maxXP: userSave.maxxp,
+                            level: userSave.level,
+                            cratesOpened: userSave.cratesOpened,
+                            totalSold: userSave.totalSold,
+                            mergeCount: userSave.mergeCount,
+                            highestCombo: userSave.highestCombo
+                        } : null
+                    });
                 }
             );
         });
+    });
+});
+
+// ── Server-side slot purchase ─────────────────────────────────────────────
+// Handles Digipog payment AND updates Isize in the DB atomically.
+// Client calls this instead of modifying Isize locally.
+app.post('/api/buy-slots', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const fid = req.session.user.fid;
+    const amount = Number(req.body.amount);
+    const pin = req.body.pin;
+
+    if (!Number.isFinite(amount) || amount < 1 || amount > 90) {
+        return res.status(400).json({ success: false, message: 'Invalid slot amount' });
+    }
+
+    // Check current Isize in DB first
+    usdb.get('SELECT Isize FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err || !row) {
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        const currentIsize = Number(row.Isize) || 10;
+        if (currentIsize + amount > 100) {
+            return res.status(400).json({ success: false, message: 'Would exceed 100 slots' });
+        }
+
+        const slotPrice = 25 * amount;
+        const isAdmin = fid === 73 || fid === 44 || fid === 87 || fid === 26 || fid === 43 || fid === 1 || fid === 127;
+
+        // Helper to finalize the DB update after payment succeeds
+        function finalizeSlotPurchase() {
+            const newIsize = currentIsize + amount;
+            usdb.run(
+                'UPDATE userSettings SET Isize = ? WHERE displayname = ?',
+                [newIsize, displayName],
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating Isize:', dbErr);
+                        return res.status(500).json({ success: false, message: 'Database error' });
+                    }
+                    console.log(`[BUY-SLOTS] ${displayName} bought ${amount} slots. Isize: ${currentIsize} → ${newIsize}`);
+                    return res.json({ success: true, message: `+${amount} slots`, Isize: newIsize });
+                }
+            );
+        }
+
+        if (isAdmin) {
+            // Admins skip payment
+            console.log('Admin slot purchase bypassed cost deduction.');
+            return finalizeSlotPurchase();
+        }
+
+        // Process Digipog payment
+        const paydesc = {
+            from: fid,
+            to: 30,
+            amount: slotPrice,
+            reason: `Pogglebar - Slots x${amount}`,
+            pin: pin,
+            pool: true
+        };
+
+        fetch(`${process.env.AUTH_URL}/api/digipogs/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paydesc),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                finalizeSlotPurchase();
+            } else {
+                res.json({ success: false, message: data.message || 'Payment failed' });
+            }
+        })
+        .catch(err => {
+            console.error('Error during slot payment:', err);
+            res.status(500).json({ success: false, message: 'Payment error' });
+        });
+    });
+});
+
+// ── Server-side wish trade ────────────────────────────────────────────────
+// The client calls this instead of modifying wish/inventory locally.
+// Verifies a Dragon Ball exists in the DB inventory, removes it, increments wish.
+app.post('/api/trade-wish', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const dragonBallId = Number(req.body.dragonBallId);
+
+    if (!Number.isFinite(dragonBallId)) {
+        return res.status(400).json({ error: 'Invalid Dragon Ball ID' });
+    }
+
+    usdb.get('SELECT inventory, wish FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) {
+            console.error('Error reading user for wish trade:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!row) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let inventory;
+        try { inventory = JSON.parse(row.inventory || '[]'); } catch (e) { inventory = []; }
+        const currentWish = Number(row.wish) || 0;
+
+        // Find the Dragon Ball by its unique item id
+        const dbIndex = inventory.findIndex(item => item.id === dragonBallId && item.name === 'Dragon Ball');
+        if (dbIndex === -1) {
+            return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+        }
+
+        // Remove the Dragon Ball and increment wish
+        inventory.splice(dbIndex, 1);
+        const newWish = currentWish + 1;
+
+        usdb.run(
+            'UPDATE userSettings SET inventory = ?, wish = ? WHERE displayname = ?',
+            [JSON.stringify(inventory), newWish, displayName],
+            function (dbErr) {
+                if (dbErr) {
+                    console.error('Error saving wish trade:', dbErr);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (id: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
+                return res.json({ wish: newWish, inventory: inventory });
+            }
+        );
     });
 });
 
@@ -669,11 +860,17 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Missing tier or status' });
     }
 
-    // ensure session tiers exist
-    req.session.user.tiers = Array.isArray(req.session.user.tiers) ? req.session.user.tiers : JSON.parse(JSON.stringify(tiers));
+    // ensure session tiers exist and are populated; if empty array, use canonical tiers
+    if (!Array.isArray(req.session.user.tiers) || req.session.user.tiers.length === 0) {
+        req.session.user.tiers = JSON.parse(JSON.stringify(tiers));
+    }
 
     const idx = req.session.user.tiers.findIndex(t => Number(t.tier) === Number(tierNum));
-    if (idx === -1) return res.status(404).json({ error: 'Tier not found' });
+    if (idx === -1) {
+        console.warn('Tier not found during claim. Request body:', req.body);
+        try { console.warn('Session tiers snapshot:', JSON.stringify(req.session.user.tiers).slice(0,2000)); } catch (e) { console.warn('Failed to stringify session tiers:', e); }
+        return res.status(404).json({ error: 'Tier not found' });
+    }
 
     req.session.user.tiers[idx].status = status;
 
@@ -681,7 +878,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
     const tiersJson = JSON.stringify(req.session.user.tiers);
     const displayName = req.session.user.displayName;
     console.log('Saving tiers for', displayName, req.session.user.tiers);
-    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err) {
+    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err) {
         if (err) {
             console.error('Error saving tiers for', displayName, err);
             // try to add the column if it doesn't exist, then retry once
@@ -689,34 +886,130 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                 usdb.run("ALTER TABLE userSettings ADD COLUMN tiers TEXT DEFAULT '[]'", [], function(altErr) {
                     if (altErr) {
                         console.error('Failed to add tiers column:', altErr);
-                        return res.status(500).json({ error: 'db' });
+                        return res.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
                     }
                     // retry update
-                    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err2) {
+                    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err2) {
                         if (err2) {
                             console.error('Error saving tiers after adding column for', displayName, err2);
-                            return res.status(500).json({ error: 'db' });
+                            return res.status(500).json({ error: 'db', message: err2.message || String(err2) });
                         }
-                        // ensure session is saved before responding
-                        req.session.save(saveErr => {
-                            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-                            console.log('Tiers saved and session saved (after ALTER) for', displayName);
-                            return res.json({ tiers: req.session.user.tiers });
-                        });
+                        // after tiers saved, possibly grant a perk if this tier awards one
+                        handlePostTierSave(req, res, idx, status, displayName);
                     });
                 });
                 return;
             }
-            return res.status(500).json({ error: 'db' });
+            return res.status(500).json({ error: 'db', message: err.message || String(err) });
         }
-        // ensure session is saved before responding
-        req.session.save(saveErr => {
-            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
-            console.log('Tiers saved and session saved for', displayName);
-            return res.json({ tiers: req.session.user.tiers });
-        });
+        // after tiers saved, possibly grant a perk if this tier awards one
+        handlePostTierSave(req, res, idx, status, displayName);
     });
 });
+
+    // helper to handle optional perk granting after tiers were saved
+    function handlePostTierSave(reqParam, resParam, idxParam, statusParam, displayNameParam) {
+        // ensure session is saved before continuing
+        reqParam.session.save(saveErr => {
+            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
+            console.log('Tiers saved and session saved for', displayNameParam);
+
+            // check whether this tier grants a perk
+            try {
+                const claimedTier = reqParam.session.user.tiers && reqParam.session.user.tiers[idxParam] ? reqParam.session.user.tiers[idxParam] : null;
+                const rewardType = claimedTier && claimedTier.reward ? String(claimedTier.reward) : null;
+                // only proceed if the reward is a "Perk" and the client marked it claimed
+                console.log('Post-tier: rewardType=', rewardType, 'statusParam=', statusParam);
+                if (rewardType === 'Perk' && statusParam) {
+                    console.log('Post-tier: entering perk grant flow for', displayNameParam, 'tier idx', idxParam);
+                    // helper to process an authoritative perks array and attempt to grant one
+                    function processPerksArray(existingPerks) {
+                        console.log('processPerksArray: existingPerks length=', (existingPerks||[]).length);
+                        existingPerks = Array.isArray(existingPerks) ? existingPerks : [];
+                        // build set of owned perk names
+                        const owned = new Set((existingPerks || []).map(p => p && p.name).filter(Boolean));
+                        // filter global perks list to those not owned
+                        const available = (perks || []).filter(p => !owned.has(p.name));
+                        if (!available || available.length === 0) {
+                            console.log('No available perks to grant for', displayNameParam);
+                            // still respond with tiers but no grantedPerk
+                            return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: null });
+                        }
+
+                        // choose random available perk
+                        const choice = available[Math.floor(Math.random() * available.length)];
+                        const granted = { name: choice.name, givenAt: Date.now() };
+                        existingPerks.push(granted);
+                        const perksJson = JSON.stringify(existingPerks);
+
+                        // persist perks to DB; if column missing, try to add then retry
+                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(updateErr) {
+                            if (updateErr) {
+                                console.error('Error saving perks for', displayNameParam, updateErr);
+                                if (updateErr.message && updateErr.message.toLowerCase().includes('no such column')) {
+                                    usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], function(altErr2) {
+                                        if (altErr2) {
+                                            console.error('Failed to add perks column:', altErr2);
+                                            return resParam.status(500).json({ error: 'db', message: altErr2.message || String(altErr2) });
+                                        }
+                                        // retry update
+                                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(err3) {
+                                            if (err3) {
+                                                console.error('Error saving perks after ALTER for', displayNameParam, err3);
+                                                return resParam.status(500).json({ error: 'db', message: err3.message || String(err3) });
+                                            }
+                                            // update session and return granted perk
+                                            reqParam.session.user.perks = existingPerks;
+                                            reqParam.session.save(() => {
+                                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                                            });
+                                        });
+                                    });
+                                    return;
+                                }
+                                return resParam.status(500).json({ error: 'db', message: updateErr.message || String(updateErr) });
+                            }
+                            // success: update session and return granted perk
+                            reqParam.session.user.perks = existingPerks;
+                            reqParam.session.save(() => {
+                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                            });
+                        });
+                    }
+
+                    // fetch authoritative perks array from DB
+                    getWithRetries(usdb, 'SELECT perks FROM userSettings WHERE displayname = ?', [displayNameParam], 5, (getErr, row) => {
+                        if (getErr) {
+                            // If the column doesn't exist yet, try to add it then proceed with empty array
+                            if (getErr.message && getErr.message.toLowerCase().includes('no such column')) {
+                                console.warn('Perks column missing, attempting to add it for', displayNameParam);
+                                usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], (altErr) => {
+                                    if (altErr) {
+                                        console.error('Failed to add perks column:', altErr);
+                                        return resParam.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
+                                    }
+                                    // proceed assuming empty perks
+                                    return processPerksArray([]);
+                                });
+                                return;
+                            }
+                            console.error('Failed to read perks for', displayNameParam, getErr);
+                            return resParam.status(500).json({ error: 'db', message: getErr.message || String(getErr) });
+                        }
+                        let existingPerks = [];
+                        try { existingPerks = row && row.perks ? JSON.parse(row.perks) : []; } catch (e) { existingPerks = []; }
+                        return processPerksArray(existingPerks);
+                    });
+                } else {
+                    // not a perk reward or not claiming a perk; respond with saved tiers only
+                    return resParam.json({ tiers: reqParam.session.user.tiers });
+                }
+            } catch (e) {
+                console.error('Error during post-tier processing for', displayNameParam, e);
+                return resParam.status(500).json({ error: 'server' });
+            }
+        });
+    }
 
 // GET saved tiers (reads DB to confirm persisted data)
 app.get('/api/perk-tiers', (req, res) => {
