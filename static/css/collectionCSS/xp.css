@@ -24,7 +24,7 @@
   padding: 5px;
   z-index: 1;
   opacity: 0;
-  transition: all 0.1s ease;
+  transition: all 0.2s ease;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.689);
   pointer-events: none;
 }

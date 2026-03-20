@@ -123,7 +123,7 @@ li {
     box-shadow: 0 0 5px black;
     margin: 10px;
     color: white;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -226,7 +226,7 @@ li {
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #filter:hover {
@@ -339,7 +339,7 @@ li {
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #add:hover {
@@ -427,7 +427,7 @@ li {
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #pogForm button:hover {

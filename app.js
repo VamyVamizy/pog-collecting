@@ -627,6 +627,7 @@ app.post('/api/open-crate', express.json(), (req, res) => {
                 rarity: chosen.rarity,
                 pogcol: chosen.color || 'white',
                 color: meta.color || 'white',
+                code2: chosen.code2,
                 income: meta.income || 5,
                 description: chosen.description || '',
                 creator: chosen.creator || ''
@@ -651,6 +652,7 @@ app.post('/api/open-crate', express.json(), (req, res) => {
                     rarity: chosen.rarity,
                     pogcol: chosen.color || 'white',
                     color: meta.color || 'white',
+                    code2: chosen.code2,
                     income: meta.income || 5,
                     description: chosen.description || '',
                     creator: chosen.creator || ''
