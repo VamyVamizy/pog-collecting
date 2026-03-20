@@ -9,10 +9,8 @@ const {
 } = require('../backend_data/pog_ref.js');
 
 // URL to take user to Formbar for authentication
-const AUTH_URL = process.env.AUTH_URL; // ... or the address to the instance of fbjs you wish to connect to
-
-//URL to take user back to after authentication
-const THIS_URL = process.env.THIS_URL; // ... or whatever the address to your application is
+const AUTH_URL = process.env.AUTH_URL;
+const THIS_URL = process.env.THIS_URL;
 
 //user declaration vars
 const achievements = require("../modules/backend_js/trophyList.js");
@@ -25,10 +23,8 @@ function isAuthenticated(req, res, next) {
 
     const makeAuthRedirect = (refreshToken) => {
         if (refreshToken && AUTH_URL) {
-            // NOTE: Formbar expects raw (non-encoded) redirectURL
             return `${AUTH_URL}/oauth?refreshToken=${refreshToken}&redirectURL=${THIS_URL}`;
         }
-        // No token at all — show local login page
         return '/login';
     };
 
@@ -36,13 +32,11 @@ function isAuthenticated(req, res, next) {
     if (!tokenData) {
         try {
             if (req.cookies && req.cookies.fb_token) {
-                // fb_token was stored as a JSON string of the token object.
                 const cookieVal = req.cookies.fb_token;
                 let parsed = null;
                 try { parsed = JSON.parse(cookieVal); } catch (e) { parsed = null; }
                 if (parsed) {
                     req.session.token = parsed;
-                    // remove fallback cookie after bootstrapping
                     res.clearCookie('fb_token');
                     console.log('Bootstrapped session.token from fb_token cookie');
                     return next();
@@ -52,17 +46,14 @@ function isAuthenticated(req, res, next) {
             console.error('Error while bootstrapping fb_token cookie:', err);
         }
 
-        // No token available; redirect to auth (or local login)
         const dest = makeAuthRedirect();
         console.log('[AUTH] No token, redirecting to:', dest);
         return res.redirect(dest);
     }
 
-    // We have tokenData — make sure it is valid before continuing.
     try {
         const currentTime = Math.floor(Date.now() / 1000);
         if (tokenData.exp && tokenData.exp < currentTime) {
-            // token expired, attempt refresh flow if refresh token exists
             const dest = makeAuthRedirect(tokenData.refreshToken);
             console.log('[AUTH] Token expired, redirecting to:', dest);
             return res.redirect(dest);

@@ -539,41 +539,61 @@ app.post('/api/trade-wish', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Invalid Dragon Ball ID' });
     }
 
-    usdb.get('SELECT inventory, wish FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-        if (err) {
-            console.error('Error reading user for wish trade:', err);
+    // Use inventory table: find the inventory instance by uid and ensure it belongs to the user and is a Dragon Ball
+    usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (err, userRow) => {
+        if (err || !userRow) {
+            console.error('Error fetching user uid for wish trade:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (!row) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        const userUid = userRow.uid;
 
-        let inventory;
-        try { inventory = JSON.parse(row.inventory || '[]'); } catch (e) { inventory = []; }
-        const currentWish = Number(row.wish) || 0;
+        usdb.get('SELECT uid as iid, pog_uid, quantity FROM inventory WHERE uid = ? AND user_uid = ?', [dragonBallId, userUid], (invErr, invRow) => {
+            if (invErr) {
+                console.error('Error reading inventory for wish trade:', invErr);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (!invRow) {
+                return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+            }
 
-        // Find the Dragon Ball by its unique item id
-        const dbIndex = inventory.findIndex(item => item.id === dragonBallId && item.name === 'Dragon Ball');
-        if (dbIndex === -1) {
-            return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
-        }
+            // verify that the referenced pog_uid corresponds to a Dragon Ball using server's pog list (results)
+            const pogMeta = results.find(p => Number(p.id) === Number(invRow.pog_uid) || Number(p.uid) === Number(invRow.pog_uid));
+            const pogName = pogMeta ? pogMeta.name : null;
+            if (pogName !== 'Dragon Ball') {
+                return res.status(400).json({ error: 'Item is not a Dragon Ball' });
+            }
 
-        // Remove the Dragon Ball and increment wish
-        inventory.splice(dbIndex, 1);
-        const newWish = currentWish + 1;
+            // delete the inventory instance and increment wish on userSettings
+            dbRunWithRetries = function(sql, params, cb) { // lightweight inline retry to avoid SQLITE_BUSY
+                let tries = 0;
+                function once() {
+                    usdb.run(sql, params, function(e) {
+                        if (e && e.code === 'SQLITE_BUSY' && tries < 5) { tries++; return setTimeout(once, 150); }
+                        return cb(e, this);
+                    });
+                }
+                once();
+            };
 
-        usdb.run(
-            'UPDATE userSettings SET inventory = ?, wish = ? WHERE displayname = ?',
-            [JSON.stringify(inventory), newWish, displayName],
-            function (dbErr) {
-                if (dbErr) {
-                    console.error('Error saving wish trade:', dbErr);
+            dbRunWithRetries('DELETE FROM inventory WHERE uid = ?', [dragonBallId], (delErr) => {
+                if (delErr) {
+                    console.error('Error deleting inventory instance for wish trade:', delErr);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (id: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
-                return res.json({ wish: newWish, inventory: inventory });
-            }
-        );
+
+                // increment wish
+                usdb.get('SELECT wish FROM userSettings WHERE uid = ?', [userUid], (wishErr, wishRow) => {
+                    if (wishErr) { console.error('Error reading wish:', wishErr); return res.status(500).json({ error: 'Database error' }); }
+                    const currentWish = Number(wishRow && wishRow.wish) || 0;
+                    const newWish = currentWish + 1;
+                    dbRunWithRetries('UPDATE userSettings SET wish = ? WHERE uid = ?', [newWish, userUid], (updErr) => {
+                        if (updErr) { console.error('Error updating wish:', updErr); return res.status(500).json({ error: 'Database error' }); }
+                        console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (inv uid: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
+                        return res.json({ wish: newWish, removedInventoryId: dragonBallId });
+                    });
+                });
+            });
+        });
     });
 });
 
@@ -637,9 +657,10 @@ app.post('/api/open-crate', express.json(), async (req, res) => {
 
     // 5️⃣ Build pogResult for frontend (normalized)
     const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
-    const pogResult = {
-      locked: false,
-      pogUid: chosen.uid, // store only UID in inventory
+        const pogResult = {
+            locked: false,
+            // pog CSV loader uses `id` while some DB-sourced pogs may have `uid` — prefer uid then id
+            pogUid: Number(chosen.uid || chosen.id || chosen.number), // store only UID in inventory (coerced to Number)
       displayId: Date.now() + Math.floor(Math.random() * 10000), // temporary frontend ID
       name: chosen.name,
       rarity: chosen.rarity,
@@ -651,10 +672,44 @@ app.post('/api/open-crate', express.json(), async (req, res) => {
       creator: chosen.creator || ''
     };
 
-    // 6️⃣ Add to user inventory (normalized)
-    await addToInventory(req.session.user.uid, pogResult.pogUid);
+            // Validate pog UID before attempting DB insert
+            if (!Number.isFinite(pogResult.pogUid) || Number(pogResult.pogUid) <= 0) {
+                console.error('OPEN CRATE ERROR: invalid pog uid for chosen pog', chosen);
+                return res.status(500).json({ error: 'server', message: 'Invalid pog identifier for crate result' });
+            }
 
-    return res.json({ ok: true, pogResult });
+            // 6️⃣ Add to user inventory (normalized)
+        // Ensure we have the authoritative DB uid for this session user (session may only store fid)
+        const lookupDisplay = req.session.user && (req.session.user.displayName || req.session.user.displayname);
+        try {
+            const userRow = await new Promise((resolve, reject) => {
+                getWithRetries(usdb, 'SELECT uid FROM userSettings WHERE displayname = ?', [lookupDisplay], 5, (gErr, row) => {
+                    if (gErr) return reject(gErr);
+                    if (!row) return reject(new Error('User not found'));
+                    return resolve(row);
+                });
+            });
+
+            const userUid = userRow.uid;
+
+            // Insert inventory instance (quantity defaults to 1). Use runWithRetries to avoid SQLITE_BUSY
+            await new Promise((resolve, reject) => {
+                runWithRetries(usdb, 'INSERT INTO inventory (user_uid, pog_uid, quantity) VALUES (?, ?, ?)', [userUid, pogResult.pogUid, 1], 5, (insErr) => {
+                    if (insErr) return reject(insErr);
+                    return resolve();
+                });
+            });
+
+            // Respond with the pog result (client will call save afterwards)
+            return res.json({ ok: true, pogResult });
+        } catch (dbErr) {
+            console.error('OPEN CRATE DB ERROR:', dbErr);
+            // If inventory table is missing, hint to run migrations
+            if (dbErr && dbErr.message && dbErr.message.toLowerCase().includes('no such table')) {
+                return res.status(500).json({ error: 'db', message: 'Inventory table missing; please run migrations' });
+            }
+            return res.status(500).json({ error: dbErr.message || String(dbErr) });
+        }
 
   } catch (err) {
     console.error("OPEN CRATE ERROR:", err);
