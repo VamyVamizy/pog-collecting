@@ -1,0 +1,1 @@
+var userdata = JSON.parse(document.getElementById("userdata").textContent);

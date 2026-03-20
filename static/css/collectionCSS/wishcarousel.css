@@ -1,0 +1,142 @@
+#wishCarousel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+}
+
+.wish-container {
+    display: flex;
+    align-items: center;
+    gap: 40px; /* Space between cursors and wish */
+    cursor: pointer;
+}
+
+.wish-cursor {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6a1b9a, #9c27b0);
+    border: 2px solid #ffffff;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.wish-cursor:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+}
+
+.wish-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 250px; /* Fixed width for consistent positioning */
+}
+
+.wish-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border: 4px solid #ffffff;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+    overflow: hidden;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.wish-container:hover .wish-circle {
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+}
+
+.wish-container:hover .wish-info {
+    transform: translateY(10px);
+}
+
+#wishIcon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.wish-info {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 15px 25px;
+    border-radius: 10px;
+    border: 2px solid #ffffff;
+    color: white;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.wish-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    color: #ffffff;
+}
+
+.wish-info p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 1;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    color: #ffffff;
+}
+
+/* Sliding animations */
+.slide-out-left {
+    transform: translateX(-300px);
+    opacity: 0;
+}
+
+.slide-in-right {
+    transform: translateX(300px);
+    opacity: 0;
+}
+
+.slide-in-center {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.wish-circle, .wish-info {
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+#wishCarousel[style*="display: none"] {
+    pointer-events: none;
+    visibility: hidden;
+}
+/* article animations for different rarities (wish of clarity */
+@keyframes floatSparkle {
+    0%, 100% { 
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    50% { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+}
+
+/* removing the glow when clarity ends */
+.crate {
+    transition: box-shadow 0.5s ease;
+}

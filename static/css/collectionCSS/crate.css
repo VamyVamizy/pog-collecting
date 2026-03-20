@@ -1,0 +1,64 @@
+/* Base Crate Style */
+:root {
+  --neon: #9d42f7;
+  --neon-soft: rgba(198, 43, 255, 0.35);
+  --bg-dark: #0b0f14;
+}
+
+.crate {
+  position: relative;
+  background: linear-gradient(145deg, #0d131a, #05080c);
+  border: 2px solid var(--neon);
+  color: var(--neon);
+  padding: 16px 42px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  overflow: hidden;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 12px rgba(149, 0, 255, 0.623);
+  font-weight: bold;
+  width: 350px;
+}
+
+.crate:disabled {
+    pointer-events: none;
+}
+
+/* Hover creates anticipation */
+.crate:hover {
+    top: -2px;
+    filter: brightness(1.3);
+}
+
+/* The tactile "Pressed" state */
+.crate:active {
+    top: 4px;
+    /* Depresses visually */
+    box-shadow: 0 4px #130f0c;
+    transform: scale(0.95);
+    /* Shrinks slightly to feel "caught" */
+}
+
+.buttonSources {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    padding: 5px;
+    gap: 5px;
+}
+
+#cratesCont {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}

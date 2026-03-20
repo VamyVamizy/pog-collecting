@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Patch Notes</title>
+    <link rel="stylesheet" href="../static/css/patch.css">
+</head>
+
+<body>
+    <div id="patchBanner">
+        <div class="leftstuff">
+            <div style="display: none" id="userdata">
+                <%= JSON.stringify(userdata) %>
+            </div>
+            <h1 style="margin-left: 10px;">Patch Notes</h1>
+            <div style="display: none" id="maxPogs">
+                <%= JSON.stringify(maxPogs) %>
+            </div>
+        </div>
+        <div class="rightstuff">
+            <a href="/collection" id="circleButton">
+                < </a>
+        </div>
+    </div>
+    <div id="notes">
+        <div class="weeks">
+            <h1>Week 29</h1>
+            <h2>V 0.3.8</h2>
+            <ul>
+                <li>Pogs in the main page are now displayed as images</li>
+                <li>Pog css improved</li>
+                <li>Search bar added to the top</li>
+                <li>Can finally get perk tiers via achievements!</li>
+                <li>Perks are unusable for the time being</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 28</h1>
+            <h2>V 0.3.7 - Anti-Cheat Update</h2>
+            <ul>
+                <li>Fixed a security issue using failsafes where you could edit your data in the console</li>
+                <li>Income now scales with level</li>
+                <li>Income css improved</li>
+                <li>XP css improved</li>
+                <li>Wishes altered to accomidate for new mechanics (beta)</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Hotfix Update 27</h1>
+            <h2>V 0.3.6</h2>
+            <ul>
+                <li>Uncommon chance in trash crate changed from 15% to 20%</li>
+                <li>Mythic chance in trash crate changed from 5.5% to 0.7%</li>
+                <li>Unique chance in trash crate changed from 0.5% to 0.3%</li>
+                <li>Logout temporarily removed</li>
+                <li>Marketplace back and fixed</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 26</h1>
+            <h2>V 0.3.5 - Pogipedia Update</h2>
+            <ul>
+                <li>Pogipedia Created</li>
+                <li>Can view all pogs and each default attribute outside of the Poggle format</li>
+                <li>Images for each pog are added</li>
+                <li>Fixed pog inconsistency issues</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 25</h1>
+            <h2>V 0.3.45 - Hotfix Patches</h2>
+            <ul>
+                <li>Fixed the Booster names being capitalization-inconsistent</li>
+                <li>Fixed class names being added improperly</li>
+                <li>Improved pog descriptions</li>
+                <li>Altered backend security on authentication</li>
+                <li>Created custom site alerts</li>
+                <li>Team page temporarily disabled</li>
+                <li>Achievement battle pass temporarily disabled</li>
+                <li>Marketplace temporarily disabled</li>
+                <li>Leaderboard reduced from Top 100 to Top 50</li>
+                <li>Can now view players on the playerbase, each having custom tags</li>
+                <li>Can no longer view players on leaderboard</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 24</h1>
+            <h2>V 0.3.4 - Consistency Update</h2>
+            <ul>
+                <li>Team icons now display their notches for each pog in the select menu</li>
+                <li>Play button returns: now says 'Poggle!'</li>
+                <li>Binder and Team added to the play tab</li>
+                <li>Animations made smoother across the site</li>
+                <li>Pog description added to the right of the screen to remove whitespace</li>
+                <li>Wishes now displayed as stars</li>
+                <li>Fixed a "420" achievement description error</li>
+                <li>New playerbase added, where players cn be viewed and sorted, as well as banned from managers</li>
+                <li>Leaderboard now starts at the top of the page instead of the middle</li>
+                <li>Navigation panel simplified</li>
+                <li>Brought back website scrolling</li>
+                <li>Custom alert added for not enough inventory slots to open crates</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 23</h1>
+            <h2>V 0.3.3 - Viewing Update</h2>
+            <ul>
+                <li>Added a color picker that will update the user's profile</li>
+                <li>Can now log out of the account through the player profile</li>
+                <li>Fixed an issue where subclasses didn't load in the binder properly</li>
+                <li>Removed digital currency from crates</li>
+                <li>Added up, down, and equal arrows in the binder for previous and current stats</li>
+                <li>Added custom rarity icons to the binder, will be updated across the whole site next week</li>
+                <li>Perks are now viewed in the binder</li>
+                <li>CP pogs no longer show perk slots and stats for they will become equipment</li>
+                <li>Icons for perks in achievements added</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 22</h1>
+            <h2>V 0.3.2 - Teams Update</h2>
+            <ul>
+                <li>Added a teams page where 4 pogs can be selected</li>
+                <li>Added tiers that are unlocked via achievements, which grant rewards</li>
+                <li>Added color key to the binder</li>
+                <li>Quality of life css updated</li>
+                <li>Rare crate removed</li>
+                <li>Uniques are now possible in all crates</li>
+                <li>Altered crate changes</li>
+                <li>Purchasing inventory slots now has a max of 100</li>
+                <li>Can now only hold up to 100 pogs at once</li>
+                <li>Scrollbar for inventory returned</li>
+                <li>Trash income changed from 4 to 2</li>
+                <li>Common income changed from 15 to 7</li>
+                <li>Uncommon income changed from 27 to 13</li>
+                <li>Mythic income changed from 63 to 20</li>
+                <li>Unique income changed from 134 to 28</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 21</h1>
+            <h2>V 0.3.1 - Slot Update</h2>
+            <ul>
+                <li>Lightmode removed; site is now permanently darkmode</li>
+                <li>Css for redirects adjusted to fit the rest of the site</li>
+                <li>Fixed a bug where the issue report button only worked when clicking the image</li>
+                <li>Fixed a description coloring issue with the headers</li>
+                <li>Can now click on the player row to view their stats in the leaderboard</li>
+                <li>Leaderboard font size increased for better readability</li>
+                <li>New button added to unlock inventory slots; costs 25 digipogs</li>
+                <li>Added element type to the binder stats</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 20</h1>
+            <h2>V 0.3.0 - Dark Update</h2>
+            <ul>
+                <li>Site colors darkened and more consistent</li>
+                <li>All redirects are now hidden in a burger menu</li>
+                <li>Sell all displayed beside inventory space</li>
+                <li>Lightmode button altered; might be removed in next update</li>
+                <li>Binder now changed to pog selection and data page</li>
+                <li>This page lets you view each unlocked pog and its stats, as well as equipable perks</li>
+                <li>Improved perk css</li>
+                <li>Account profile picture is now displayed with the burger menu</li>
+                <li>Css implementation improved for faster editing</li>
+                <li>Pogs now only display in the binder if unlocked</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 19</h1>
+            <h2>V 0.2.7 - Marketplace Update</h2>
+            <ul>
+                <li>Empty inventory slots are now displayed</li>
+                <li>Marketplace page created</li>
+                <li>Progress bar added to the pog binder</li>
+                <li>Perks added to the page; wonder what they will be used for...</li>
+                <li>Legacy money price scaling decreased from 20% to 5%</li>
+                <li>Leveling up no longer grants inventory slots</li>
+                <li>Trade room css improved</li>
+                <li>Marketplace can now accept auctions</li>
+                <li>Gamemode panels created</li>
+                <li>Fixed a bug where trades persisted even after being accepted</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 18</h1>
+            <h2>V 0.2.6 - Trade Update</h2>
+            <ul>
+                <li>Color key now renders on the screen properly</li>
+                <li>Binder now extends the entire screen</li>
+                <li>Level is now displayed as a number; hovering over it shows the XP</li>
+                <li>Improved shop banner css</li>
+                <li>Leaderboard now displays up to 100 players</li>
+                <li>User select is now disabled on all pages</li>
+                <li>Chat room added back; is now the trading room</li>
+                <li>Skip animation added to crate opening</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 17</h1>
+            <h2>V 0.2.5 - Gambling Update</h2>
+            <ul>
+                <li>Combos can now stack up to 3x</li>
+                <li>Can now visibly see combo multipliers</li>
+                <li>Crates are now displayed at all times</li>
+                <li>+5 and +10 buttons are removed</li>
+                <li>Crates can now be bought with digipogs</li>
+                <li>Dropdowns added for purchasing so you can pull 1, 5, or 10 pogs</li>
+                <li>Shop removed</li>
+                <li>Improved error displays for create opening failure</li>
+                <li>Crate money scales with each crate purchased</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 16</h1>
+            <h2>V 0.2.45 - User-Interface Update</h2>
+            <ul>
+                <li>Enhanced button css</li>
+                <li>Moved the shop to the tool bar</li>
+                <li>Chat room temporarily removed</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 15</h1>
+            <h2>V 0.2.4 - Dragon Ball Update</h2>
+            <ul>
+                <li>Altered the Dragon Ball system to reduce bugs; all Dragon Balls are now lv1, but you need 7 of them</li>
+                <li>Fixed a bug where income wouldn't update on the leaderboard</li>
+                <li>Fixed a bug where the Godly pog wouldn't sort correctly</li>
+                <li>Removed dragon ball achievements</li>
+                <li>Improved achievement page css</li>
+                <li>Fixed a bug where CP pogs wouldn't increase the binder count</li>
+                <li>Made banner css more consistent</li>
+                <li>Created tools buttons</li>
+                <li>Added a color key for each rarity</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 14</h1>
+            <h2>V 0.2.3 - Animation Update</h2>
+            <ul>
+                <li>Pogs are now circles</li>
+                <li>Pog descriptions are now off to the side, where the description, sell value, and income</li>
+                <li>Added singular crate opening animations</li>
+                <li>Added +5 and +10 crate opening animations</li>
+                <li>Added a binder to view all collected pogs</li>
+                <li>Fixed a bug where the inventory would not extend the whole length of the screen</li>
+                <li>Changed all redirects to be icons instead of text</li>
+                <li>Logo (favicon) added to the site</li>
+                <li>Removed manual saving; saving now happens automatically</li>
+                <li>Changed bronze, silver, gold, diamond, astral, and god pog styling</li>
+                <li>Removed "sort by income"; now changed to "sort by rarity"</li>
+                <li>Sorting preference stays consistent across redirects, when refreshing, or relogging</li>
+                <li>Changed crate chances; uniques only drop from mythical crates</li>
+                <li>Improved lightmode and darkmode color blends</li>
+                <li>Improved pog selection and lock indication</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 13</h1>
+            <h2>V 0.2.2 - Microtransactions Update</h2>
+            <ul>
+                <li>Can now buy transactions with Digipogs</li>
+                <li>Improved leaderboard css</li>
+                <li>Improved chat room functionality and css</li>
+                <li>Can no longer view a player's pog inventory on the leaderboard</li>
+                <li>There is now a help button, which shows the simple rules of the game for newcomers</li>
+                <li>Improved saving performance</li>
+                <li>Can no longer see the xp/max xp next to your level</li>
+                <li>XP now scales by (income * (2 * 1 / level)) instead of (income * (15 * level / 15))</li>
+                <li>Can no longer view your username and profile on seperate pages</li>
+                <li>Updated crate css; crates are now grayed out when they aren't affordable</li>
+                <li>Made sell values for pogs scale with level to incentivise selling</li>
+                <li>Fixed a bug with pog selling</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 12</h1>
+            <h2>V 0.2.1 - Lock Update</h2>
+            <ul>
+                <li>Added a lock system for pogs, which can't be sold when locked</li>
+                <li>Added a shop banner, which will be used to spend digipogs</li>
+                <li>Added a button that displays the crates for better organization</li>
+                <li>Added support for mobile devices (shop and leaderboard still need to be worked on)</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 11</h1>
+            <h2>V 0.2.0 - Icon Update</h2>
+            <ul>
+                <li>Added icons for saving, lightmode, and searching</li>
+                <li>Profile picture can now be viewed across all pages but can only be changed on the main page</li>
+                <li>Enhanced extra css</li>
+                <li>Added custom icons for the tabs</li>
+                <li>Renamed site to Pogglebar</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 10</h1>
+            <h2>V 0.1.2 - Profile Update</h2>
+            <ul>
+                <li>God pogs now render the correct color</li>
+                <li>All merged pogs now have ids, descriptions, and creators</li>
+                <li>Improved the pog cards css</li>
+                <li>Made the website page buttons more visually appealing</li>
+                <li>Added a user profile picture, which will display on the main page and in the player info</li>
+                <li>Changed crate css</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 9</h1>
+            <h2>V 0.1.15 - Tooltip Update</h2>
+            <ul>
+                <li>Fixed an issue where the crate costs wouldn't save</li>
+                <li>Added pog information, which shows description, id, and creator of a pog</li>
+                <li>Created a chat page</li>
+                <li>An (i) next to the logo shows website details (for now just the version)</li>
+                <li>Added warnings if you can't buy 5 or 10 crates</li>
+                <li>Improved achievement saves</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 8</h1>
+            <h2>V 0.1.1 - Consistency Update</h2>
+            <ul>
+                <li>Added achievement icons</li>
+                <li>Added a sell all button to sell all pogs in the inventory</li>
+                <li>Sell all also works to sell all searched items</li>
+                <li>Can now buy 5 and 10 of the same crate</li>
+                <li>Changed the UI for the locators to the top panel</li>
+                <li>Improved the organization of player details</li>
+                <li>Added wishes, which are aquired from having one of each star dragon pog</li>
+                <li>Created a max number of pogs (999)</li>
+                <li>Changed the colors of the crates (and the names) to fit the possible pulls</li>
+                <li>Can now see the rarities of each crate by hovering over the (i) icon</li>
+                <li>Made combos scale greater than 3 of the same; max is 2x for 20 of the same pog</li>
+                <li>Added more achievement functionality</li>
+                <li>Set the starting money to $300</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 7</h1>
+            <h2>V 0.1.0 - Public Update</h2>
+            <ul>
+                <li>Created a leaderboard page</li>
+                <li>Top 10 users will be added</li>
+                <li>Now made the website public by creating an ip address</li>
+                <li>Added more achievement functionality</li>
+                <li>Improved formbar login</li>
+                <li>Fixed an issue where the formbar wouldn't save a user due to localhost</li>
+                <li>Added player info for each player in the leaderboard</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 6</h1>
+            <h2>V 0.0.6 - Sorting Update</h2>
+            <ul>
+                <li>Improved css for items</li>
+                <li>Made bronze and silver pog merge functions; they will also show as different colors</li>
+                <li>Now shows how much each pog will sell for</li>
+                <li>Added a search system</li>
+                <li>Added a complex dropdown sorting system</li>
+                <li>Improved sidebar css</li>
+                <li>Added more achievement functionality</li>
+                <li>Added an achievement notification for when an achievement is unlocked</li>
+                <li>Rehashed the selling function to improve bug fixes</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 5</h1>
+            <h2>V 0.0.5 - Pog Update</h2>
+            <ul>
+                <li>Added pogs to crates</li>
+                <li>Made every level give 5 inventory slots; every 5 levels gives you 10 slots</li>
+                <li>Removed the rarity items from the draw pull</li>
+                <li>Removed the Godly Crate: Mythical Crate is now the highest tier</li>
+                <li>Added partial achievement implementation</li>
+                <li>Fixed an issue where hidden achievements weren't rendering properly</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 4</h1>
+            <h2>V 0.0.4 - Standards Update</h2>
+            <ul>
+                <li>Added first achievements</li>
+                <li>Added user data saves</li>
+                <li>Removed the left bar and moved all crates to the right</li>
+                <li>Added css improvements when the screen is small</li>
+                <li>Fixed a bug where the XP wasn't displayed correctly</li>
+                <li>Removed load and reset functionality</li>
+                <li>Added user theme across pages</li>
+                <li>Added digipogs database</li>
+                <li>Added achievement functionality</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 3</h1>
+            <h2>V 0.0.3 - Money-Making Update</h2>
+            <ul>
+                <li>Added an achievements page (not working yet)</li>
+                <li>Reformatted the main game to look less empty</li>
+                <li>Fixed inventory and side bar not scaling in height when the window size changed</li>
+                <li>Fixed some bugs with the income calculation</li>
+                <li>Changed your start value to make testing easier</li>
+                <li>Changed a lot of the css as a whole</li>
+                <li>Saved user data on a database to make saving and loading easier</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 2</h1>
+            <h2>V 0.0.2 - Levelup Update</h2>
+            <ul>
+                <li>Added XP and Leveling system; each crate opened gives XP</li>
+                <li>Gave patch logs a seperate page</li>
+                <li>Moved the save, load, and reset button to the top right</li>
+                <li>Started hosting the game on formbar.js and node</li>
+                <li>Removed the rarity sorting</li>
+            </ul>
+        </div>
+        <div class="weeks">
+            <h1>Week 1</h1>
+            <h2>V 0.0.1 - Launch Update</h2>
+            <ul>
+                <li>Added stack bonuses; 3+ of one rarity increases income of that rarity by 1.5x [indicated by a white
+                    glow outline];
+                    all items will round to the nearest whole number</li>
+                <li>Added sorting system from least to most rare</li>
+                <li>Added cards for each rarity, including income and sell value</li>
+                <li>Added scrollbar for the inventory rather than the website page</li>
+                <li>Removed the dropdown for deleting items in the inventory; now each card has its own sell button</li>
+                <li>Removed page scrolling; all data is stored on the single screen</li>
+                <li>Added a failsafe that if all items are sold and money is less than a crate, then money will equal 200</li>
+                <li>Edited the names of the crates to match their higher rarity chances</li>
+                <li>Added Github functionality for collaboration</li>
+            </ul>
+        </div>
+    </div>
+</body>
+<script src="../static/js/patch.js"></script>
+
+</html>

@@ -1,0 +1,163 @@
+body, h1, h2, h3, h4, h5 {
+    font-family: 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+/* ===== Root + Reset ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background:
+        radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
+        radial-gradient(circle at 70% 60%, rgba(165, 52, 129, 0.12), transparent 55%),
+        radial-gradient(circle at center, #080b0f 0%, #090a0f 70%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: #e6e6f0;
+    overflow-x: hidden;
+    user-select: none;
+}
+
+/* ===== Top Banner ===== */
+#patchBanner {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    height: 100px;
+    padding: 0 20px;
+
+    background: linear-gradient(90deg, #6b3df0, #9d42f7);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+#patchBanner h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+/* Back button */
+#circleButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.25);
+    color: white;
+    text-decoration: none;
+    font-size: 22px;
+
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+#circleButton:hover {
+    background: rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
+}
+
+/* ===== Patch Notes Container ===== */
+#notes {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ===== Individual Week Cards ===== */
+.weeks {
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    border-radius: 18px;
+    padding: 24px 26px;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 10px 25px rgba(0, 0, 0, 0.4);
+
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ===== Headings ===== */
+.weeks h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #c9b9ff;
+    margin-bottom: 4px;
+}
+
+.weeks h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #9fa0ff;
+    margin-bottom: 16px;
+    opacity: 0.9;
+}
+
+/* ===== Patch List ===== */
+.weeks ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.weeks li {
+    position: relative;
+    padding-left: 22px;
+    line-height: 1.45;
+
+    color: #e2e2f0;
+    font-size: 15px;
+}
+
+/* Bullet indicator */
+.weeks li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    color: #9d42f7;
+    font-size: 16px;
+}
+
+/* ===== Big Update Highlight ===== */
+.weeks h2:contains("Big Update"),
+.weeks h2 {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    #patchBanner h1 {
+        font-size: 24px;
+    }
+
+    .weeks {
+        padding: 20px;
+    }
+
+    .weeks h1 {
+        font-size: 22px;
+    }
+
+    .weeks li {
+        font-size: 14px;
+    }
+}

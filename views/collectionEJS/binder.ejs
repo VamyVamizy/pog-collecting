@@ -1,0 +1,130 @@
+<div id="binderBanner" style="display:none;">
+    <div class="binderCont">
+        <div class="overlayBan">
+            <h1 style="font-size: 60px; margin-top: -10px; margin-bottom: 0px;">Collection</h1>
+            <div class="center">
+                <button class="closeOv" id="closeBinder">X</button>
+            </div>
+        </div>
+        <div class="stars"></div>
+        <div class="stars2"></div>
+        <div class="stars3"></div>
+        <div id="bindFlex">
+            <div id="binderItemsWrapper">
+                <div id="binderDots"></div>
+                <div id="collectionCont">
+                    <div id="binderProgress">
+                        <h3 id="pogCount">Pogs: 0 / 0</h3>
+                        <progress id="binderBar"></progress>
+                        <!--Color Key-->
+                    <div>
+                        <img src="../static/icons/buttons_main/pog.png" title="View Pogs" width="40"
+                            height="40" id="pogsBtn">
+                    </div>
+                    <div>
+                        <img src="../static/icons/perks/Perk_Card_Icon.png" title="View Perks" width="40"
+                            height="40" id="perkBtn">
+                    </div>
+                    <div id="keyCont">
+                        <img src="../static/icons/buttons_main/color_key.png" title="View Color Key" width="40"
+                            height="40" id="colors">
+                        <div id="colorKey" style="display: none;">
+                            <div class="key-item">
+                                <span class="color-box trash"></span>
+                                <span class="color-label">Trash</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box common"></span>
+                                <span class="color-label">Common</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box uncommon"></span>
+                                <span class="color-label">Uncommon</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box rare"></span>
+                                <span class="color-label">Rare</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box mythic"></span>
+                                <span class="color-label">Mythic</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box unique"></span>
+                                <span class="color-label">Unique</span>
+                            </div>
+                            <div class="key-item">
+                                <span class="color-box otherworldly"></span>
+                                <span class="color-label">Otherworldly</span>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                    <div id="binderItems"></div>
+                </div>
+            </div>
+            <div id="pogView">
+                <div id="viewed">
+                    <div class="singleI">
+                        <img id="rar_back" width="75" height="75" style="display: none;">
+                        <h4></h4>
+                        <div id="pognotv"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="statBlock" style="visibility: hidden;">
+                <div id="attribs_cont" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="statBox">
+                        <h4 style="margin: 0;">HP</h4>
+                        <progress class="statBar" id="HP_PB" value="50" max="6600"></progress>
+                        <div id="hpAr"></div>
+                    </div>
+                    <div class="statBox">
+                        <h4 style="margin: 0;">ATK</h4>
+                        <progress class="statBar" id="ATK_PB" value="50" max="3200"></progress>
+                        <div id="atkAr"></div>
+                    </div>
+                    <div class="statBox">
+                        <h4 style="margin: 0;">DEF</h4>
+                        <progress class="statBar" id="DEF_PB" value="50" max="2800"></progress>
+                        <div id="defAr"></div>
+                    </div>
+                    <div class="statBox">
+                        <h4 style="margin: 0;">SPD</h4>
+                        <progress class="statBar" id="SPD_PB" value="50" max="150"></progress>
+                        <div id="spdAr"></div>
+                    </div>
+                </div>
+                <h3 id="perkHead">Perks</h3>
+                <div id="perkCardCont">
+                    <button class="perkSlot">+</button>
+                    <button class="perkSlot">+</button>
+                    <button class="perkSlot">+</button>
+                </div>
+                <div id="infst">
+                    <p id="descStat"></p>
+                    <div id="attRow">
+                        <div class="attCont">
+                            <img id="icon" src="../static/icons/attributes/creator.png" width="20" height="20">
+                            <div id="creatorStat"></div>
+                        </div>
+                        <div class="attCont">
+                            <img id="icon" src="../static/icons/attributes/class.png" width="20" height="20">
+                            <div id="classStat"></div>
+                        </div>
+                        <div class="attCont">
+                            <div id="rari_cont">
+                                <img id="rar_icon" width="20" height="20">
+                            </div>
+                            <div id="rarStat"></div>
+                        </div>
+                        <div class="attCont">
+                            <img id="icon" src="../static/icons/attributes/atom.png" width="20" height="20">
+                            <div id="elemStat"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

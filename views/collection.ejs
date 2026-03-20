@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Pogglebar</title>
+    <link rel="stylesheet" href="../static/css/collectionCSS/style.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/xp.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/pfp.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/crate.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/inventory.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/wish.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/shop.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/settings.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/tooltip.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/banner.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/binder.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/perkB.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/gamemodes.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/teamSelect.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/message.css">
+    <link rel="stylesheet" href="../static/css/collectionCSS/wishcarousel.css">
+</head>
+
+<body>
+    <div id="errorMessage" style="display: none;">
+        <div class="error-content">
+            <p id="errorText"></p>
+        </div>
+    </div>
+    <div id="customConfirm" style="display:none;">
+        <div class="confirm-content">
+            <p id="confirmMessage"></p>
+            <button class="confirmbtn" id="customConfirmYes">Yes</button>
+            <button class="confirmbtn" id="customConfirmNo">No</button>
+        </div>
+    </div>
+    <div id="wishCarousel" style="display:none;">
+        <div class="wish-container">
+            <button class="wish-cursor" id="leftCursor">←</button>
+
+            <div class="wish-display">
+                <div class="wish-circle">
+                    <img id="wishIcon" src="../static/icons/wishes/incomewish.png" alt="Current Wish">
+                </div>
+                <div class="wish-info">
+                    <h3 id="wishName">Wish of Wealth</h3>
+                    <p id="wishDescription">+30% income for 5 minutes</p>
+                </div>
+            </div>
+
+            <button class="wish-cursor" id="rightCursor">→</button>
+        </div>
+    </div>
+
+
+    <%- include("collectionEJS/teamSelect.ejs") %>
+    <%- include("collectionEJS/shop.ejs") %>
+    <%- include("collectionEJS/binder.ejs") %>
+    <div id="pfpChanger" style="display: none;">
+        <div id="toppfp">
+            <h2><%= userdata.displayName %></h2>
+            <button id="logout">Log Out</button>
+        </div>
+        <h3 style="margin-top: -15px; font-weight: normal;">Choose your Profile Preferences</h3>
+        <div style="display: flex; gap: 20px;">
+            <img id="bigpfp" width="100" height="100" src="static/icons/pfp/defaultpfp.png" />
+            <input id="picker" type="color">
+        </div>
+        <p id="fileSizeMessage"></p>
+        <input id="filepfp" type="file" accept="image/*" />
+        <button id="closePfpChanger">Close</button>
+    </div>
+    <%- include("collectionEJS/gamemodes.ejs") %>
+    <div id="collectBanner">
+        <div class="leftstuff">
+            <div id="titlecont">
+                <button id="play_btn">Poggle!
+                    <img src="../static/icons/buttons_main/play.png" width="15" height="15">
+                </button>
+            </div>
+            <div style="display: none" id="userdata">
+                <%- JSON.stringify(userdata) %>
+            </div>
+            <div style="display: none" id="maxPogs">
+                <%- JSON.stringify(maxPogs) %>
+            </div>
+            <div style="display: none" id="pogList">
+                <%- JSON.stringify(pogList) %>
+            </div>
+        </div>
+        <div style="right: 0; top: 0;" class="rightstuff">
+            <button id="useWish"></button>
+            <img src="../static/icons/buttons_main/lines.png" width="40" height="40" id="burger_btn" class="imgbtn">
+        </div>
+    </div>
+    <%- include("collectionEJS/banner_rightstuff.ejs") %>
+    <div id="centerlayout" style="text-align: center;">
+        <div id="invcont">
+            <div id="searchCont">
+                <div class="search-left">
+                    <label class="search-widget" for="searchbox">
+                        <button type="button" class="sw-icon" aria-label="Search">🔎</button>
+                        <div class="sw-body">
+                            <input id="searchbox" name="search" type="text" placeholder="Search Pogs..." autocomplete="off">
+                        </div>
+                        <img id="searchbtn" src="../static/icons/buttons_main/search.png" width="20" height="20" title="Search Pogs" style="display:none;">
+
+                        <div id="filtCont">
+                            <button id="filter" title="Filter / Sort">
+                                <img src="../static/icons/playerbase/filter.png" width="20" height="20" alt="filter">
+                            </button>
+                            <div id="filterBox" style="display:none;">
+                                <label class="boxcon" for="nameAZ">
+                                    <input type="radio" name="filterSort" value="nameAZ" id="nameAZ">
+                                    <label for="nameAZ"><p>Name (a-z)</p></label>
+                                </label>
+                                <label class="boxcon" for="nameZA">
+                                    <input type="radio" name="filterSort" value="nameZA" id="nameZA">
+                                    <label for="nameZA"><p>Name (z-a)</p></label>
+                                </label>
+                                <label class="boxcon" for="rarityHf">
+                                    <input type="radio" name="filterSort" value="rarityHf" id="rarityHf">
+                                    <label for="rarityHf"><p>Rarity (trash to unique)</p></label>
+                                </label>
+                                <label class="boxcon" for="rarityLf">
+                                    <input type="radio" name="filterSort" value="rarityLf" id="rarityLf">
+                                    <label for="rarityLf"><p>Rarity (unique to trash)</p></label>
+                                </label>
+                                <label class="boxcon" for="svHf">
+                                    <input type="radio" name="filterSort" value="svHf" id="svHf">
+                                    <label for="svHf"><p>Sell Value (high to low)</p></label>
+                                </label>
+                                <label class="boxcon" for="svLf">
+                                    <input type="radio" name="filterSort" value="svLf" id="svLf">
+                                    <label for="svLf"><p>Sell Value (low to high)</p></label>
+                                </label>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="search-right">
+                    <div id="space">0/10</div>
+                    <button id="sellAll">Sell All</button>
+                </div>
+            </div>
+
+            <div id="inventory">
+                <div id="inventoryItems"></div>
+            </div>
+        </div>
+        <%- include("collectionEJS/info_right.ejs") %>
+    </div>
+    <%- include("collectionEJS/gacha.ejs") %>
+
+</body>
+<script src="../static/js/collectionJS/searchsort.js"></script>
+<script src="../static/js/collectionJS/updateinventory.js"></script>
+<script src="../static/js/crates.js"></script>
+<script src="../static/js/collectionJS/saving.js"></script>
+<script src="../static/js/collectionJS/combo.js"></script>
+<script src="../static/js/collectionJS/sellitem.js"></script>
+<script src="../static/js/collectionJS/declarations.js"></script>
+<script src="../static/js/collectionJS/levelup.js"></script>
+<script src="../static/js/collectionJS/income.js"></script>
+<script src="../static/js/collectionJS/merge.js"></script>
+<script src="../static/js/collectionJS/viewDesc.js"></script>
+<script src="../static/js/collectionJS/sellall.js"></script>
+<script src="../static/js/collectionJS/crateopen.js"></script>
+<script src="../static/js/collectionJS/shopint.js"></script>
+<script src="../static/js/collectionJS/binderint.js"></script>
+<script src="../static/js/collectionJS/panelint.js"></script>
+<script src="../static/js/collectionJS/wish.js"></script>
+<script src="../static/js/collectionJS/pfp.js"></script>
+<script src="../static/js/collectionJS/teamSelect.js"></script>
+<script src="../static/js/achievements.js"></script>
+<script src="../static/js/collectionJS/tickupdate.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const storageKey = "defaultValue";
+        const mySel = document.getElementById("selectSort");
+
+        if (mySel) {
+            const savedValue = localStorage.getItem(storageKey);
+            if (savedValue) mySel.value = savedValue;
+            mySel.addEventListener("change", function () {
+                localStorage.setItem(storageKey, this.value);
+            });
+        } else {
+            const radios = document.querySelectorAll('input[name="filterSort"]');
+            const savedValue = localStorage.getItem(storageKey);
+            if (savedValue) {
+                const sel = document.querySelector(`input[name="filterSort"][value="${savedValue}"]`);
+                if (sel) sel.checked = true;
+            } else {
+                const def = document.querySelector('input[name="filterSort"][value="nameAZ"]');
+                if (def) def.checked = true;
+            }
+            radios.forEach(r => r.addEventListener('change', function () {
+                localStorage.setItem(storageKey, this.value);
+            }));
+
+            const filterBtn = document.getElementById('filter');
+            const filterBox = document.getElementById('filterBox');
+            if (filterBtn && filterBox) {
+                filterBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    filterBox.style.display = (filterBox.style.display === 'none' || filterBox.style.display === '') ? 'flex' : 'none';
+                });
+                document.addEventListener('click', (e) => {
+                    if (!filterBtn.contains(e.target) && !filterBox.contains(e.target)) {
+                        filterBox.style.display = 'none';
+                    }
+                });
+            }
+        }
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const icon = document.querySelector('.search-widget .sw-icon');
+        const input = document.getElementById('searchbox');
+        const hiddenBtn = document.getElementById('searchbtn');
+        if (!input) return;
+
+        function triggerSearch() {
+            const q = input.value || '';
+            if (typeof window.performSearch === 'function') {
+                window.performSearch(q);
+            } else if (hiddenBtn) {
+                hiddenBtn.click();
+            } else {
+                document.dispatchEvent(new CustomEvent('search-inventory', { detail: { q } }));
+            }
+        }
+
+        if (icon) {
+            icon.addEventListener('click', (e) => {
+                e.preventDefault();
+                input.focus();
+                triggerSearch();
+            });
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = input.value || '';
+                if (typeof window.performSearch === 'function') {
+                    window.performSearch(q);
+                } else if (hiddenBtn) {
+                    hiddenBtn.click();
+                } else {
+                    document.dispatchEvent(new CustomEvent('search-inventory', { detail: { q } }));
+                }
+            }
+        });
+    });
+</script>
+
+</html>

@@ -1,0 +1,56 @@
+<div id="teamSelectOverlay" style="position: fixed; top: 0; left: 0; z-index: 9999; display: none;">
+    <div class="overlayBan">
+            <h1 style="font-size: 60px; margin-top: -10px; margin-bottom: 0px;">Team Select</h1>
+            <div class="center">
+                <button class="closeOv" id="teamSelectClose">X</button>
+            </div>
+        </div>
+<div id="teamSelectContainer">
+            
+    <div id="MCselectWindow" style="display: none;">
+        <!-- Selected pogs will appear above the selector -->
+        <div id="selectedPogs" class="team-selected"></div>
+        <!-- Left sidebar shows inventory (bigger rectangle) -->
+        <div class="team-sidebar" id="allCharacters"></div>
+    </div>
+    <div id="teamSelect">
+
+        <div class="mc-grid" role="list">
+            <!-- MC1 card -->
+            <div class="mc-card" id="MC1" data-slot="1" role="listitem">
+                <div class="slot">
+                    <div class="circle"><p>+</p></div>
+                </div>
+            </div>
+
+            <!-- MC2 card -->
+            <div class="mc-card" id="MC2" data-slot="2" role="listitem">
+                <div class="slot">
+                    <div class="circle"><p>+</p></div>
+                </div>
+            </div>
+
+            <!-- MC3 card -->
+            <div class="mc-card" id="MC3" data-slot="3" role="listitem">
+                <div class="slot">
+                    <div class="circle"><p>+</p></div>
+                </div>
+            </div>
+
+            <!-- MC4 card -->
+            <div class="mc-card" id="MC4" data-slot="4" role="listitem">
+                <div class="slot">
+                    <div class="circle"><p>+</p></div>
+                </div>
+            </div>
+        </div>
+        <div id="loadoutBar" style="display:flex; gap:8px; justify-content:center; margin-top:14px; align-items:center;">
+            <button class="loadout-btn" data-index="0">Loadout 1<br></button>
+            <button class="loadout-btn" data-index="1">Loadout 2<br></button>
+            <button class="loadout-btn" data-index="2">Loadout 3<br></button>
+            <button class="loadout-btn" data-index="3">Loadout 4<br></button>
+            <button id="saveTeamBtn" class="save-btn">Save Team</button>
+        </div>
+        </div>
+    </div>
+</div>

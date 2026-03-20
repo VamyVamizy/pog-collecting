@@ -1,0 +1,1039 @@
+//const
+const express = require('express');
+const app = express();
+const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const http = require('http').createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(http);
+const digio = require('socket.io-client');
+require('dotenv').config();
+const cookieParser = require('cookie-parser');
+
+//debug
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION:', reason);
+});
+
+process.on('exit', (code) => {
+    console.error('PROCESS EXITED WITH CODE:', code);
+});
+
+//modules
+const achievements = require("./modules/backend_js/trophyList.js");
+const crateRef = require("./modules/backend_js/crateRef.js");
+const { initializeUserState, RARITY_COLORS } = require('./modules/backend_js/userState.js');
+const { validateSave } = require('./backend_data/validate_save.js');
+const { perks } = require('./modules/backend_js/tb_declar/perk_card.js');
+require('./backend_data/marketplace/trading_socket')(io);
+// banned list helper (used to print/inspect banned users)
+const bannedListModule = require('./modules/backend_js/tb_declar/banned_list.js');
+app.get('/api/perks', (req, res) => {
+    res.json({ perks });
+    console.log("Perks API accessed");
+});
+const tiers = require("./modules/backend_js/tierList.js");
+const { getPogCount, getAllPogs, initializePogDatabase } = require('./backend_data/pog_ref.js');
+let pogCount = 0;
+let results = [];
+
+async function initApp() {
+  try {
+    results = await initializePogDatabase();
+    pogCount = await getPogCount();
+    console.log('Pog CSV count:', results.length);
+    console.log('DB pog count:', pogCount);
+  } catch (err) {
+    console.error("Error initializing app:", err);
+    process.exit(1);
+  }
+}
+
+initApp();
+/* This creates session middleware with given options;
+The 'secret' option is used to sign the session ID cookie.
+The 'resave' option is used to force the session to be saved back to the session store, even if the session was never modified during the request.
+The 'saveUninitialized' option is used to force a session that is not initialized to be saved to the store.*/
+app.use(session({
+    secret: 'youweremybrotheranakin',
+    resave: false,
+    saveUninitialized: false
+}));
+app.use((req, res, next) => {
+    next();
+});
+
+//routes
+const marketplaceRouter = require('./routes/marketplace_rt.js');
+app.use('/', marketplaceRouter);
+const collectionRouter = require('./routes/collection_rt.js');
+app.use('/', collectionRouter);
+const authRouter = require('./routes/authenticate_rt.js');
+app.use('/', authRouter);
+const loginRouter = require('./routes/login_rt.js');
+app.use('/', loginRouter);
+
+// API key for Formbar API access
+const API_KEY = process.env.API_KEY;
+
+// URL to take user to Formbar for authentication
+const AUTH_URL = process.env.AUTH_URL; // ... or the address to the instance of fbjs you wish to connect to
+
+//URL to take user back to after authentication
+const THIS_URL = process.env.THIS_URL; // ... or whatever the address to your application is
+
+const socket = digio(AUTH_URL, {
+    extraHeaders: {
+        api: API_KEY
+    }
+});
+
+// socket events for digipog transfers
+socket.on('connect', () => {
+    console.log('Connected to Formbar socket server');
+    // Send the transfer 
+    socket.emit('transfer digipogs');
+});
+
+socket.on('connect_error',
+    (err) => {
+        //console.error('Connection error:', err);
+    }
+);
+
+socket.on('transferResponse', (response) => {
+    console.log('Transfer response:', response);
+});
+
+/* It is a good idea to use a Environment Variable or a .env file that is in the .gitignore file for your SECRET.
+This will prevent it from getting out and allowing people to hack your cookies.*/
+
+//set
+app.set('view engine', 'ejs');
+app.set('trust proxy', true);
+app.use('/static', express.static('static'));
+app.use(express.urlencoded({limit: '50mb', extended: true }));
+app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
+
+app.use((req, res, next) => {
+    try {
+        const banned = bannedListModule && typeof bannedListModule.getBannedList === 'function'
+            ? bannedListModule.getBannedList()
+            : [];
+        const fid = req.session && req.session.user && (req.session.user.fid || req.session.user.FID) ? Number(req.session.user.fid || req.session.user.FID) : null;
+        const isBanned = fid != null && banned.some(b => (b && b.fid && Number(b.fid) === fid) || (typeof b === 'number' && b === fid));
+        // attach to session and locals for templates and client scripts
+        if (!req.session.user) req.session.user = req.session.user || {};
+        req.session.user.isBanned = !!isBanned;
+        res.locals.userBanned = !!isBanned;
+    } catch (e) {
+        console.error('Failed to evaluate banned status for session user:', e);
+    }
+    next();
+});
+
+// user settings database (use repo-root `data` folder)
+const { runMigrations } = require('./data/migrations.js');
+
+const usdb = new sqlite3.Database('./data/usersettings.sqlite');
+// reduce SQLITE_BUSY errors under concurrent access by setting a busy timeout
+try {
+    if (typeof usdb.configure === 'function') {
+        usdb.configure('busyTimeout', 10000);
+    }
+    // Enable WAL journal mode to reduce writer/reader contention
+    usdb.run('PRAGMA journal_mode = WAL');
+    usdb.run('PRAGMA synchronous = NORMAL');
+} catch (e) {
+    console.warn('Failed to set sqlite pragmas/busyTimeout:', e);
+}
+
+// Helper utilities: lightweight retry wrappers to handle transient SQLITE_BUSY errors
+function runWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.run(sql, params, function(err) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, this);
+        });
+    }
+    once();
+}
+
+function getWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.get(sql, params, function(err, row) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, row);
+        });
+    }
+    once();
+}
+
+// Run migrations on startup
+runMigrations(usdb).catch(err => {
+    console.error('Failed to run migrations:', err);
+    process.exit(1);
+});
+
+
+//logout
+app.post("/logout", (req, res) => {
+    req.session.destroy(err => {
+        if (err) return res.status(500).send("Logout failed");
+        res.clearCookie("connect.sid");
+
+        const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+        if (wantsJson) {
+            return res.json({ redirect: '/logged-out' });
+        }
+        return res.redirect('/logged-out');
+    });
+});
+
+// logged-out landing page
+app.get('/logged-out', (req, res) => {
+    res.render('loggedout');
+});
+
+// patch notes page
+app.get('/patch', (req, res) => {
+    res.render('patch', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+// trade room page
+app.get('/chatroom', (req, res) => {
+    res.render('chatroom', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/achievements', (req, res) => {
+    res.render('achievements', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/battle', (req, res) => {
+    res.render('battle', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/pogipedia', (req, res) => {
+    res.render('pogipedia', { userdata: req.session.user, maxPogs: pogCount, pogList: results });
+});
+
+app.get('/leaderboard', (req, res) => {
+    usdb.all(
+        'SELECT * FROM userSettings ORDER BY score DESC LIMIT 50', [],
+        (err, rows) => {
+            if (err) {
+                console.error('DB select error:', err);
+            }
+            res.render('leaderboard', { userdata: req.session.user, maxPogs: pogCount, pogList: results, scores: rows });
+        }
+    );
+});
+
+app.get('/playerbase', (req, res) => {
+    usdb.all(
+        'SELECT * FROM userSettings ORDER BY score DESC', [],
+        (err, rows) => {
+            if (err) {
+                console.error('DB select error:', err);
+            }
+            // If current user is an admin, print the banned list to server console for debugging
+            try {
+                const currentId = req.session && req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+                const adminIds = [73,84,44,87,43];
+                if (currentId && adminIds.includes(currentId)) {
+                    console.log('Admin entered playerbase; banned list:', bannedListModule.getBannedList());
+                }
+            } catch (e) {
+                console.error('Error while printing banned list for admin:', e);
+            }
+
+            res.render('playerbase', {
+                userdata: req.session.user,
+                maxPogs: pogCount,
+                pogList: results,
+                scores: rows,
+                bannedList: (bannedListModule && typeof bannedListModule.getBannedList === 'function') ? bannedListModule.getBannedList() : []
+            });
+        }
+    );
+});
+
+app.get('/api/leaderboard', (req, res) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC LIMIT 50', [], (err, rows) => {
+        if (err) {
+            console.error('API leaderboard error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+app.get('/api/playerbase', (req, res) => {
+    usdb.all('SELECT displayname, score FROM userSettings ORDER BY score DESC', [], (err, rows) => {
+        if (err) {
+            console.error('API playerbase error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+// API endpoint to get recent trades
+app.get('/api/trades/recent', (req, res) => {
+    // Return only pending trade offers so completed/accepted ones don't reappear
+    usdb.all('SELECT * FROM chat WHERE trade_type = ? AND trade_status = ? ORDER BY id DESC LIMIT 50', ['trade', 'pending'], (err, rows) => {
+        if (err) {
+            console.error('API trades error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+// Add this with your other API endpoints
+app.get('/api/auctions/active', (req, res) => {
+    usdb.all('SELECT * FROM market WHERE AuctionStatus = ? ORDER BY createdAt DESC LIMIT 50', ['active'], (err, rows) => {
+        if (err) {
+            console.error('API auctions error', err);
+            return res.status(500).json({ error: 'db' });
+        }
+        res.json(rows || []);
+    });
+});
+
+
+// save data route
+app.post('/datasave', (req, res) => {
+    if (!req.session || !req.session.user || !req.session.user.displayName) {
+        return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+
+    // 1. Build the raw incoming save object from the client
+    const incoming = {
+        theme: req.body.lightMode,
+        score: req.body.money,
+        inventory: req.body.inventory,
+        Isize: req.body.Isize,
+        xp: req.body.xp,
+        maxxp: req.body.maxXP,
+        level: req.body.level,
+        income: req.body.income,
+        totalSold: req.body.totalSold,
+        cratesOpened: req.body.cratesOpened,
+        pogamount: req.body.pogAmount,
+        tiers: req.body.tiers,
+        achievements: req.body.achievements,
+        mergeCount: req.body.mergeCount,
+        highestCombo: req.body.highestCombo,
+        wish: req.body.wish,
+        crates: req.body.crates,
+        pfp: req.body.pfp,
+        incomeWishActive: req.body.incomeWishActive,
+        incomeWishEndTime: req.body.incomeWishEndTime,
+        dropRateWishActive: req.body.dropRateWishActive,
+        dropRateWishEndTime: req.body.dropRateWishEndTime,
+        clarityWishActive: req.body.clarityWishActive,
+        clarityWishEndTime: req.body.clarityWishEndTime,
+        clarityPreviews: req.body.clarityPreviews,
+        clarityResults: req.body.clarityResults,
+        clarityUsedCount: req.body.clarityUsedCount
+    }
+
+    // 2. Fetch the current DB row so we can compare for cheating
+    usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) {
+            console.error('Error reading current user for validation:', err);
+            return res.status(500).json({ message: 'Error reading user data' });
+        }
+
+        // Parse JSON columns from the DB row
+        let current = {};
+        if (row) {
+            current = { ...row };
+            try { current.inventory = JSON.parse(row.inventory || '[]'); } catch (e) { current.inventory = []; }
+            try { current.pogamount = JSON.parse(row.pogamount || '[]'); } catch (e) { current.pogamount = []; }
+            try { current.achievements = JSON.parse(row.achievements || '[]'); } catch (e) { current.achievements = []; }
+            try { current.tiers = JSON.parse(row.tiers || '[]'); } catch (e) { current.tiers = []; }
+            try { current.crates = JSON.parse(row.crates || '[]'); } catch (e) { current.crates = []; }
+        }
+
+        // 3. Validate & sanitize
+        const { sanitized: userSave, warnings } = validateSave(incoming, current, results);
+
+        if (warnings.length > 0) {
+            console.warn(`[DATASAVE] Validation warnings for ${displayName}:`, warnings);
+        }
+
+        // 4. Persist to DB
+        req.session.save(saveErr => {
+            if (saveErr) {
+                console.error('Error saving session:', saveErr);
+                return res.status(500).json({ message: 'Error saving session' });
+            }
+
+            const params = [
+                req.session.user.fid,
+                userSave.theme,
+                userSave.score,
+                JSON.stringify(userSave.inventory),
+                userSave.Isize,
+                userSave.xp,
+                userSave.maxxp,
+                userSave.level,
+                userSave.income,
+                userSave.totalSold,
+                userSave.cratesOpened,
+                JSON.stringify(userSave.pogamount),
+                JSON.stringify(userSave.achievements || incoming.achievements),
+                JSON.stringify(userSave.tiers || incoming.tiers),
+                userSave.mergeCount,
+                userSave.highestCombo,
+                userSave.wish,
+                JSON.stringify(userSave.crates),
+                userSave.pfp,
+                displayName
+            ];
+
+            usdb.run(
+                `UPDATE userSettings SET fid = ?, theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ? WHERE displayname = ?`,
+                params,
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating user settings:', dbErr);
+                        return res.status(500).json({ message: 'Error updating user settings' });
+                    }
+                    req.session.user = { ...req.session.user, ...userSave };
+                    return res.json({
+                        message: 'Data saved successfully',
+                        corrected: warnings.length > 0 ? {
+                            money: userSave.score,
+                            Isize: userSave.Isize,
+                            wish: userSave.wish,
+                            xp: userSave.xp,
+                            maxXP: userSave.maxxp,
+                            level: userSave.level,
+                            cratesOpened: userSave.cratesOpened,
+                            totalSold: userSave.totalSold,
+                            mergeCount: userSave.mergeCount,
+                            highestCombo: userSave.highestCombo
+                        } : null
+                    });
+                }
+            );
+        });
+    });
+});
+
+// ── Server-side slot purchase ─────────────────────────────────────────────
+// Handles Digipog payment AND updates Isize in the DB atomically.
+// Client calls this instead of modifying Isize locally.
+app.post('/api/buy-slots', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const fid = req.session.user.fid;
+    const amount = Number(req.body.amount);
+    const pin = req.body.pin;
+
+    if (!Number.isFinite(amount) || amount < 1 || amount > 90) {
+        return res.status(400).json({ success: false, message: 'Invalid slot amount' });
+    }
+
+    // Check current Isize in DB first
+    usdb.get('SELECT Isize FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err || !row) {
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        const currentIsize = Number(row.Isize) || 10;
+        if (currentIsize + amount > 100) {
+            return res.status(400).json({ success: false, message: 'Would exceed 100 slots' });
+        }
+
+        const slotPrice = 25 * amount;
+        const isAdmin = fid === 73 || fid === 44 || fid === 87 || fid === 26 || fid === 43 || fid === 1 || fid === 127;
+
+        // Helper to finalize the DB update after payment succeeds
+        function finalizeSlotPurchase() {
+            const newIsize = currentIsize + amount;
+            usdb.run(
+                'UPDATE userSettings SET Isize = ? WHERE displayname = ?',
+                [newIsize, displayName],
+                function (dbErr) {
+                    if (dbErr) {
+                        console.error('Error updating Isize:', dbErr);
+                        return res.status(500).json({ success: false, message: 'Database error' });
+                    }
+                    console.log(`[BUY-SLOTS] ${displayName} bought ${amount} slots. Isize: ${currentIsize} → ${newIsize}`);
+                    return res.json({ success: true, message: `+${amount} slots`, Isize: newIsize });
+                }
+            );
+        }
+
+        if (isAdmin) {
+            // Admins skip payment
+            console.log('Admin slot purchase bypassed cost deduction.');
+            return finalizeSlotPurchase();
+        }
+
+        // Process Digipog payment
+        const paydesc = {
+            from: fid,
+            to: 30,
+            amount: slotPrice,
+            reason: `Pogglebar - Slots x${amount}`,
+            pin: pin,
+            pool: true
+        };
+
+        fetch(`${process.env.AUTH_URL}/api/digipogs/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paydesc),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                finalizeSlotPurchase();
+            } else {
+                res.json({ success: false, message: data.message || 'Payment failed' });
+            }
+        })
+        .catch(err => {
+            console.error('Error during slot payment:', err);
+            res.status(500).json({ success: false, message: 'Payment error' });
+        });
+    });
+});
+
+// ── Server-side wish trade ────────────────────────────────────────────────
+// The client calls this instead of modifying wish/inventory locally.
+// Verifies a Dragon Ball exists in the DB inventory, removes it, increments wish.
+app.post('/api/trade-wish', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const displayName = req.session.user.displayName;
+    const dragonBallId = Number(req.body.dragonBallId);
+
+    if (!Number.isFinite(dragonBallId)) {
+        return res.status(400).json({ error: 'Invalid Dragon Ball ID' });
+    }
+
+    usdb.get('SELECT inventory, wish FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) {
+            console.error('Error reading user for wish trade:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!row) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let inventory;
+        try { inventory = JSON.parse(row.inventory || '[]'); } catch (e) { inventory = []; }
+        const currentWish = Number(row.wish) || 0;
+
+        // Find the Dragon Ball by its unique item id
+        const dbIndex = inventory.findIndex(item => item.id === dragonBallId && item.name === 'Dragon Ball');
+        if (dbIndex === -1) {
+            return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+        }
+
+        // Remove the Dragon Ball and increment wish
+        inventory.splice(dbIndex, 1);
+        const newWish = currentWish + 1;
+
+        usdb.run(
+            'UPDATE userSettings SET inventory = ?, wish = ? WHERE displayname = ?',
+            [JSON.stringify(inventory), newWish, displayName],
+            function (dbErr) {
+                if (dbErr) {
+                    console.error('Error saving wish trade:', dbErr);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (id: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
+                return res.json({ wish: newWish, inventory: inventory });
+            }
+        );
+    });
+});
+
+// ── Server-side crate opening ─────────────────────────────────────────────
+// The client calls this instead of rolling RNG locally.
+// Returns the pog result; the client is responsible for calling save() after.
+app.post('/api/open-crate', express.json(), (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const crateIndex = Number(req.body.crateIndex);
+    if (!Number.isFinite(crateIndex) || crateIndex < 0 || crateIndex >= crateRef.length) {
+        return res.status(400).json({ error: 'Invalid crate index' });
+    }
+
+    const crate = crateRef[crateIndex];
+    const pogListLocal = results; // server's master pog list
+    if (!pogListLocal || !pogListLocal.length) {
+        return res.status(500).json({ error: 'Pog list not loaded' });
+    }
+
+    const norm = s => String(s || '').trim().toLowerCase();
+
+    // Apply drop rate boost if client reports it (trust-but-verify: only allow 1.5x max)
+    let multiplier = 1.0;
+    if (req.body.dropRateBoost === true) {
+        multiplier = 1.5;
+    }
+
+    // Roll RNG server-side
+    let rand = Math.random();
+    let cumulativeChance = 0;
+    let pogResult = null;
+
+    for (const tier of crate.rarities) {
+        const boostedChance = (Number(tier.chance) || 0) * multiplier;
+        cumulativeChance += boostedChance;
+        if (rand < cumulativeChance) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
+            if (candidates.length === 0) continue;
+
+            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+            const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
+            const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+
+            pogResult = {
+                locked: false,
+                pogid: chosen.id || null,
+                name: chosen.name,
+                id: Date.now() + Math.floor(Math.random() * 10000),
+                rarity: chosen.rarity,
+                pogcol: chosen.color || 'white',
+                color: meta.color || 'white',
+                code2: chosen.code2,
+                income: meta.income || 5,
+                description: chosen.description || '',
+                creator: chosen.creator || ''
+            };
+            break;
+        }
+    }
+
+    // Fallback if roll missed all tiers
+    if (!pogResult) {
+        const fallbackTier = crate.rarities[crate.rarities.length - 1];
+        if (fallbackTier) {
+            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
+            if (candidates.length > 0) {
+                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+                pogResult = {
+                    locked: false,
+                    pogid: chosen.id || null,
+                    name: chosen.name,
+                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    rarity: chosen.rarity,
+                    pogcol: chosen.color || 'white',
+                    color: meta.color || 'white',
+                    code2: chosen.code2,
+                    income: meta.income || 5,
+                    description: chosen.description || '',
+                    creator: chosen.creator || ''
+                };
+            }
+        }
+    }
+
+    if (!pogResult) {
+        return res.status(500).json({ error: 'Failed to generate pog result' });
+    }
+
+    return res.json({ ok: true, pogResult });
+});
+
+// Express route to handle digipog transfer requests
+// the URL for the post must be the same as the one in the fetch request
+app.post('/api/digipogs/transfer', (req, res) => {
+    // req.body gets the information sent from the client
+    const cost = req.body.price;
+    const payload = req.body;
+    const reason = payload.reason;
+    const pin = payload.pin;
+    const id = req.session.user.fid; // Formbar user ID of payer from session
+    
+    // carter and vincent ids for testing respectively
+    const isAdmin = id === 73 || id === 84 || id === 44 || id === 87 || id === 43;
+    
+    if (isAdmin) {
+        // For admins, return success without processing actual transaction
+        console.log('Admin transaction bypassed cost deduction.');
+        return res.json({ success: true, message: 'Admin transaction (no cost)', amount: 0 });
+    }
+    
+    console.log(cost, reason, pin, id);
+    const paydesc = {
+        from: id, // Formbar user ID of payer
+        to: 30,    // Formbar user ID of payee (e.g., pog collecting's account)
+        amount: cost,
+        reason: reason,
+        // security pin for the payer's account
+        pin: pin,
+        pool: true
+    };
+    // make a direct transfer request using fetch
+    fetch(`${AUTH_URL}/api/digipogs/transfer`, {
+        method: 'POST',
+        // headers to specify json content
+        headers: { 'Content-Type': 'application/json' },
+        // stringify the paydesc object to send as JSON
+        body: JSON.stringify(paydesc),
+    }).then((transferResult) => {
+        return transferResult.json();
+    }).then((responseData) => {
+        console.log("Transfer Response:", responseData);
+        //res.JSON must be here to send the response back to the client
+        res.json(responseData);
+    }).catch(err => {
+        console.error("Error during digipog transfer:", err);
+        res.status(500).json({ message: 'Error during digipog transfer' });
+    });
+});
+
+// API endpoints to persist user team/loadouts server-side
+app.get('/api/user/team', (req, res) => {
+    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
+    if (!displayName) return res.status(401).json({ error: 'not_authenticated' });
+
+    usdb.get('SELECT selected_team, loadout_1, loadout_2, loadout_3, loadout_4 FROM team WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) return res.status(500).json({ error: 'db_error', detail: err.message });
+        if (!row) {
+            // return default empty shape
+            return res.json({ selected: null, loadouts: [null, null, null, null] });
+        }
+
+        const parseOrNull = (txt) => {
+            if (!txt) return null;
+            try { return JSON.parse(txt); } catch (e) { return null; }
+        };
+
+        const loadouts = [parseOrNull(row.loadout_1), parseOrNull(row.loadout_2), parseOrNull(row.loadout_3), parseOrNull(row.loadout_4)];
+        const selected = row.selected_team ? parseInt(row.selected_team, 10) : null;
+        return res.json({ selected: isNaN(selected) ? null : selected, loadouts });
+    });
+});
+
+// Save entire loadout array (array of 4 entries) and selected index
+app.post('/api/user/team', express.json(), (req, res) => {
+    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
+    if (!displayName) return res.status(401).json({ error: 'not_authenticated' });
+
+    const body = req.body || {};
+    const loadouts = Array.isArray(body.loadouts) ? body.loadouts : null;
+    const selected = typeof body.selected === 'number' ? body.selected : (body.selected == null ? null : Number(body.selected));
+
+    if (!loadouts || loadouts.length !== 4) return res.status(400).json({ error: 'invalid_loadouts' });
+
+    // store each loadout as JSON text (or null)
+    const vals = loadouts.map(l => l ? JSON.stringify(l) : null);
+    const selectedTxt = (selected == null || isNaN(selected)) ? null : String(selected);
+
+    usdb.run(
+        `INSERT OR REPLACE INTO team (displayname, selected_team, loadout_1, loadout_2, loadout_3, loadout_4)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [displayName, selectedTxt, vals[0], vals[1], vals[2], vals[3]],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'db_error', detail: err.message });
+            return res.json({ ok: true });
+        }
+    );
+});
+
+app.post('/api/user/sync-inventory', express.json(), (req, res) => {
+    const inventory = req.body && req.body.inventory ? req.body.inventory : null;
+    const displayName = req.session.user && (req.session.user.displayName || req.session.user.displayname);
+    if (!displayName || !Array.isArray(inventory)) {
+        return res.status(400).json({ ok: false, message: 'Missing user or inventory' });
+    }
+
+    const invJson = JSON.stringify(inventory);
+    usdb.run('UPDATE userSettings SET inventory = ? WHERE displayname = ?', [invJson, displayName], function(err) {
+        if (err) {
+            console.error('Failed to sync inventory to DB for', displayName, err);
+            return res.status(500).json({ ok: false, error: err.message });
+        }
+        // update session object too
+        req.session.user = req.session.user || {};
+        req.session.user.inventory = inventory;
+        // optionally update other derived session fields here
+        return res.json({ ok: true, changes: this.changes });
+    });
+});
+// ban hammer (from Phighting!)
+app.post('/api/ban', express.json(), (req, res) => {
+    // Simple admin check (same test used elsewhere)
+    const adminIds = [73,44,87,43];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    // Protect certain internal/admin FIDs from being banned.
+    const PROTECTED_FIDS = [73, 44, 87, 43];
+    if (fid && PROTECTED_FIDS.includes(fid)) {
+        return res.status(400).json({ ok: false, message: 'cannot ban this user' });
+    }
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.addBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to add banned user', e);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// unban user
+app.post('/api/unban', express.json(), (req, res) => {
+    const adminIds = [73,44,87,43];
+    const currentId = req.session.user && req.session.user.fid ? Number(req.session.user.fid) : null;
+    if (!currentId || !adminIds.includes(currentId)) {
+        return res.status(403).json({ ok: false, message: 'forbidden' });
+    }
+
+    const body = req.body || {};
+    const fid = body.fid ? (isNaN(Number(body.fid)) ? null : Number(body.fid)) : null;
+    const displayname = body.displayname ? String(body.displayname) : null;
+    if (!fid && !displayname) return res.status(400).json({ ok: false, message: 'missing identifier' });
+
+    const userObj = fid ? { fid } : { name: displayname };
+    try {
+        bannedListModule.removeBannedUser(userObj);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('Failed to remove banned user', e);
+        return res.status(500).json({ ok: false });
+    }
+});
+
+// API route to get user state
+app.get('/api/user-state', (req, res) => {
+  const displayName = req.session.user.displayName;
+  usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+    if (err || !row) return res.status(500).json({ error: 'User not found' });
+    
+    const userState = initializeUserState(row);
+    res.json({ userState, rarityColors: RARITY_COLORS });
+  });
+});
+
+// API to claim or update a single perk tier status
+app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
+    console.log('POST /api/perk-tiers/claim called');
+    if (!req.session || !req.session.user) {
+        console.log('No session or user for claim');
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const { tier: tierNum, status } = req.body || {};
+    if (typeof tierNum === 'undefined' || !status) {
+        console.log('Missing tier or status in body', req.body);
+        return res.status(400).json({ error: 'Missing tier or status' });
+    }
+
+    // ensure session tiers exist and are populated; if empty array, use canonical tiers
+    if (!Array.isArray(req.session.user.tiers) || req.session.user.tiers.length === 0) {
+        req.session.user.tiers = JSON.parse(JSON.stringify(tiers));
+    }
+
+    const idx = req.session.user.tiers.findIndex(t => Number(t.tier) === Number(tierNum));
+    if (idx === -1) {
+        console.warn('Tier not found during claim. Request body:', req.body);
+        try { console.warn('Session tiers snapshot:', JSON.stringify(req.session.user.tiers).slice(0,2000)); } catch (e) { console.warn('Failed to stringify session tiers:', e); }
+        return res.status(404).json({ error: 'Tier not found' });
+    }
+
+    req.session.user.tiers[idx].status = status;
+
+    // persist to DB
+    const tiersJson = JSON.stringify(req.session.user.tiers);
+    const displayName = req.session.user.displayName;
+    console.log('Saving tiers for', displayName, req.session.user.tiers);
+    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err) {
+        if (err) {
+            console.error('Error saving tiers for', displayName, err);
+            // try to add the column if it doesn't exist, then retry once
+            if (err.message && err.message.toLowerCase().includes('no such column')) {
+                usdb.run("ALTER TABLE userSettings ADD COLUMN tiers TEXT DEFAULT '[]'", [], function(altErr) {
+                    if (altErr) {
+                        console.error('Failed to add tiers column:', altErr);
+                        return res.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
+                    }
+                    // retry update
+                    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err2) {
+                        if (err2) {
+                            console.error('Error saving tiers after adding column for', displayName, err2);
+                            return res.status(500).json({ error: 'db', message: err2.message || String(err2) });
+                        }
+                        // after tiers saved, possibly grant a perk if this tier awards one
+                        handlePostTierSave(req, res, idx, status, displayName);
+                    });
+                });
+                return;
+            }
+            return res.status(500).json({ error: 'db', message: err.message || String(err) });
+        }
+        // after tiers saved, possibly grant a perk if this tier awards one
+        handlePostTierSave(req, res, idx, status, displayName);
+    });
+});
+
+    // helper to handle optional perk granting after tiers were saved
+    function handlePostTierSave(reqParam, resParam, idxParam, statusParam, displayNameParam) {
+        // ensure session is saved before continuing
+        reqParam.session.save(saveErr => {
+            if (saveErr) console.error('Failed to save session after tiers update:', saveErr);
+            console.log('Tiers saved and session saved for', displayNameParam);
+
+            // check whether this tier grants a perk
+            try {
+                const claimedTier = reqParam.session.user.tiers && reqParam.session.user.tiers[idxParam] ? reqParam.session.user.tiers[idxParam] : null;
+                const rewardType = claimedTier && claimedTier.reward ? String(claimedTier.reward) : null;
+                // only proceed if the reward is a "Perk" and the client marked it claimed
+                console.log('Post-tier: rewardType=', rewardType, 'statusParam=', statusParam);
+                if (rewardType === 'Perk' && statusParam) {
+                    console.log('Post-tier: entering perk grant flow for', displayNameParam, 'tier idx', idxParam);
+                    // helper to process an authoritative perks array and attempt to grant one
+                    function processPerksArray(existingPerks) {
+                        console.log('processPerksArray: existingPerks length=', (existingPerks||[]).length);
+                        existingPerks = Array.isArray(existingPerks) ? existingPerks : [];
+                        // build set of owned perk names
+                        const owned = new Set((existingPerks || []).map(p => p && p.name).filter(Boolean));
+                        // filter global perks list to those not owned
+                        const available = (perks || []).filter(p => !owned.has(p.name));
+                        if (!available || available.length === 0) {
+                            console.log('No available perks to grant for', displayNameParam);
+                            // still respond with tiers but no grantedPerk
+                            return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: null });
+                        }
+
+                        // choose random available perk
+                        const choice = available[Math.floor(Math.random() * available.length)];
+                        const granted = { name: choice.name, givenAt: Date.now() };
+                        existingPerks.push(granted);
+                        const perksJson = JSON.stringify(existingPerks);
+
+                        // persist perks to DB; if column missing, try to add then retry
+                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(updateErr) {
+                            if (updateErr) {
+                                console.error('Error saving perks for', displayNameParam, updateErr);
+                                if (updateErr.message && updateErr.message.toLowerCase().includes('no such column')) {
+                                    usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], function(altErr2) {
+                                        if (altErr2) {
+                                            console.error('Failed to add perks column:', altErr2);
+                                            return resParam.status(500).json({ error: 'db', message: altErr2.message || String(altErr2) });
+                                        }
+                                        // retry update
+                                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(err3) {
+                                            if (err3) {
+                                                console.error('Error saving perks after ALTER for', displayNameParam, err3);
+                                                return resParam.status(500).json({ error: 'db', message: err3.message || String(err3) });
+                                            }
+                                            // update session and return granted perk
+                                            reqParam.session.user.perks = existingPerks;
+                                            reqParam.session.save(() => {
+                                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                                            });
+                                        });
+                                    });
+                                    return;
+                                }
+                                return resParam.status(500).json({ error: 'db', message: updateErr.message || String(updateErr) });
+                            }
+                            // success: update session and return granted perk
+                            reqParam.session.user.perks = existingPerks;
+                            reqParam.session.save(() => {
+                                return resParam.json({ tiers: reqParam.session.user.tiers, grantedPerk: granted });
+                            });
+                        });
+                    }
+
+                    // fetch authoritative perks array from DB
+                    getWithRetries(usdb, 'SELECT perks FROM userSettings WHERE displayname = ?', [displayNameParam], 5, (getErr, row) => {
+                        if (getErr) {
+                            // If the column doesn't exist yet, try to add it then proceed with empty array
+                            if (getErr.message && getErr.message.toLowerCase().includes('no such column')) {
+                                console.warn('Perks column missing, attempting to add it for', displayNameParam);
+                                usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], (altErr) => {
+                                    if (altErr) {
+                                        console.error('Failed to add perks column:', altErr);
+                                        return resParam.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
+                                    }
+                                    // proceed assuming empty perks
+                                    return processPerksArray([]);
+                                });
+                                return;
+                            }
+                            console.error('Failed to read perks for', displayNameParam, getErr);
+                            return resParam.status(500).json({ error: 'db', message: getErr.message || String(getErr) });
+                        }
+                        let existingPerks = [];
+                        try { existingPerks = row && row.perks ? JSON.parse(row.perks) : []; } catch (e) { existingPerks = []; }
+                        return processPerksArray(existingPerks);
+                    });
+                } else {
+                    // not a perk reward or not claiming a perk; respond with saved tiers only
+                    return resParam.json({ tiers: reqParam.session.user.tiers });
+                }
+            } catch (e) {
+                console.error('Error during post-tier processing for', displayNameParam, e);
+                return resParam.status(500).json({ error: 'server' });
+            }
+        });
+    }
+
+// GET saved tiers (reads DB to confirm persisted data)
+app.get('/api/perk-tiers', (req, res) => {
+    if (!req.session || !req.session.user) return res.status(401).json({ error: 'Not authenticated' });
+    const displayName = req.session.user.displayName || req.session.user.displayname;
+    const tiers = (req.session.user.tiers);
+    if (!displayName) return res.status(400).json({ error: 'Missing displayName in session' });
+    usdb.get('SELECT tiers FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err) {
+            console.error('Error reading tiers from DB for', displayName, err);
+            return res.status(500).json({ error: 'db' });
+        }
+        try {
+            return res.json({ tiers });
+        } catch (e) {
+            console.error('Failed to parse tiers JSON from DB for', displayName, e);
+            return res.json({ tiers: req.session.user.tiers || [] });
+        }
+    });
+});
+
+//listens
+http.listen(process.env.PORT || 3000, () => {
+    console.log(`Server started on port ${process.env.PORT || 3000}`);
+});

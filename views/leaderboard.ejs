@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="../static/css/leaderboard.css">
+</head>
+
+<body>
+    <div id="leadBanner">
+        <div class="leftstuff">
+            <div style="display: none" id="userdata">
+                <%= JSON.stringify(userdata) %>
+            </div>
+            <div style="display: none" id="scores">
+                <%= JSON.stringify(scores) %>
+            </div>
+            <h1 style="margin-left: 10px;">Leaderboard</h1>
+            </h4>
+            <div style="display: none" id="maxPogs">
+                <%= JSON.stringify(maxPogs) %>
+            </div>
+        </div>
+        <div class="rightstuff">
+            <a href="/collection" id="circleButton">
+                < </a>
+        </div>
+    </div>
+    <br>
+    <div id="flexcont">
+    <table class="board" style="width: 50%; border-collapse: collapse; color: white;">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th>Score</th>
+                <th>Level</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% scores.forEach((score, index)=> { %>
+                <tr class="infobtn" data-index="<%= index %>">
+                    <td style="padding: 8px; text-align: center;">
+                        <%= index + 1 %>
+                    </td>
+                    <td style="padding: 8px; text-align: center;">
+                        <%= score.displayname %>
+                    </td>
+                    <td style="padding: 8px; text-align: center;">
+                        <%= score.score %>
+                    </td>
+                    <td style="padding: 8px; text-align: center;">
+                        <%= score.level %>
+                    </td>
+                </tr>
+                <% }) %>
+        </tbody>
+    </table>
+    </div>
+</body>
+<script src="../static/js/leaderboard.js"></script>

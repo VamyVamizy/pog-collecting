@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../static/icons/title/Pogglebar_Favicon.png" />
+    <title>Achievements</title>
+    <link rel="stylesheet" href="../static/css/achievements.css">
+</head>
+
+<body>
+    <div id="achievementsBanner">
+        <div class="leftstuff">
+            <div style="display: none" id="userdata">
+                <%= JSON.stringify(userdata) %>
+            </div>
+            <h1 style="margin-left: 10px;">Achievements</h1>
+            <div style="display: none" id="maxPogs">
+                <%= JSON.stringify(maxPogs) %>
+            </div>
+            <div style="display: none" id="pogList">
+                <%= JSON.stringify(pogList) %>
+            </div>
+        </div>
+        <div class="rightstuff"></div>
+        <a href="/collection" id="circleButton">
+            < </a>
+    </div>
+    </div>
+    <div id="contain" style="display: flex;">
+        <div class="progressCont">
+            <div id="progress"></div>
+            <div id="circles">
+                <button class="circle"></button>
+                <button class="circle">1</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="infoBanner" style="display: none;"></div>
+    <div id="buttonBar">
+        <button id="collection" class="left" onclick="renderCollection()">Collection</button>
+        <button id="level" class="left" onclick="renderLevel()">Level</button>
+        <button id="progression" class="left" onclick="renderProgression()">Progression</button>
+        <button id="economy" class="left" onclick="renderEconomy()">Economy</button>
+        <button id="unique" class="left" onclick="renderUnique()">Unique</button>
+    </div>
+        
+    <div id="achievementsList">
+        Click on a panel to show specific achievements
+    </div>
+    <script src="../static/js/collectionJS/declarations.js"></script>
+    <script src="../static/js/achievements.js"></script>
+    <script src="../static/js/perktier.js"></script>
+</body>
+
+</html>

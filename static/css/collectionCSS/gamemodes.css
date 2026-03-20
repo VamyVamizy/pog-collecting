@@ -1,0 +1,204 @@
+#gamemode_overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.flex_game_panel {
+    margin: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 40px;
+}
+
+@keyframes show_binder_panel {
+    0% {scale: 0;}
+    15% {scale: 1;}
+    30% {scale: 1;}
+    45% {scale: 1;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_team_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 1;}
+    45% {scale: 1;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_practice_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 1;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_pvp_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 1;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_pve_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 0;}
+    75% {scale: 1;}
+    100% {scale: 1;}
+}
+
+@keyframes show_custom_panel {
+    0% {scale: 0;}
+    15% {scale: 0;}
+    30% {scale: 0;}
+    45% {scale: 0;}
+    60% {scale: 0;}
+    75% {scale: 0;}
+    100% {scale: 1;}
+}
+
+.game_panel {
+    width: 220px;
+    height: 355px;
+    padding: 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    color: white;
+    cursor: pointer;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    transition: 
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+    overflow: hidden;
+}
+
+.game_panel img {
+    opacity: 0.6;
+    filter: brightness(0);
+    z-index: 100;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.game_panel h2 {
+    position: absolute;
+    z-index: 101;
+    scale: 1.4;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.game_panel p {
+    position: absolute;
+    width: 150px;
+    scale: 1.2;
+    margin-bottom: -430px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+#binder {
+    animation-name: show_binder_panel;
+    animation-duration: 0.75s;
+}
+
+#binder:hover {
+    background: linear-gradient(135deg, rgb(51, 81, 143), rgb(29, 25, 61));
+}
+
+#teamSelectButton {
+    animation-name: show_team_panel;
+    animation-duration: 0.75s;
+}
+
+#teamSelectButton:hover {
+    background: linear-gradient(135deg, rgb(119, 67, 122), rgb(24, 13, 24));
+}
+
+#practice {
+    animation-name: show_practice_panel;
+    animation-duration: 0.75s;
+}
+
+#practice:hover {
+    background: linear-gradient(135deg, #444549, #000000);
+}
+
+#pvp {
+    animation-name: show_pvp_panel;
+    animation-duration: 0.75s;
+}
+
+#pvp:hover {
+    background: linear-gradient(135deg, #dd5248, #110707);
+}
+
+#pve {
+    animation-name: show_pve_panel;
+    animation-duration: 0.75s;
+}
+
+#pve:hover {
+    background: linear-gradient(135deg, #8998f8, #0a0a0c);
+}
+
+#custom {
+    animation-name: show_custom_panel;
+    animation-duration: 0.75s;
+}
+
+#custom:hover {
+    background: linear-gradient(135deg, #ff9306, #18130d);
+}
+
+.game_panel:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5);
+    filter: brightness(1.1)
+}
+
+.game_panel:hover h2 {
+    margin-bottom: -20px;
+}
+
+.game_panel:hover img {
+    margin-top: -80px;
+}
+
+.game_panel:hover p {
+    opacity: 0.5;
+    margin-bottom: -300px;
+    z-index: 100;
+}
+
+.game_panel:active {
+    transform: scale(0.97);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+}
