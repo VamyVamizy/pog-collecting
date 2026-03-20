@@ -8,6 +8,9 @@ if (!argv.fid && !argv.displayname) {
 
 const db = new sqlite3.Database('./data/usersettings.sqlite');
 
+const trophyList = require('../modules/backend_js/trophyList.js');
+const tierList = require('../modules/backend_js/tierList.js');
+
 const defaults = {
   theme: 'black',
   score: 0,
@@ -20,8 +23,9 @@ const defaults = {
   totalSold: 0,
   cratesOpened: 0,
   pogamount: '[]',
-  achievements: '[]',
-  tiers: '[]',
+  // Use the canonical achievements/tier data and stringify them so the DB contains valid JSON
+  achievements: JSON.stringify(trophyList),
+  tiers: JSON.stringify(tierList),
   mergeCount: 0,
   highestCombo: 0,
   wish: 0,

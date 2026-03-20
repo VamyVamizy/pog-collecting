@@ -164,6 +164,11 @@ router.get('/', isAuthenticated, async (req, res) => {
                 return console.error("Error querying user:", err.message);
             }
             if (row) {
+                // parse tiers and ensure we have a populated tiers array; fall back to canonical if empty/malformed
+                let parsedTiers = [];
+                try { parsedTiers = JSON.parse(row.tiers); } catch (e) { parsedTiers = []; }
+                if (!Array.isArray(parsedTiers) || parsedTiers.length < (Array.isArray(tiers) ? tiers.length : 22)) parsedTiers = tiers;
+
                 req.session.user = {
                     fid: id,
                     displayName: displayName,
@@ -179,7 +184,7 @@ router.get('/', isAuthenticated, async (req, res) => {
                     cratesOpened: row.cratesOpened,
                     pogamount: JSON.parse(row.pogamount),
                     achievements: JSON.parse(row.achievements),
-                    tiers: JSON.parse(row.tiers),
+                    tiers: parsedTiers,
                     mergeCount: row.mergeCount,
                     highestCombo: row.comboHigh,
                     wish: row.wish,

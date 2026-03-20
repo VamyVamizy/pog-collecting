@@ -5,6 +5,7 @@ body, h1, h2, h3, h4, h5 {
 body {
     margin-top: 80px;
     user-select: none;
+    overflow-x: none;
     overflow-y: auto;
     background:
         radial-gradient(circle at 30% 40%, rgba(80, 53, 168, 0.15), transparent 60%),
@@ -31,7 +32,6 @@ h1 {
 }
 
 #money {
-    
     font-style: bold;
     font-size: 35px;
 }
@@ -54,16 +54,8 @@ h1 {
     border-radius: 10px;
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.5),
                 inset 0 -1px 2px rgba(255,255,255,0.04);
-    cursor: pointer;
     position: relative;
     overflow: hidden;
-}
-
-.income-widget:hover {
-    /* no expand, no border — just a subtle inner glow */
-    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5),
-                inset 0 -1px 2px rgba(255,255,255,0.04),
-                inset 0 0 12px rgba(130,100,220,0.12);
 }
 
 /* icon circle */
@@ -77,6 +69,12 @@ h1 {
     font-size: 14px;
     flex-shrink: 0;
     box-shadow: 0 5px 6px rgba(0, 0, 0, 0.445);
+    cursor: pointer;
+}
+
+.iw-icon:hover {
+    background: linear-gradient(135deg, #3a3f6a, #1f2230);
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 /* text column */

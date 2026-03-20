@@ -1,43 +1,31 @@
 // update loop
-let xpHover = false;
 setInterval(update, 100);
 function update() {
     // update inventory size text
     document.getElementById("space").innerHTML = `${inventory.length}/${Isize}`;
-
     // update XP Txt
-    document.getElementById("XPTxt").style.minWidth = xpHover ? "140px" : "40px";
-    document.getElementById("XPTxt").style.borderRadius = xpHover ? "20px" : "40px";
-    document.getElementById("XPTxt").innerText = xpHover ? `${xp} / ${maxXP} XP` : level;
-
-    // income display is handled by income.js — do not update here
-
+    document.getElementById("XPTxt").innerText = level;
+    document.getElementById("mxtxt").innerText = `${xp} / ${maxXP} XP`
     //update pog / pog
     document.getElementById("pogCount").innerText = `${Math.round((pogAmount.length / maxBinder) * 100)}%`;
-
     //update pogs color
     document.getElementById("pogCount").style.color = pogAmount.length >= maxBinder ? "gold" : "white";
-
     //update wish text
     let star = '';
     for (i = 0; i < wish; i++) {
         star += '★'
     }
     document.getElementById("useWish").innerText = star;
-
     //sell all button
     document.getElementById("sellAll").innerText = `Sell All ${searching ? "(Searched)" : ""}`;
-
     //sell all width
     document.getElementById("sellAll").style.width = searching ? "150px" : "100px";
-
     if (inventory.length >= 100) {
         while (inventory.length > 100) {
             const item = inventory[0];
             sellItem(item.id, Math.round(item.income * 1.05), false);
         }
     }
-
     // change inventory text color if full
     if (inventory.length >= Isize) {
         document.getElementById("space").style.color = "red";
@@ -70,11 +58,3 @@ setInterval(() => {
     bindb.value = pogAmount.length;
     bindb.max = maxBinder;
 }, 100);
-
-document.getElementById("XPTxt").addEventListener("mouseenter", () => {
-    xpHover = true;
-});
-
-document.getElementById("XPTxt").addEventListener("mouseleave", () => {
-    xpHover = false;
-});

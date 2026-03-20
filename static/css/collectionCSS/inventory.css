@@ -4,7 +4,7 @@
     flex-direction: column;
     align-items: center;
     flex: 1;
-    position: relative;
+         padding: 6px;
     margin: 8px auto;
 }
 
@@ -13,7 +13,8 @@
     box-shadow: 0 0 10px black;
     border: 1px solid rgba(255, 255, 255, 0.094);
     border-radius: 6px;
-    padding: 10px;
+    position: relative;
+    padding: 8px 10px;
     width: 100%;
     font-size: 20px;
     display: grid;
@@ -21,11 +22,19 @@
     justify-content: center;
     place-items: center;
     overflow-y: auto;
-    overflow-x: hidden;
     min-height: 175px;
-    max-height: 80vh;
+    max-height: 568px;
     flex: 1;
     transition: all 0.1s ease;
+}
+
+#inventoryItems {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 220px);
+    justify-content: center;
+    place-items: center;
+    gap: 18px;
+    width: 100%;
 }
 
 #inventory::-webkit-scrollbar {
@@ -68,29 +77,28 @@
     z-index: 99;
 }
 
-#topCont {
-    position: absolute;
-    top: 15px;
-    text-align: left;
-    left: 0;
-    transform: scale(1.4);
-    transform-origin: left center;
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-}
 
 #space {
     background: rgba(0, 0, 0, 0.75);
     color: white;
-    padding: 4px 8px;
+    padding: 1%;
     border-radius: 6px;
     font-size: 14px;
     pointer-events: none;
     font-weight: bold;
+    z-index: 9999;
+    position: absolute;
+}
+
+/* position the space counter inside the inventory box at top-right */
+#inventory {
+    position: relative; /* already present, but ensure relative positioning */
+}
+
+
+/* ensure the inventory content doesn't visually overlap the counter */
+#inventory {
+    padding-top: 44px; /* leave room for the space counter at the top */
 }
 
 #sellAll {
@@ -158,41 +166,29 @@
 /* inventory items */
 .item {
     border: 4px solid black;
-    box-shadow:
-        /* 1. Outer shadow to ground the object on the page */
-        0 10px 20px rgba(0, 0, 0, 0.3),
-        /* 2. Inner dark shadow: creates the 'drop' from the border rim */
-        inset 0 6px 12px rgba(0, 0, 0, 0.5),
-        /* 3. Inner light highlight: creates a 'lip' on the opposite edge */
-        inset 0 -2px 8px rgba(255, 255, 255, 0.2);
-    background:
-        /* The "3D Printed" Streaks Layer */
-        repeating-radial-gradient(circle at 50% 50%,
-            rgba(0, 0, 0, 0.08) 0px,
-            rgba(0, 0, 0, 0.08) 1px,
-            transparent 1px,
-            transparent 3px);
+    box-shadow: 0 8px 5px rgba(0, 0, 0, 0.365), inset 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 -2px 8px rgba(255, 255, 255, 0.2);
+    background: repeating-radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 3px);
     border-radius: 300px;
     padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    
-    font-style: bold;
     font-size: 15px;
     min-width: 220px;
     min-height: 220px;
     max-height: 260px;
     cursor: pointer;
-    scale: 0.8;
-    transition: all 0.1s ease;
+    transform: scale(0.8) translateY(0);
+    transition: all 0.3s ease;
 }
 
 .emptySlot {
     border: transparent;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0,0,0,0.25);
     border-radius: 300px;
+    box-shadow: inset 0 7px 6px rgba(0,0,0,0.5),
+                inset 0 -1px 2px rgba(255,255,255,0.04);
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -211,8 +207,11 @@
     color: #9d42f7;
     text-shadow: 0 0 17px rgba(106, 0, 255, 0.623);
     border: 10px solid #9d42f7;
-    background-color: transparent;
-    box-shadow: inset 0 0 17px rgba(106, 0, 255, 0.623);
+    background-color: rgba(0,0,0,0.25);
+    box-shadow: 
+        inset 0 0 17px rgba(106, 0, 255, 0.623),
+        0 8px 5px rgba(0, 0, 0, 0.365),
+        inset 0 8px 5px rgba(0, 0, 0, 0.365);
     font-size: 150px;
     font-weight: bold;
     border-radius: 300px;
@@ -238,13 +237,18 @@
     scale: 0.7;
 }
 
-.item:hover {
-    scale: 0.9;
-    filter: brightness(1.3);
+#buySlot:active {
+    scale: 0.7;
 }
 
-.item:active {
-    scale: 0.85;
+.item:hover {
+    transform: scale(0.8) translateY(4px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.365), inset 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 -2px 8px rgba(255, 255, 255, 0.2);
+}
+
+.item:hover:active {
+    transform: scale(0.8) translateY(6px);
+    box-shadow: 0 0px 5px rgba(0, 0, 0, 0.365), inset 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 -2px 8px rgba(255, 255, 255, 0.2);
 }
 
 .item:hover #lock {
@@ -263,14 +267,11 @@
 }
 
 .item.locked.select {
-    filter: brightness(0.6);
-    outline: 3px solid white;
-    outline-offset: 8px;
+    filter: brightness(1.4);
 }
 
 .item.select {
-    outline: 3px solid white;
-    outline-offset: 8px;
+    filter: brightness(1.6);
 }
 
 hr {
@@ -363,3 +364,210 @@ hr {
 .moneytxt img {
     filter: invert(1);
 }
+
+#searchCont {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: auto 0;
+    padding: 1%;
+    justify-content: center; 
+    align-items: center;    
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px black;
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    border-radius: 6px;
+    padding: 1%;
+}
+
+#searchCont {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    margin: 0;
+    padding: 8px 1%;
+    justify-content: space-between; /* search left and controls right */
+    align-items: center;
+    position: relative; /* stacking for z-index */
+    z-index: 2;
+    margin-bottom: 12px; /* keep inventory spaced below */
+}
+
+#searchbox {
+    color: darkgray;
+}
+
+.search-widget {
+    /* styled to match the carved income widget */
+    flex: 0 1 480px; /* limit width so select can sit to the right */
+    max-width: 720px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px 7px 10px;
+    background: rgba(0,0,0,0.25);
+    border: none;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.04);
+    position: relative; /* needed so filtCont can be positioned inside */
+    overflow: visible; 
+}
+
+#searchCont select, #searchCont button {
+    flex: 0 0 auto;
+    margin-top: 0;
+    align-self: center;
+    height: 40px;
+}
+
+/* ensure select sits close to the search widget */
+#selectSort {
+    margin-left: 12px;
+}
+/* style legacy select to match filter options spacing */
+#selectSort {
+    padding: 8px 10px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    color: white;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    height: 40px;
+}
+
+#searchCont select option {
+    padding: 8px 10px; /* some browsers support this, gives more breathing room */
+}
+.search-widget .sw-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* make the icon a true circle and prevent parent button rules from stretching it */
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    font-size: 16px;
+    color: rgba(255,255,255,0.95);
+    flex-shrink: 0;
+    box-shadow: 0 5px 6px rgba(0, 0, 0, 0.445);
+    cursor: pointer;
+    line-height: 1; /* ensure emoji centers correctly */
+}
+
+#searchCont .search-widget .sw-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    line-height: 1;
+}
+
+.search-widget .sw-body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+
+.search-widget input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #333; /* dark gray text */
+    caret-color: #333;
+    font-size: 14px;
+    padding: 0 44px 0 0; /* leave space on the right for the filter button */
+    width: 100%;
+}
+
+.search-left { display:flex; align-items:center; flex:1; }
+.search-right { display:flex; align-items:center; gap:10px; }
+.search-right #space { order: 0; }
+.search-right #sellAll { order: 1; }
+
+.search-widget input::placeholder { color: rgba(0,0,0,0.45); }
+
+.search-widget:focus-within {
+    box-shadow: 0 0 10px rgba(158,82,255,0.06);
+}
+
+/* filter button and box (collection uses playerbase-style filter) */
+#filterBox {
+    position: absolute;
+    top: 100%; /* anchor directly below the filter button */
+    right: 0; /* align under the button */
+    left: auto;
+    padding: 10px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    border-radius: 10px;
+    min-width: 180px; /* compact width */
+    max-width: 320px;
+    z-index: 1200; /* ensure it floats above other UI */
+    display: none; 
+    flex-direction: column;
+    white-space: normal;
+}
+
+#filter {
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    background: linear-gradient(135deg, #2b2f4a, #1a1d2e);
+    box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.094);
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+#space {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #1a1d2e, #232634);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 10;
+    position: relative;
+    margin-right: 6px;
+}
+
+#filter img { filter: invert(1); }
+
+#inventory {
+    position: relative;
+    padding-top: 0;
+}
+
+.boxcon {
+    display: flex;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    align-items: center;
+}
+
+.boxcon:hover { background-color: #1a1d2e; }
+
+.boxcon p { color: white; margin: 0; }
+
+.boxcon input { cursor: pointer; }

@@ -3,7 +3,7 @@
                 <div id="stats">
                     <div id="money"></div>
                     <div id="income" class="income-widget" title="Click to toggle income details">
-                        <div class="iw-icon">💰</div>
+                        <div id="incomeIcon" class="iw-icon">💰</div>
                         <div class="iw-body">
                             <span class="iw-label">INCOME</span>
                             <div class="iw-values">
@@ -12,27 +12,13 @@
                             </div>
                         </div>
                     </div>
-                    <h4 id="XPTxt"></h4>
-                    <progress id="XPPB" value="0" max="100"></progress>
-                </div>
-                <div id="sortcont">
-                    <div id="searchbar">
-                        <input id="searchbox" type="text" placeholder="Search Pogs...">
-                        <img id="searchbtn" src="../static/icons/buttons_main/search.png" width="20" height="20"
-                            title="Search Pogs">
+                    <div id="xpcont">
+                        <div id="xpinf">
+                            <h4 id="XPTxt"></h4>
+                            <div id="mxtxt"></div>
+                        </div>
+                        <progress id="XPPB" value="0" max="100"></progress>
                     </div>
-                    <select id="selectSort">
-                        <hr />
-                        <option value="nameAZ">Sort by Name (a-z) &#8593;</option>
-                        <option value="nameZA">Sort by Name (z-a) &#8595;</option>
-                        <hr />
-                        <option value="rarityHf">Sort by Rarity (trash to unique) &#8593;</option>
-                        <option value="rarityLf">Sort by Rarity (unique to trash) &#8595;</option>
-                        <hr />
-                        <option value="svHf">Sort by Sell Value (high to low) &#8593;</option>
-                        <option value="svLf">Sort by Sell Value (low to high) &#8595;</option>
-                        <hr />
-                    </select>
                 </div>
             </div>
             <!--Description-->

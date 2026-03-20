@@ -93,3 +93,15 @@
     margin-top: 296px;
     scale: 1.4;
 }
+
+/* visually de-emphasize perks the user does not yet have and disable hover interactions */
+.perk_card.not-obtained {
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.perk_card.not-obtained .inner_card::before {
+    /* keep decorative border but dim it */
+    box-shadow: none;
+    border-color: rgba(212,175,55,0.2);
+}

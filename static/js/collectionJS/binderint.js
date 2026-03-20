@@ -70,6 +70,22 @@ async function viewPerkCollection() {
         const response = await fetch('/api/perks');
         const data = await response.json();
         const perks = data.perks;
+        // determine which perks the user already owns (from server-rendered userdata if available)
+        const userdata = (() => { try { return JSON.parse(document.getElementById("userdata")?.textContent || '{}'); } catch (e) { return {}; } })();
+        let ownedPerkNames = new Set();
+        try {
+            const up = userdata && userdata.perks ? userdata.perks : null;
+            let arr = [];
+            if (typeof up === 'string') arr = JSON.parse(up || '[]');
+            else if (Array.isArray(up)) arr = up;
+            arr.forEach(p => {
+                if (!p) return;
+                if (typeof p === 'string') ownedPerkNames.add(p);
+                else if (p.name) ownedPerkNames.add(p.name);
+            });
+        } catch (e) {
+            ownedPerkNames = new Set();
+        }
         const sortedPerks = [...perks].sort((a, b) => a.notches - b.notches)
         const itemView = sortedPerks.map((item) => {
             const name = item.name;
@@ -97,8 +113,10 @@ async function viewPerkCollection() {
             for (let i = 0; i < item.notches; i++) {
                 notches += "⬣";
             }
+            const havePerk = ownedPerkNames.has(name);
+            const cardClass = `perk_card${havePerk ? '' : ' not-obtained'}`;
             return `
-            <div class="perk_card">
+            <div class="${cardClass}">
                 <div class="inner_card">
                     <div class="card_padding">
                         <h3>${name}</h3>
