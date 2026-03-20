@@ -196,6 +196,12 @@ const perks = [
         description: "All skills/ultimates deal 15% more damage to adjacent targets.",
         type: "attack",
         notches: 6
+    },
+    {
+        name: "Don't Forget Protection!",
+        description: "When healing an ally with max HP, provide them with an overheal shield of 20% of the healing amount.",
+        type: "support",
+        notches: 6
     }
 ];
 
