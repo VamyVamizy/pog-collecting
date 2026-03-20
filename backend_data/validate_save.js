@@ -266,7 +266,6 @@ function validateSave(incoming, current, pogList) {
     const newIncome = Number(s.income);
     // Allow up to 50% variance for wish boost + combo bonuses
     if (isFiniteNum(newIncome) && newIncome > expectedIncome * 1.5 + 100) {
-        warnings.push(`Income ${newIncome} seems too high for inventory (expected ~${expectedIncome}); clamping`);
         s.income = Math.floor(expectedIncome * 1.5);
     }
 

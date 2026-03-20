@@ -23,7 +23,7 @@
     font-size: 15px;
     cursor: pointer;
     scale: 0.8;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #closePfpChanger:hover {
@@ -55,7 +55,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #logout:hover {

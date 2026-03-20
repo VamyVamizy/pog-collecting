@@ -15,7 +15,7 @@
     cursor: pointer;
     scale: 0.7;
     box-shadow: 0 0 5px black;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #useWish:hover {
