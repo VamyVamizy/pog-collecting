@@ -193,8 +193,16 @@ document.addEventListener('click', (e) => {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier: Number(tier), status: 'claimed' })
-            }).then(res => {
-                if (!res.ok) throw new Error('Failed to save tier claim');
+            }).then(async res => {
+                if (!res.ok) {
+                    // attempt to read server-provided error message for diagnostics
+                    let errMsg = 'Failed to save tier claim';
+                    try {
+                        const body = await res.json();
+                        if (body && (body.message || body.error)) errMsg = body.message || body.error;
+                    } catch (e) { /* ignore parse errors */ }
+                    throw new Error(errMsg);
+                }
                 return res.json();
             }).then(json => {
                 // server returned updated tiers, update local copy if provided
@@ -230,7 +238,8 @@ document.addEventListener('click', (e) => {
                 // revert UI and local state on failure
                 clickedEl.classList.remove('claimed');
                 if (tierObj) tierObj.status = 'available';
-                alert('Could not save tier claim. Please try again.');
+                // show server-provided message when available
+                alert(err && err.message ? err.message : 'Could not save tier claim. Please try again.');
             });
         //not enough EXP
         } else {

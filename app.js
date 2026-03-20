@@ -153,6 +153,35 @@ try {
     console.warn('Failed to set sqlite pragmas/busyTimeout:', e);
 }
 
+// Helper utilities: lightweight retry wrappers to handle transient SQLITE_BUSY errors
+function runWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.run(sql, params, function(err) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, this);
+        });
+    }
+    once();
+}
+
+function getWithRetries(db, sql, params, attempts, cb) {
+    let tries = 0;
+    function once() {
+        db.get(sql, params, function(err, row) {
+            if (err && err.code === 'SQLITE_BUSY' && tries < attempts) {
+                tries++;
+                return setTimeout(once, 150);
+            }
+            return cb(err, row);
+        });
+    }
+    once();
+}
+
 // Run migrations on startup
 runMigrations(usdb).catch(err => {
     console.error('Failed to run migrations:', err);
@@ -831,11 +860,17 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Missing tier or status' });
     }
 
-    // ensure session tiers exist
-    req.session.user.tiers = Array.isArray(req.session.user.tiers) ? req.session.user.tiers : JSON.parse(JSON.stringify(tiers));
+    // ensure session tiers exist and are populated; if empty array, use canonical tiers
+    if (!Array.isArray(req.session.user.tiers) || req.session.user.tiers.length === 0) {
+        req.session.user.tiers = JSON.parse(JSON.stringify(tiers));
+    }
 
     const idx = req.session.user.tiers.findIndex(t => Number(t.tier) === Number(tierNum));
-    if (idx === -1) return res.status(404).json({ error: 'Tier not found' });
+    if (idx === -1) {
+        console.warn('Tier not found during claim. Request body:', req.body);
+        try { console.warn('Session tiers snapshot:', JSON.stringify(req.session.user.tiers).slice(0,2000)); } catch (e) { console.warn('Failed to stringify session tiers:', e); }
+        return res.status(404).json({ error: 'Tier not found' });
+    }
 
     req.session.user.tiers[idx].status = status;
 
@@ -843,7 +878,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
     const tiersJson = JSON.stringify(req.session.user.tiers);
     const displayName = req.session.user.displayName;
     console.log('Saving tiers for', displayName, req.session.user.tiers);
-    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err) {
+    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err) {
         if (err) {
             console.error('Error saving tiers for', displayName, err);
             // try to add the column if it doesn't exist, then retry once
@@ -851,13 +886,13 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                 usdb.run("ALTER TABLE userSettings ADD COLUMN tiers TEXT DEFAULT '[]'", [], function(altErr) {
                     if (altErr) {
                         console.error('Failed to add tiers column:', altErr);
-                        return res.status(500).json({ error: 'db' });
+                        return res.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
                     }
                     // retry update
-                    usdb.run('UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], function(err2) {
+                    runWithRetries(usdb, 'UPDATE userSettings SET tiers = ? WHERE displayname = ?', [tiersJson, displayName], 5, function(err2) {
                         if (err2) {
                             console.error('Error saving tiers after adding column for', displayName, err2);
-                            return res.status(500).json({ error: 'db' });
+                            return res.status(500).json({ error: 'db', message: err2.message || String(err2) });
                         }
                         // after tiers saved, possibly grant a perk if this tier awards one
                         handlePostTierSave(req, res, idx, status, displayName);
@@ -865,7 +900,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                 });
                 return;
             }
-            return res.status(500).json({ error: 'db' });
+            return res.status(500).json({ error: 'db', message: err.message || String(err) });
         }
         // after tiers saved, possibly grant a perk if this tier awards one
         handlePostTierSave(req, res, idx, status, displayName);
@@ -884,9 +919,12 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                 const claimedTier = reqParam.session.user.tiers && reqParam.session.user.tiers[idxParam] ? reqParam.session.user.tiers[idxParam] : null;
                 const rewardType = claimedTier && claimedTier.reward ? String(claimedTier.reward) : null;
                 // only proceed if the reward is a "Perk" and the client marked it claimed
+                console.log('Post-tier: rewardType=', rewardType, 'statusParam=', statusParam);
                 if (rewardType === 'Perk' && statusParam) {
+                    console.log('Post-tier: entering perk grant flow for', displayNameParam, 'tier idx', idxParam);
                     // helper to process an authoritative perks array and attempt to grant one
                     function processPerksArray(existingPerks) {
+                        console.log('processPerksArray: existingPerks length=', (existingPerks||[]).length);
                         existingPerks = Array.isArray(existingPerks) ? existingPerks : [];
                         // build set of owned perk names
                         const owned = new Set((existingPerks || []).map(p => p && p.name).filter(Boolean));
@@ -905,20 +943,20 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                         const perksJson = JSON.stringify(existingPerks);
 
                         // persist perks to DB; if column missing, try to add then retry
-                        usdb.run('UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], function(updateErr) {
+                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(updateErr) {
                             if (updateErr) {
                                 console.error('Error saving perks for', displayNameParam, updateErr);
                                 if (updateErr.message && updateErr.message.toLowerCase().includes('no such column')) {
                                     usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], function(altErr2) {
                                         if (altErr2) {
                                             console.error('Failed to add perks column:', altErr2);
-                                            return resParam.status(500).json({ error: 'db' });
+                                            return resParam.status(500).json({ error: 'db', message: altErr2.message || String(altErr2) });
                                         }
                                         // retry update
-                                        usdb.run('UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], function(err3) {
+                                        runWithRetries(usdb, 'UPDATE userSettings SET perks = ? WHERE displayname = ?', [perksJson, displayNameParam], 5, function(err3) {
                                             if (err3) {
                                                 console.error('Error saving perks after ALTER for', displayNameParam, err3);
-                                                return resParam.status(500).json({ error: 'db' });
+                                                return resParam.status(500).json({ error: 'db', message: err3.message || String(err3) });
                                             }
                                             // update session and return granted perk
                                             reqParam.session.user.perks = existingPerks;
@@ -929,7 +967,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                                     });
                                     return;
                                 }
-                                return resParam.status(500).json({ error: 'db' });
+                                return resParam.status(500).json({ error: 'db', message: updateErr.message || String(updateErr) });
                             }
                             // success: update session and return granted perk
                             reqParam.session.user.perks = existingPerks;
@@ -940,7 +978,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                     }
 
                     // fetch authoritative perks array from DB
-                    usdb.get('SELECT perks FROM userSettings WHERE displayname = ?', [displayNameParam], (getErr, row) => {
+                    getWithRetries(usdb, 'SELECT perks FROM userSettings WHERE displayname = ?', [displayNameParam], 5, (getErr, row) => {
                         if (getErr) {
                             // If the column doesn't exist yet, try to add it then proceed with empty array
                             if (getErr.message && getErr.message.toLowerCase().includes('no such column')) {
@@ -948,7 +986,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                                 usdb.run("ALTER TABLE userSettings ADD COLUMN perks TEXT DEFAULT '[]'", [], (altErr) => {
                                     if (altErr) {
                                         console.error('Failed to add perks column:', altErr);
-                                        return resParam.status(500).json({ error: 'db' });
+                                        return resParam.status(500).json({ error: 'db', message: altErr.message || String(altErr) });
                                     }
                                     // proceed assuming empty perks
                                     return processPerksArray([]);
@@ -956,7 +994,7 @@ app.post('/api/perk-tiers/claim', express.json(), (req, res) => {
                                 return;
                             }
                             console.error('Failed to read perks for', displayNameParam, getErr);
-                            return resParam.status(500).json({ error: 'db' });
+                            return resParam.status(500).json({ error: 'db', message: getErr.message || String(getErr) });
                         }
                         let existingPerks = [];
                         try { existingPerks = row && row.perks ? JSON.parse(row.perks) : []; } catch (e) { existingPerks = []; }
