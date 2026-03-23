@@ -43,8 +43,9 @@ let results = [];
 
 async function initApp() {
   try {
-    results = await initializePogDatabase();
+    results = await getAllPogs();
     pogCount = await getPogCount();
+    console.log(results);
     console.log('Pog CSV count:', results.length);
     console.log('DB pog count:', pogCount);
   } catch (err) {
@@ -538,134 +539,184 @@ app.post('/api/trade-wish', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Invalid Dragon Ball ID' });
     }
 
-    usdb.get('SELECT inventory, wish FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-        if (err) {
-            console.error('Error reading user for wish trade:', err);
+    // Use inventory table: find the inventory instance by uid and ensure it belongs to the user and is a Dragon Ball
+    usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (err, userRow) => {
+        if (err || !userRow) {
+            console.error('Error fetching user uid for wish trade:', err);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (!row) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        const userUid = userRow.uid;
 
-        let inventory;
-        try { inventory = JSON.parse(row.inventory || '[]'); } catch (e) { inventory = []; }
-        const currentWish = Number(row.wish) || 0;
+        usdb.get('SELECT uid as iid, pog_uid, quantity FROM inventory WHERE uid = ? AND user_uid = ?', [dragonBallId, userUid], (invErr, invRow) => {
+            if (invErr) {
+                console.error('Error reading inventory for wish trade:', invErr);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (!invRow) {
+                return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+            }
 
-        // Find the Dragon Ball by its unique item id
-        const dbIndex = inventory.findIndex(item => item.id === dragonBallId && item.name === 'Dragon Ball');
-        if (dbIndex === -1) {
-            return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
-        }
+            // verify that the referenced pog_uid corresponds to a Dragon Ball using server's pog list (results)
+            const pogMeta = results.find(p => Number(p.id) === Number(invRow.pog_uid) || Number(p.uid) === Number(invRow.pog_uid));
+            const pogName = pogMeta ? pogMeta.name : null;
+            if (pogName !== 'Dragon Ball') {
+                return res.status(400).json({ error: 'Item is not a Dragon Ball' });
+            }
 
-        // Remove the Dragon Ball and increment wish
-        inventory.splice(dbIndex, 1);
-        const newWish = currentWish + 1;
+            // delete the inventory instance and increment wish on userSettings
+            dbRunWithRetries = function(sql, params, cb) { // lightweight inline retry to avoid SQLITE_BUSY
+                let tries = 0;
+                function once() {
+                    usdb.run(sql, params, function(e) {
+                        if (e && e.code === 'SQLITE_BUSY' && tries < 5) { tries++; return setTimeout(once, 150); }
+                        return cb(e, this);
+                    });
+                }
+                once();
+            };
 
-        usdb.run(
-            'UPDATE userSettings SET inventory = ?, wish = ? WHERE displayname = ?',
-            [JSON.stringify(inventory), newWish, displayName],
-            function (dbErr) {
-                if (dbErr) {
-                    console.error('Error saving wish trade:', dbErr);
+            dbRunWithRetries('DELETE FROM inventory WHERE uid = ?', [dragonBallId], (delErr) => {
+                if (delErr) {
+                    console.error('Error deleting inventory instance for wish trade:', delErr);
                     return res.status(500).json({ error: 'Database error' });
                 }
-                console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (id: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
-                return res.json({ wish: newWish, inventory: inventory });
-            }
-        );
+
+                // increment wish
+                usdb.get('SELECT wish FROM userSettings WHERE uid = ?', [userUid], (wishErr, wishRow) => {
+                    if (wishErr) { console.error('Error reading wish:', wishErr); return res.status(500).json({ error: 'Database error' }); }
+                    const currentWish = Number(wishRow && wishRow.wish) || 0;
+                    const newWish = currentWish + 1;
+                    dbRunWithRetries('UPDATE userSettings SET wish = ? WHERE uid = ?', [newWish, userUid], (updErr) => {
+                        if (updErr) { console.error('Error updating wish:', updErr); return res.status(500).json({ error: 'Database error' }); }
+                        console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (inv uid: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
+                        return res.json({ wish: newWish, removedInventoryId: dragonBallId });
+                    });
+                });
+            });
+        });
     });
 });
 
 // ── Server-side crate opening ─────────────────────────────────────────────
 // The client calls this instead of rolling RNG locally.
 // Returns the pog result; the client is responsible for calling save() after.
-app.post('/api/open-crate', express.json(), (req, res) => {
+app.post('/api/open-crate', express.json(), async (req, res) => {
+  try {
+    // 1️⃣ Auth check
     if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: 'Not authenticated' });
     }
 
     const crateIndex = Number(req.body.crateIndex);
     if (!Number.isFinite(crateIndex) || crateIndex < 0 || crateIndex >= crateRef.length) {
-        return res.status(400).json({ error: 'Invalid crate index' });
+      return res.status(400).json({ error: 'Invalid crate index' });
     }
 
     const crate = crateRef[crateIndex];
-    const pogListLocal = results; // server's master pog list
+    const pogListLocal = results; // master pog list
     if (!pogListLocal || !pogListLocal.length) {
-        return res.status(500).json({ error: 'Pog list not loaded' });
+      return res.status(500).json({ error: 'Pog list not loaded' });
     }
 
     const norm = s => String(s || '').trim().toLowerCase();
 
-    // Apply drop rate boost if client reports it (trust-but-verify: only allow 1.5x max)
-    let multiplier = 1.0;
-    if (req.body.dropRateBoost === true) {
-        multiplier = 1.5;
-    }
+    // 2️⃣ Apply drop rate boost (trust-but-verify)
+    const multiplier = req.body.dropRateBoost === true ? 1.5 : 1.0;
 
-    // Roll RNG server-side
+    // 3️⃣ Roll RNG
     let rand = Math.random();
     let cumulativeChance = 0;
-    let pogResult = null;
+    let chosen = null;
 
     for (const tier of crate.rarities) {
-        const boostedChance = (Number(tier.chance) || 0) * multiplier;
-        cumulativeChance += boostedChance;
-        if (rand < cumulativeChance) {
-            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
-            if (candidates.length === 0) continue;
+      const boostedChance = (Number(tier.chance) || 0) * multiplier;
+      cumulativeChance += boostedChance;
+      if (rand < cumulativeChance) {
+        const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(tier.name));
+        if (candidates.length === 0) continue;
 
-            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-            const RARITY_INCOME = { Trash: 2, Common: 7, Uncommon: 13, Mythic: 20, Unique: 28 };
-            const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+        chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        break;
+      }
+    }
 
-            pogResult = {
+    // 4️⃣ Fallback if no tier matched
+    if (!chosen) {
+      const fallbackTier = crate.rarities[crate.rarities.length - 1];
+      if (fallbackTier) {
+        const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
+        if (candidates.length > 0) {
+          chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        }
+      }
+    }
+
+    if (!chosen) {
+      return res.status(500).json({ error: 'Failed to generate pog result' });
+    }
+
+    // 5️⃣ Build pogResult for frontend (normalized)
+    const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
+            const displayId = Date.now() + Math.floor(Math.random() * 10000);
+            const pogResult = {
                 locked: false,
-                pogid: chosen.id || null,
+                // pog CSV loader uses `id` while some DB-sourced pogs may have `uid` — prefer uid then id
+                pogUid: Number(chosen.uid || chosen.id || chosen.number), // store only UID in inventory (coerced to Number)
+                id: displayId,
+                displayId: displayId, // temporary frontend ID (also provide `id` for older client code)
                 name: chosen.name,
-                id: Date.now() + Math.floor(Math.random() * 10000),
                 rarity: chosen.rarity,
                 pogcol: chosen.color || 'white',
                 color: meta.color || 'white',
                 code2: chosen.code2,
                 income: meta.income || 5,
-                description: chosen.description || '',
+                description: (chosen.description || '') + '',
                 creator: chosen.creator || ''
             };
-            break;
-        }
-    }
 
-    // Fallback if roll missed all tiers
-    if (!pogResult) {
-        const fallbackTier = crate.rarities[crate.rarities.length - 1];
-        if (fallbackTier) {
-            const candidates = pogListLocal.filter(p => norm(p.rarity) === norm(fallbackTier.name));
-            if (candidates.length > 0) {
-                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-                const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
-                pogResult = {
-                    locked: false,
-                    pogid: chosen.id || null,
-                    name: chosen.name,
-                    id: Date.now() + Math.floor(Math.random() * 10000),
-                    rarity: chosen.rarity,
-                    pogcol: chosen.color || 'white',
-                    color: meta.color || 'white',
-                    code2: chosen.code2,
-                    income: meta.income || 5,
-                    description: chosen.description || '',
-                    creator: chosen.creator || ''
-                };
+            // Validate pog UID before attempting DB insert
+            if (!Number.isFinite(pogResult.pogUid) || Number(pogResult.pogUid) <= 0) {
+                console.error('OPEN CRATE ERROR: invalid pog uid for chosen pog', chosen);
+                return res.status(500).json({ error: 'server', message: 'Invalid pog identifier for crate result' });
             }
+
+            // 6️⃣ Add to user inventory (normalized)
+        // Ensure we have the authoritative DB uid for this session user (session may only store fid)
+        const lookupDisplay = req.session.user && (req.session.user.displayName || req.session.user.displayname);
+        try {
+            const userRow = await new Promise((resolve, reject) => {
+                getWithRetries(usdb, 'SELECT uid FROM userSettings WHERE displayname = ?', [lookupDisplay], 5, (gErr, row) => {
+                    if (gErr) return reject(gErr);
+                    if (!row) return reject(new Error('User not found'));
+                    return resolve(row);
+                });
+            });
+
+            const userUid = userRow.uid;
+
+            // Insert inventory instance (quantity defaults to 1). Use runWithRetries to avoid SQLITE_BUSY
+            await new Promise((resolve, reject) => {
+                runWithRetries(usdb, 'INSERT INTO inventory (user_uid, pog_uid, quantity) VALUES (?, ?, ?)', [userUid, pogResult.pogUid, 1], 5, (insErr) => {
+                    if (insErr) return reject(insErr);
+                    return resolve();
+                });
+            });
+
+            // Respond with the pog result (client will call save afterwards)
+            return res.json({ ok: true, pogResult });
+        } catch (dbErr) {
+            console.error('OPEN CRATE DB ERROR:', dbErr);
+            // If inventory table is missing, hint to run migrations
+            if (dbErr && dbErr.message && dbErr.message.toLowerCase().includes('no such table')) {
+                return res.status(500).json({ error: 'db', message: 'Inventory table missing; please run migrations' });
+            }
+            return res.status(500).json({ error: dbErr.message || String(dbErr) });
         }
-    }
 
-    if (!pogResult) {
-        return res.status(500).json({ error: 'Failed to generate pog result' });
-    }
-
-    return res.json({ ok: true, pogResult });
+  } catch (err) {
+    console.error("OPEN CRATE ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Express route to handle digipog transfer requests
@@ -840,13 +891,54 @@ app.post('/api/unban', express.json(), (req, res) => {
 
 // API route to get user state
 app.get('/api/user-state', (req, res) => {
-  const displayName = req.session.user.displayName;
-  usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-    if (err || !row) return res.status(500).json({ error: 'User not found' });
-    
-    const userState = initializeUserState(row);
-    res.json({ userState, rarityColors: RARITY_COLORS });
-  });
+    const displayName = req.session.user.displayName;
+    usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err || !row) return res.status(500).json({ error: 'User not found' });
+
+        // attempt to read per-instance inventory rows
+        usdb.all('SELECT uid, pog_uid, quantity FROM inventory WHERE user_uid = ?', [row.uid], (invErr, invRows) => {
+            let enrichedInventory = [];
+            if (!invErr && Array.isArray(invRows) && invRows.length > 0) {
+                // enrich with pog metadata from CSV/loaded results
+                enrichedInventory = invRows.map(r => {
+                    const match = results.find(p => Number(p.id) === Number(r.pog_uid) || Number(p.number) === Number(r.pog_uid) || Number(p.uid) === Number(r.pog_uid));
+                    const meta = match || {};
+                    const rarityMeta = RARITY_COLORS.find(rc => String(rc.name).toLowerCase() === String(meta.rarity || '').toLowerCase()) || {};
+                    // prefer pog-specific color name (match.color) but fall back to rarity color for visual hex
+                    const pogColorName = (meta && (meta.color || meta.pogcol || meta.pogCol || meta.pog_color)) || '';
+                    const visualColor = (rarityMeta && rarityMeta.color) || pogColorName || '';
+                    return {
+                        id: r.uid,
+                        pogid: Number(r.pog_uid),
+                        name: meta.name || `Pog #${r.pog_uid}`,
+                        rarity: meta.rarity || 'Trash',
+                        code2: meta.code2 || meta.code || 'unknown',
+                        income: rarityMeta.income || Number(meta.income) || 0,
+                        description: meta.description || '',
+                        creator: meta.creator || '',
+                        locked: false,
+                        quantity: r.quantity || 1,
+                        // provide both properties because different client code reads different keys
+                        pogcol: pogColorName,
+                        color: visualColor
+                    };
+                });
+            } else {
+                try {
+                    const legacy = JSON.parse(row.inventory || '[]');
+                    // normalize items to ensure pogcol/color exist for client
+                    enrichedInventory = (Array.isArray(legacy) ? legacy : []).map(it => ({
+                        ...it,
+                        pogcol: it.pogcol || it.color || '',
+                        color: it.color || it.pogcol || ''
+                    }));
+                } catch (e) { enrichedInventory = []; }
+            }
+
+            const userState = initializeUserState(Object.assign({}, row, { inventory: enrichedInventory }));
+            res.json({ userState, rarityColors: RARITY_COLORS });
+        });
+    });
 });
 
 // API to claim or update a single perk tier status

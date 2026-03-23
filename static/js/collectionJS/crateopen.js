@@ -330,7 +330,7 @@ function addPogToInventory(pogResult, skipSave = false) {
         pog.pogcol === ownedQueue.pogcol
     );
     if (!alreadyOwned) {
-        pogAmount.push(ownedQueue)
+        pogAmount.push(ownedQueue);
     }
 
     document.getElementById("descPanel").innerHTML = "";

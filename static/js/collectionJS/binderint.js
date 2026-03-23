@@ -142,7 +142,7 @@ function viewCollection() {
     const sortedResults = [...pogList].sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
     const itemView = sortedResults.map((item) => {
         const name = item.name;
-        const desc = item.description;
+            const desc = (item.description || '').replace(/\n/g, '<br>');
         const creator = item.creator;
         const class_name = item.subclass;
         const elem = "Fire";
