@@ -11,116 +11,102 @@ console.log('Backup complete.');
 
 const db = new sqlite3.Database(DB_PATH);
 
-function ensureLegacyColumn(callback) {
-  db.run("ALTER TABLE inventory ADD COLUMN legacy_id INTEGER", [], (err) => {
-    if (err) {
-      // ignore "duplicate column" errors
-      if (err.message && err.message.toLowerCase().includes('duplicate column')) {
-        return callback(null);
-      }
-      // SQLite reports "duplicate column name" differently; treat as non-fatal
-      if (err.code === 'SQLITE_ERROR' && /duplicate/i.test(err.message)) {
-        return callback(null);
-      }
-      // if 'no such table' then fail
+function dbRun(sql, params=[]) {
+  return new Promise((resolve, reject) => db.run(sql, params, function(err) { if (err) reject(err); else resolve(this); }));
+}
+
+function dbGet(sql, params=[]) {
+  return new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)));
+}
+
+function dbAll(sql, params=[]) {
+  return new Promise((resolve, reject) => db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows)));
+}
+
+async function ensureLegacyColumn() {
+  // check pragma table_info for inventory
+  const cols = await dbAll("PRAGMA table_info('inventory')");
+  const hasLegacy = cols.some(c => String(c.name).toLowerCase() === 'legacy_id');
+  if (!hasLegacy) {
+    try {
+      await dbRun("ALTER TABLE inventory ADD COLUMN legacy_id INTEGER");
+      console.log('Added legacy_id column to inventory table');
+    } catch (err) {
       if (err.message && err.message.toLowerCase().includes('no such table')) {
-        return callback(new Error('inventory table does not exist; run migrations first'));
+        throw new Error('inventory table does not exist; run migrations first');
       }
-      return callback(err);
+      throw err;
     }
-    return callback(null);
-  });
+  }
 }
 
-function migrate() {
-  ensureLegacyColumn((err) => {
-    if (err) {
-      console.error('Failed to ensure legacy_id column on inventory table:', err.message || err);
-      process.exit(1);
-    }
-
-    db.all('SELECT uid, fid, displayname, inventory FROM userSettings', [], (err, rows) => {
-      if (err) {
-        console.error('Failed to read userSettings:', err.message || err);
-        process.exit(1);
-      }
-
-      let totalInserted = 0;
-      let totalUsers = rows.length;
-      let processed = 0;
-
-      rows.forEach(u => {
-        processed++;
-        let items = [];
-        try {
-          items = JSON.parse(u.inventory || '[]');
-        } catch (e) {
-          items = [];
-        }
-
-        if (!Array.isArray(items) || items.length === 0) {
-          if (processed === totalUsers) finish(totalInserted);
-          return;
-        }
-
-        // For each item in user's inventory, insert into inventory table unless a matching legacy_id exists
-        let done = 0;
-        items.forEach(it => {
-          const pogUid = it.pogid || it.pogId || it.pog_id || it.pog || null;
-          const legacyId = it.id || null;
-
-          if (!pogUid) {
-            done++;
-            if (done === items.length && ++done) {
-              if (processed === totalUsers) finish(totalInserted);
-            }
-            return;
-          }
-
-          // check if a row already exists with same user_uid and legacy_id (if present) or same user_uid and pog_uid (to avoid dupes)
-          const checkSql = legacyId ? 'SELECT uid, quantity FROM inventory WHERE user_uid = ? AND legacy_id = ?' : 'SELECT uid, quantity FROM inventory WHERE user_uid = ? AND pog_uid = ?';
-          const checkParams = legacyId ? [u.uid, legacyId] : [u.uid, pogUid];
-
-          db.get(checkSql, checkParams, (checkErr, existing) => {
-            if (checkErr) {
-              console.error('DB check error for user', u.uid, checkErr.message || checkErr);
-              done++;
-              if (done === items.length && processed === totalUsers) finish(totalInserted);
-              return;
-            }
-
-            if (existing) {
-              // increment quantity if duplicate by pog_uid
-              db.run('UPDATE inventory SET quantity = quantity + 1 WHERE uid = ?', [existing.uid], (updErr) => {
-                if (updErr) console.error('Failed to increment existing inventory row', updErr.message || updErr);
-                totalInserted++;
-                done++;
-                if (done === items.length && processed === totalUsers) finish(totalInserted);
-              });
-            } else {
-              // insert new row
-              db.run('INSERT INTO inventory (user_uid, pog_uid, quantity, legacy_id) VALUES (?, ?, ?, ?)', [u.uid, pogUid, 1, legacyId], function(insertErr) {
-                if (insertErr) {
-                  console.error('Failed to insert inventory row for user', u.uid, insertErr.message || insertErr);
-                } else {
-                  totalInserted++;
-                }
-                done++;
-                if (done === items.length && processed === totalUsers) finish(totalInserted);
-              });
-            }
-          });
-        });
-      });
-
-      if (rows.length === 0) finish(totalInserted);
-    });
-  });
+function normalizePogUid(raw) {
+  if (raw === null || typeof raw === 'undefined') return null;
+  // accept numeric strings, numbers
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  // try to extract digits if string contains numeric id
+  const m = String(raw).match(/(\d+)/);
+  if (m) return Number(m[1]);
+  return null;
 }
 
-function finish(totalInserted) {
-  console.log('Migration complete. Rows processed and inserted/updated:', totalInserted);
-  db.close();
+async function migrate() {
+  try {
+    await ensureLegacyColumn();
+
+    const users = await dbAll('SELECT uid, fid, displayname, inventory FROM userSettings');
+    console.log(`Found ${users.length} users to process`);
+
+    // Start transaction for performance and safety
+    await dbRun('BEGIN TRANSACTION');
+
+    let totalInserted = 0;
+    for (const u of users) {
+      let items = [];
+      try { items = JSON.parse(u.inventory || '[]'); } catch (e) { items = []; }
+      if (!Array.isArray(items) || items.length === 0) continue;
+
+      for (const it of items) {
+        const pogUidRaw = it.pogid || it.pogId || it.pog_id || it.pog || it.pogUid || it.pogUID || null;
+        const legacyId = (typeof it.id !== 'undefined' && it.id !== null) ? Number(it.id) : null;
+        const quantity = (typeof it.quantity === 'number' && it.quantity > 0) ? Math.floor(it.quantity) : 1;
+        const pogUid = normalizePogUid(pogUidRaw);
+
+        if (!pogUid) {
+          console.warn(`Skipping legacy inventory item for user ${u.uid} — could not determine pog UID from`, pogUidRaw);
+          continue;
+        }
+
+        // Try to find an existing row. Prefer matching legacy_id when present, otherwise match by user_uid+pog_uid
+        let existing = null;
+        if (legacyId) {
+          existing = await dbGet('SELECT uid, quantity FROM inventory WHERE user_uid = ? AND legacy_id = ?', [u.uid, legacyId]).catch(() => null);
+        }
+        if (!existing) {
+          existing = await dbGet('SELECT uid, quantity FROM inventory WHERE user_uid = ? AND pog_uid = ?', [u.uid, pogUid]).catch(() => null);
+        }
+
+        if (existing) {
+          // Idempotent behavior: if an inventory row already exists for this user+pog (or legacy_id),
+          // skip inserting/updating to avoid double-counting if migration is re-run.
+          console.log(`Skipping existing inventory for user ${u.uid}, pog ${pogUid} (existing uid=${existing.uid})`);
+        } else {
+          await dbRun('INSERT INTO inventory (user_uid, pog_uid, quantity, legacy_id) VALUES (?, ?, ?, ?)', [u.uid, pogUid, quantity, legacyId]);
+          totalInserted += 1;
+        }
+      }
+    }
+
+    await dbRun('COMMIT');
+    console.log('Migration complete. Rows inserted/updated (approx):', totalInserted);
+  } catch (err) {
+    console.error('Migration failed:', err.message || err);
+    try { await dbRun('ROLLBACK'); } catch (e) { /* ignore */ }
+    process.exit(1);
+  } finally {
+    db.close();
+  }
 }
 
 migrate();
