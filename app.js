@@ -657,20 +657,22 @@ app.post('/api/open-crate', express.json(), async (req, res) => {
 
     // 5️⃣ Build pogResult for frontend (normalized)
     const meta = RARITY_COLORS.find(r => norm(r.name) === norm(chosen.rarity)) || {};
-        const pogResult = {
-            locked: false,
-            // pog CSV loader uses `id` while some DB-sourced pogs may have `uid` — prefer uid then id
-            pogUid: Number(chosen.uid || chosen.id || chosen.number), // store only UID in inventory (coerced to Number)
-      displayId: Date.now() + Math.floor(Math.random() * 10000), // temporary frontend ID
-      name: chosen.name,
-      rarity: chosen.rarity,
-      pogcol: chosen.color || 'white',
-      color: meta.color || 'white',
-      code2: chosen.code2,
-      income: meta.income || 5,
-      description: chosen.description || '',
-      creator: chosen.creator || ''
-    };
+            const displayId = Date.now() + Math.floor(Math.random() * 10000);
+            const pogResult = {
+                locked: false,
+                // pog CSV loader uses `id` while some DB-sourced pogs may have `uid` — prefer uid then id
+                pogUid: Number(chosen.uid || chosen.id || chosen.number), // store only UID in inventory (coerced to Number)
+                id: displayId,
+                displayId: displayId, // temporary frontend ID (also provide `id` for older client code)
+                name: chosen.name,
+                rarity: chosen.rarity,
+                pogcol: chosen.color || 'white',
+                color: meta.color || 'white',
+                code2: chosen.code2,
+                income: meta.income || 5,
+                description: (chosen.description || '') + '',
+                creator: chosen.creator || ''
+            };
 
             // Validate pog UID before attempting DB insert
             if (!Number.isFinite(pogResult.pogUid) || Number(pogResult.pogUid) <= 0) {
@@ -889,13 +891,54 @@ app.post('/api/unban', express.json(), (req, res) => {
 
 // API route to get user state
 app.get('/api/user-state', (req, res) => {
-  const displayName = req.session.user.displayName;
-  usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
-    if (err || !row) return res.status(500).json({ error: 'User not found' });
-    
-    const userState = initializeUserState(row);
-    res.json({ userState, rarityColors: RARITY_COLORS });
-  });
+    const displayName = req.session.user.displayName;
+    usdb.get('SELECT * FROM userSettings WHERE displayname = ?', [displayName], (err, row) => {
+        if (err || !row) return res.status(500).json({ error: 'User not found' });
+
+        // attempt to read per-instance inventory rows
+        usdb.all('SELECT uid, pog_uid, quantity FROM inventory WHERE user_uid = ?', [row.uid], (invErr, invRows) => {
+            let enrichedInventory = [];
+            if (!invErr && Array.isArray(invRows) && invRows.length > 0) {
+                // enrich with pog metadata from CSV/loaded results
+                enrichedInventory = invRows.map(r => {
+                    const match = results.find(p => Number(p.id) === Number(r.pog_uid) || Number(p.number) === Number(r.pog_uid) || Number(p.uid) === Number(r.pog_uid));
+                    const meta = match || {};
+                    const rarityMeta = RARITY_COLORS.find(rc => String(rc.name).toLowerCase() === String(meta.rarity || '').toLowerCase()) || {};
+                    // prefer pog-specific color name (match.color) but fall back to rarity color for visual hex
+                    const pogColorName = (meta && (meta.color || meta.pogcol || meta.pogCol || meta.pog_color)) || '';
+                    const visualColor = (rarityMeta && rarityMeta.color) || pogColorName || '';
+                    return {
+                        id: r.uid,
+                        pogid: Number(r.pog_uid),
+                        name: meta.name || `Pog #${r.pog_uid}`,
+                        rarity: meta.rarity || 'Trash',
+                        code2: meta.code2 || meta.code || 'unknown',
+                        income: rarityMeta.income || Number(meta.income) || 0,
+                        description: meta.description || '',
+                        creator: meta.creator || '',
+                        locked: false,
+                        quantity: r.quantity || 1,
+                        // provide both properties because different client code reads different keys
+                        pogcol: pogColorName,
+                        color: visualColor
+                    };
+                });
+            } else {
+                try {
+                    const legacy = JSON.parse(row.inventory || '[]');
+                    // normalize items to ensure pogcol/color exist for client
+                    enrichedInventory = (Array.isArray(legacy) ? legacy : []).map(it => ({
+                        ...it,
+                        pogcol: it.pogcol || it.color || '',
+                        color: it.color || it.pogcol || ''
+                    }));
+                } catch (e) { enrichedInventory = []; }
+            }
+
+            const userState = initializeUserState(Object.assign({}, row, { inventory: enrichedInventory }));
+            res.json({ userState, rarityColors: RARITY_COLORS });
+        });
+    });
 });
 
 // API to claim or update a single perk tier status
