@@ -1,13 +1,13 @@
 const perks = [
     {
         name: "Critical Strike",
-        description: "Prioritized target takes +5% damage per hit target.",
+        description: "Center-most target of an attack takes +5% damage per hit target.",
         type: "attack",
         notches: 1
     },
     {
         name: "Element Inflictor",
-        description: "Basic attacks have a 10% chance to build up a random elemental effect.",
+        description: "Basic attacks have a 10% chance to build up a random elemental effect and skills have a 5% chance.",
         type: "element",
         notches: 1
     },
@@ -31,7 +31,7 @@ const perks = [
     },
     {
         name: "Vow Against",
-        description: "Gain 3% of damage back as health.",
+        description: "Gain 3% of damage back as health (1% if AOE/Blast attack).",
         type: "support",
         notches: 2
     },
@@ -49,13 +49,13 @@ const perks = [
     },
     {
         name: "Unveil",
-        description: "Killing a target grants back 6% of unit's max health.",
+        description: "Killing a target grants back 15% of unit's max health.",
         type: "support",
         notches: 4
     },
     {
         name: "Elemental Block", 
-        description: "Reduces elemental effect hit rate by 12%.",
+        description: "Reduces enemy elemental effect hit rate by 12%.",
         type: "defense",
         notches: 2
     },
@@ -73,19 +73,19 @@ const perks = [
     },
     {
         name: "Inflictor's Bane",
-        description: "Over-time element effects deal an extra 30% damage per turn.",
+        description: "Over-time element effects deal an extra 30% damage.",
         type: "element",
         notches: 3
     },
     {
         name: "Medic",
-        description: "Receive 20% more healing from all sources.",
+        description: "20% more healing from all sources.",
         type: "support",
         notches: 3
     },
     {
         name: "Thorns",
-        description: "Damage received reflects 20% of unit's defense back to the attacker.",
+        description: "Damage received reflects 15% of unit's defense back to the attacker.",
         type: "defense",
         notches: 4
     },
@@ -139,12 +139,12 @@ const perks = [
     },
     {
         name: "Avenge the Fallen",
-        description: "Basic attacks do +4% damage for every ally defeated.",
+        description: "All attacks do +10% damage for every ally defeated.",
         type: "attack",
         notches: 5
     },
     {
-        name: "Weighed Down",
+        name: "Anchor",
         description: "Slow effects increased by 16% and unit gains 50% slow resistance.",
         type: "element",
         notches: 4
@@ -195,6 +195,12 @@ const perks = [
         name: "Chain Reaction",
         description: "All skills/ultimates deal 15% more damage to adjacent targets.",
         type: "attack",
+        notches: 6
+    },
+    {
+        name: "Don't Forget Protection!",
+        description: "When healing an ally with max HP, provide them with an overheal shield of 20% of the healing amount.",
+        type: "support",
         notches: 6
     }
 ];

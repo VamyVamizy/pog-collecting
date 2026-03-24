@@ -11,3 +11,5 @@
 /usersettings.sqlite-wal
 /.sqlite-wal
 *.sqlite-wal
+/*migration.bak*
+*.migration.bak*

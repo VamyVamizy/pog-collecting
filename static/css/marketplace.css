@@ -86,6 +86,7 @@ li {
     border: 1px solid rgba(255,255,255,0.2);
 }
 
+
 /* Improved auction grid and card styling */
 #pogContainer {
     display: grid;
@@ -204,32 +205,41 @@ li {
     .pog-actions .bid-button, .pog-actions .buy-now-button { width: 100%; }
 }
 
-/* Create Auction button (inserted by JS) */
+/* Enhanced Create Auction button section*/
 #createAuctionButton {
     display: inline-block;
     padding: 12px 20px;
-    background: linear-gradient(180deg,#5bffb1,#15c26a);
-    color: #062914;
+    background: linear-gradient(135deg,#4CAF50,#45a049);
+    color: white;
     border-radius: 10px;
     border: none;
     cursor: pointer;
     font-weight: 700;
-    box-shadow: 0 8px 20px rgba(17, 94, 58, 0.12);
+    box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-size: 14px;
+    transform: translateY(0);
 }
 
-/* Create Auction Popup Overlay */
+#createAuctionButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(76, 175, 80, 0.4);
+}
+
+/* Create Auction Popup */
 #auctionPopupOverlay {
     position: fixed;
-    inset: 0; /* top:0;right:0;bottom:0;left:0 */
+    inset: 0;
     background: rgba(0,0,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
     padding: 20px;
+    backdrop-filter: blur(5px); /* Add subtle blur */
+    animation: fadeIn 0.3s ease;
 }
 
-/* Create Auction Popup */
 #auctionPopup {
     width: 100%;
     max-width: 560px;
@@ -239,8 +249,24 @@ li {
     padding: 22px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
     border: 1px solid rgba(255,255,255,0.04);
+    animation: slideUp 0.3s ease;
 }
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 #auctionPopup h2 {
     margin-bottom: 12px;
     font-size: 1.25rem;
@@ -276,6 +302,17 @@ li {
     background: rgba(255,255,255,0.03);
     color: #e6eef0;
     outline: none;
+    transition: all 1.0s ease;
+}
+
+/* Focus states for auction-form */
+.auction-form input[type="text"]:focus,
+.auction-form input[type="number"]:focus,
+.auction-form select:focus,
+.auction-form textarea:focus {
+    border-color: #4caf50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    background: rgba(255,255,255,0.08);
 }
 
 .auction-form textarea { min-height: 80px; resize: vertical; }
