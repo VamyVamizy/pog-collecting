@@ -68,6 +68,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Body parsers and cookie parser must be registered before route handlers so
+// POST handlers (like /login/confirm) can read req.body. They were previously
+// registered after routers which caused missing req.body on form posts.
+app.use(express.urlencoded({limit: '50mb', extended: true }));
+app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
+
 //routes
 const marketplaceRouter = require('./routes/marketplace_rt.js');
 app.use('/', marketplaceRouter);
@@ -117,9 +124,6 @@ This will prevent it from getting out and allowing people to hack your cookies.*
 app.set('view engine', 'ejs');
 app.set('trust proxy', true);
 app.use('/static', express.static('static'));
-app.use(express.urlencoded({limit: '50mb', extended: true }));
-app.use(express.json({limit: '50mb'}));
-app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -192,9 +196,29 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
+    // Defensive: clear token and user from session before destroying
+    try {
+        if (req.session) {
+            req.session.token = null;
+            req.session.user = null;
+        }
+    } catch (e) {
+        console.warn('Failed to clear session properties before destroy:', e);
+    }
+
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
-        res.clearCookie("connect.sid");
+        // Clear session cookie and explicitly expire the short-lived auth fallback cookie (fb_token)
+        try { res.clearCookie("connect.sid"); } catch(e) {}
+        try {
+            // Some browsers require matching path/domain to delete — set expired cookies on common paths
+            res.cookie('fb_token', '', { httpOnly: true, maxAge: 0, path: '/' });
+            // also explicitly expire on /login path in case the cookie was set there
+            res.cookie('fb_token', '', { httpOnly: true, maxAge: 0, path: '/login' });
+            console.log('Cleared fb_token fallback cookie on logout (paths: / and /login)');
+        } catch (e) {
+            try { res.clearCookie('fb_token'); } catch(e) {}
+        }
 
         const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
         if (wantsJson) {
@@ -418,7 +442,68 @@ app.post('/datasave', (req, res) => {
                         console.error('Error updating user settings:', dbErr);
                         return res.status(500).json({ message: 'Error updating user settings' });
                     }
+                    // Update session user with sanitized save
                     req.session.user = { ...req.session.user, ...userSave };
+
+                    // Synchronize per-instance inventory rows into the new inventory table.
+                    // Normalize client inventory items into {pog_uid, quantity} and replace
+                    // the user's rows in the inventory table. If the client inventory
+                    // is empty we clear the server rows.
+                    try {
+                        const normalize = (it) => {
+                            if (it == null) return null;
+                            if (typeof it === 'number') return { pog_uid: Number(it), quantity: 1 };
+                            if (typeof it === 'string' && /^[0-9]+$/.test(it)) return { pog_uid: Number(it), quantity: 1 };
+                            const pogUid = Number(it.pogid || it.pog_uid || it.pog || it.uid || it.number || (it.pog && it.pog.uid) || NaN);
+                            if (!Number.isFinite(pogUid)) return null;
+                            let q = Number(it.quantity || it.qty || it.count || 1);
+                            if (!Number.isFinite(q) || q < 1) q = 1;
+                            return { pog_uid: pogUid, quantity: q };
+                        };
+
+                        const toSync = Array.isArray(userSave.inventory) ? userSave.inventory.map(normalize).filter(x => x) : [];
+
+                        // Get numeric user uid
+                        usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (uidErr, urow) => {
+                            if (uidErr || !urow) {
+                                if (uidErr) console.warn('[DATASAVE] Could not lookup user uid to sync inventory:', uidErr);
+                                return;
+                            }
+                            const userUid = Number(urow.uid);
+
+                            // If there is nothing to sync, simply delete existing rows for the user.
+                            if (toSync.length === 0) {
+                                runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
+                                    if (delErr) console.warn('[DATASAVE] Failed to clear inventory rows for user (empty):', delErr);
+                                });
+                                return;
+                            }
+
+                            // Otherwise replace rows in a transaction
+                            usdb.serialize(() => {
+                                usdb.run('BEGIN TRANSACTION');
+                                runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
+                                    if (delErr) console.warn('[DATASAVE] Failed to clear inventory rows for user:', delErr);
+
+                                    const insertNext = (idx) => {
+                                        if (idx >= toSync.length) {
+                                            usdb.run('COMMIT');
+                                            return;
+                                        }
+                                        const itm = toSync[idx];
+                                        runWithRetries(usdb, 'INSERT INTO inventory (user_uid, pog_uid, quantity) VALUES (?, ?, ?)', [userUid, itm.pog_uid, itm.quantity], 5, (insErr) => {
+                                            if (insErr) console.warn('[DATASAVE] Failed to insert inventory row:', insErr);
+                                            insertNext(idx + 1);
+                                        });
+                                    };
+                                    insertNext(0);
+                                });
+                            });
+                        });
+                    } catch (e) {
+                        console.warn('[DATASAVE] Inventory sync failed:', e);
+                    }
+
                     return res.json({
                         message: 'Data saved successfully',
                         corrected: warnings.length > 0 ? {

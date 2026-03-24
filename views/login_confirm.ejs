@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pogglebar – Login</title>
+    <title>Pogglebar – Confirm sign in</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -47,34 +47,37 @@
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
         }
-        .btn:hover {
-            background: #e94560;
-            transform: translateY(-2px);
-        }
+        form { padding: 2%; }
+        .btn:hover { background: #e94560; transform: translateY(-2px); }
+        .avatar { width:96px; height:96px; border-radius:8px; margin: 12px auto; display:block; }
+        .muted { color:#999; margin-top:16px; font-size:0.95rem; }
+        .actions { margin-top: 18px; }
+        .actions form { display:inline-block; margin-right:12px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Pogglebar</h1>
-        <p class="subtitle">Sign in to start collecting!</p>
-        <button id="fbLogin" class="btn" type="button">Login with Formbar</button>
-    </div>
-    <script>
-        (function(){
-            const btn = document.getElementById('fbLogin');
-            if (!btn) return;
-            btn.addEventListener('click', async function () {
-                try {
-                    // Clear a possible cancel flag set by a previous Cancel action
-                    await fetch('/login/clear_cancel', { method: 'POST', credentials: 'include' });
-                } catch (e) {
-                    // ignore network errors and continue to redirect
-                }
-                // navigate to provider
-                window.location.href = "<%= authURL %>";
-            });
-        })();
-    </script>
+        <h1>Confirm sign in</h1>
+        <% if (tokenData) { %>
+            <p class="subtitle">Sign in as <strong><%= tokenData.displayName || 'Unknown user' %></strong></p>
+            <% if (tokenData.pfp) { %>
+                <img src="<%= tokenData.pfp %>" alt="pfp" class="avatar"/>
+            <% } %>
+        <% } else { %>
+            <p class="subtitle">We received a login response but couldn't read details. Confirm to continue.</p>
+        <% } %>
+
+        <div class="actions">
+            <form method="post" action="/login/confirm">
+                <input type="hidden" name="token" value="<%= tokenRaw %>" />
+                <button type="submit" class="btn" id="confirmBTN">Confirm sign in</button>
+            </form>
+            <form method="post" action="/login/cancel">
+                <button type="submit" class="btn">Cancel</button>
+            </form>
+        </div>
+
+        <p class="muted">If you didn't expect this sign-in, cancel and report it.</p>
     </div>
 </body>
 </html>
