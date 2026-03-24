@@ -442,7 +442,68 @@ app.post('/datasave', (req, res) => {
                         console.error('Error updating user settings:', dbErr);
                         return res.status(500).json({ message: 'Error updating user settings' });
                     }
+                    // Update session user with sanitized save
                     req.session.user = { ...req.session.user, ...userSave };
+
+                    // Synchronize per-instance inventory rows into the new inventory table.
+                    // Normalize client inventory items into {pog_uid, quantity} and replace
+                    // the user's rows in the inventory table. If the client inventory
+                    // is empty we clear the server rows.
+                    try {
+                        const normalize = (it) => {
+                            if (it == null) return null;
+                            if (typeof it === 'number') return { pog_uid: Number(it), quantity: 1 };
+                            if (typeof it === 'string' && /^[0-9]+$/.test(it)) return { pog_uid: Number(it), quantity: 1 };
+                            const pogUid = Number(it.pogid || it.pog_uid || it.pog || it.uid || it.number || (it.pog && it.pog.uid) || NaN);
+                            if (!Number.isFinite(pogUid)) return null;
+                            let q = Number(it.quantity || it.qty || it.count || 1);
+                            if (!Number.isFinite(q) || q < 1) q = 1;
+                            return { pog_uid: pogUid, quantity: q };
+                        };
+
+                        const toSync = Array.isArray(userSave.inventory) ? userSave.inventory.map(normalize).filter(x => x) : [];
+
+                        // Get numeric user uid
+                        usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (uidErr, urow) => {
+                            if (uidErr || !urow) {
+                                if (uidErr) console.warn('[DATASAVE] Could not lookup user uid to sync inventory:', uidErr);
+                                return;
+                            }
+                            const userUid = Number(urow.uid);
+
+                            // If there is nothing to sync, simply delete existing rows for the user.
+                            if (toSync.length === 0) {
+                                runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
+                                    if (delErr) console.warn('[DATASAVE] Failed to clear inventory rows for user (empty):', delErr);
+                                });
+                                return;
+                            }
+
+                            // Otherwise replace rows in a transaction
+                            usdb.serialize(() => {
+                                usdb.run('BEGIN TRANSACTION');
+                                runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
+                                    if (delErr) console.warn('[DATASAVE] Failed to clear inventory rows for user:', delErr);
+
+                                    const insertNext = (idx) => {
+                                        if (idx >= toSync.length) {
+                                            usdb.run('COMMIT');
+                                            return;
+                                        }
+                                        const itm = toSync[idx];
+                                        runWithRetries(usdb, 'INSERT INTO inventory (user_uid, pog_uid, quantity) VALUES (?, ?, ?)', [userUid, itm.pog_uid, itm.quantity], 5, (insErr) => {
+                                            if (insErr) console.warn('[DATASAVE] Failed to insert inventory row:', insErr);
+                                            insertNext(idx + 1);
+                                        });
+                                    };
+                                    insertNext(0);
+                                });
+                            });
+                        });
+                    } catch (e) {
+                        console.warn('[DATASAVE] Inventory sync failed:', e);
+                    }
+
                     return res.json({
                         message: 'Data saved successfully',
                         corrected: warnings.length > 0 ? {
