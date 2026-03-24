@@ -904,28 +904,6 @@ async function revealCommonPog(pogResult) {
                 transform: translate(-50%, -50%);
                 z-index: -1;
                 ">
-            <div style="
-                background: black;
-                padding: 20px;
-                border-radius: 10px;
-                font-size: 24px; 
-                font-weight: bold; 
-                margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,1);
-            ">
-                ${pogResult.name}
-            </div>
-            
-            <div style="
-                background: black;
-                padding: 20px;
-                border-radius: 10px;
-                font-size: 18px; 
-                color: #e3f2fd;
-                font-weight: bold;
-            ">
-                ${pogResult.rarity}
-            </div>
         </div>
     `;
     
@@ -952,12 +930,6 @@ async function revealMythicPog(pogResult) {
         <div style="
             width: 280px;
             height: 180px;
-            border-radius: 15px;
-            background: linear-gradient(135deg, #ea00ffff, #f86de1ff);
-            border: 4px solid white;
-            box-shadow: 
-                0 0 30px rgba(255, 0, 212, 0.8),
-                0 0 60px rgba(255, 0, 255, 0.4);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -966,23 +938,14 @@ async function revealMythicPog(pogResult) {
             color: #ffd3fdff;
             text-align: center;
         ">
-            <div style="
-                font-size: 28px; 
-                font-weight: bold; 
-                margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            ">
-                ${pogResult.name}
-            </div>
-            
-            <div style="
-                font-size: 20px; 
-                color: #57075aff;
-                font-weight: bold;
-                text-shadow: 0 0 10px rgba(80, 9, 76, 0.8);
-            ">
-                ${pogResult.rarity.toUpperCase()} 
-            </div>
+        <img src="../static/icons/images/pogs/${pogResult.code2}.webp" width="500" height="500"
+                style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: -1;
+                ">
         </div>
     `;
     
@@ -1180,8 +1143,6 @@ function createSummaryPogCard(pog, index) {
         <div class="summaryPogCard" style="
             width: 80px;
             height: 100px;
-            background: ${colors.bg};
-            border: 2px solid ${colors.border};
             border-radius: 8px;
             display: flex;
             flex-direction: column;
@@ -1194,12 +1155,14 @@ function createSummaryPogCard(pog, index) {
             font-size: 10px;
             position: relative;
         ">
-            <div style="font-weight: bold; margin-bottom: 3px; line-height: 1.1;">
-                ${pog.name.length > 8 ? pog.name.substring(0, 8) + '...' : pog.name}
-            </div>
-            <div style="font-size: 8px; opacity: 0.9;">
-                ${pog.rarity}
-            </div>
+        <img src="../static/icons/images/pogs/${pog.code2}.webp" width="100" height="100"
+                style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: -1;
+                ">
         </div>
     `;
 }
