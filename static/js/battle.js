@@ -630,6 +630,14 @@ const enemyPogsPos = [
   { x: 1700, y: 200 } // dark sentinel (defeated)
 ];
 
+canvas.addEventListener('keydown', function(e) {
+    if (e.key === ' ') { // Spacebar to advance turn
+        nextTurn();
+    }
+});
+canvas.tabIndex = 0;
+canvas.focus();
+
 function render() {
   // clear
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -670,8 +678,8 @@ function render() {
 
   // draw projectiles on top
   for (const prj of gameState.projectiles) renderProjectile(prj);
+  
 }
-
 
 function update(dt) { 
   for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
@@ -1032,8 +1040,12 @@ function drawCharacterPanel(character, index) {
     const { position, color, name, currentHp, maxHp, currentEnergy, maxEnergy } = character;
     const { x, y } = position;
     
-    // Character circle (existing)
-    drawCircle(x, y, 50, color, '#fff');
+    // Character pog image (using your existing system)
+    const pogKey = playerPogKeys[index] || `pog${index + 1}`;
+    drawPogImage(pogKey, x, y, 50, color);
+    
+    // Add white border around pog
+    drawCircle(x, y, 50, '', '#fff');
     
     // Health bar above character
     const barWidth = 120;
@@ -1130,12 +1142,15 @@ function drawEnemyPanel(enemy, index) {
     const { position, color, name, currentHp, maxHp } = enemy;
     const { x, y } = position;
     
-    // Enemy circle (existing) - dim if defeated
+    // enemy pog image 
+    const pogKey = enemyPogKeys[index] || `enemy${index + 1}`;
     const enemyColor = currentHp <= 0 ? '#333' : color;
-    const strokeColor = currentHp <= 0 ? '#666' : '#fff';
-    drawCircle(x, y, 50, enemyColor, strokeColor);
+    drawPogImage(pogKey, x, y, 50, enemyColor);
     
-    // Add defeated overlay
+    const strokeColor = currentHp <= 0 ? '#666' : '#fff';
+    drawCircle(x, y, 50, '', strokeColor);
+    
+    // add defeated overlay
     if (currentHp <= 0) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.beginPath();
@@ -1198,14 +1213,18 @@ function drawTurnPortrait(x, y, size, unit, isActive = false) {
     
     // Active turn highlight
     if (isActive) {
-        // Glowing border for active turn
         ctx.shadowColor = '#ffff00';
         ctx.shadowBlur = 15;
         drawCircle(x, y, radius + 5, 'rgba(255, 255, 0, 0.3)', '#ffff00');
         ctx.shadowBlur = 0;
     }
     
-    // Unit portrait circle
+    const pogKey = unit.type === 'character' ?
+        (playerPogKeys[unit.index] || `pog${unit.index + 1}`) :
+        (enemyPogKeys[unit.index] || `enemy${unit.index + 1}`);
+
+    drawPogImage(pogKey, x, y, size, unit.color);
+    // border
     drawCircle(x, y, radius, unit.color, '#fff');
     
     // Health indicator (small bar below)
@@ -1314,3 +1333,25 @@ function initializeTurnOrder() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeTurnOrder();
 });
+
+function makeCandidatesForCode (code) {
+  if (!code) return [];
+  
+  const originalCode = String(code);
+  const baseCode = String(code).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const candidates = [];
+
+  // attempting different image formats and paths
+  candidates.push(`/static/icons/images/pogs/${baseCode}.webp`);
+  candidates.push(`/static/icons/images/pogs/${baseCode}.png`);
+  candidates.push(`/static/icons/images/pogs/${baseCode}.jpg`);
+
+  // original code (cleaner?)
+  if (originalCode !== baseCode) {
+    candidates.push(`/static/icons/images/pogs/${originalCode}.webp`);
+    candidates.push(`/static/icons/images/pogs/${originalCode}.png`);
+    candidates.push(`/static/icons/images/pogs/${originalCode}.jpg`);
+  }
+
+  return candidates;
+}
