@@ -887,10 +887,6 @@ async function revealCommonPog(pogResult) {
         <div style="
             width: 250px;
             height: 150px;
-            border-radius: 15px;
-            background: linear-gradient(135deg, #919191ff, #9e9c9cff);
-            border: 3px solid white;
-            box-shadow: 0 0 20px rgba(123, 179, 255, 0.5);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -898,17 +894,32 @@ async function revealCommonPog(pogResult) {
             animation: commonPogReveal 1s ease-out;
             color: white;
             text-align: center;
+            position: relative;
         ">
+        <img src="../static/icons/images/pogs/${pogResult.code2}.webp" width="500" height="500"
+                style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: -1;
+                ">
             <div style="
+                background: black;
+                padding: 20px;
+                border-radius: 10px;
                 font-size: 24px; 
                 font-weight: bold; 
                 margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+                text-shadow: 2px 2px 4px rgba(0,0,0,1);
             ">
                 ${pogResult.name}
             </div>
             
             <div style="
+                background: black;
+                padding: 20px;
+                border-radius: 10px;
                 font-size: 18px; 
                 color: #e3f2fd;
                 font-weight: bold;

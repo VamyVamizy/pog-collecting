@@ -14,8 +14,19 @@ document.getElementById("sellAll").addEventListener("click", () => {
             if (inventory.length == 0) {
                 break;
             }
-            console.log(`Item sold at index: ${i} (name: ${inventory[i].name}), and lock is: ${inventory[i].locked}`)
-            sellItem(inventory[i].id, Math.round(inventory[i].income * 5.921), inventory[i].locked, true)
+            
+            const item = inventory[i];
+            const sellValue = Math.round((item.income * 2.94 * (level / 1.6))**((level / 100) + 1));
+            
+            soldCount++;
+            totalValue += sellValue;
+            
+            const rarity = item.rarity || 'Unknown';
+            rarityBreakdown[rarity] = (rarityBreakdown[rarity] || 0) + 1;
+            
+            console.log(`Item sold at index: ${i} (name: ${item.name}), and lock is: ${item.locked}`);
+            sellItem(item.id, sellValue, item.locked);
+            save();
         }
     } else {
         const filteredItems = inventory.filter(item => item.name.toLowerCase().includes(itemSearched));
@@ -27,7 +38,17 @@ document.getElementById("sellAll").addEventListener("click", () => {
                 continue;
             }
             if (indexInInventory !== -1) {
-                sellItem(item.id, Math.round(item.income * 5.921), item.locked, true); 
+                const sellValue = Math.round((item.income * 2.94 * (level / 1.6))**((level / 100) + 1));
+                
+                soldCount++;
+                totalValue += sellValue;
+                
+                // Track rarity breakdown
+                const rarity = item.rarity || 'Unknown';
+                rarityBreakdown[rarity] = (rarityBreakdown[rarity] || 0) + 1;
+                
+                sellItem(item.id, sellValue, item.locked);
+                save();
             }
         }
     }
