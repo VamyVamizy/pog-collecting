@@ -100,6 +100,38 @@ const socket = digio(AUTH_URL, {
     }
 });
 
+// Map of fid (string) -> Set of socket ids for connected clients
+const userSockets = new Map();
+
+// Attach server-side socket.io handlers for identifying clients
+io.on('connection', (socket) => {
+    // when client identifies, store mapping
+    socket.on('identify', (data) => {
+        try {
+            const fid = data && (data.fid || data.FID || data.fid === 0 ? data.fid : null);
+            if (fid == null) return;
+            const key = String(fid);
+            let set = userSockets.get(key);
+            if (!set) { set = new Set(); userSockets.set(key, set); }
+            set.add(socket.id);
+            socket._identifiedFid = key;
+        } catch (e) {
+            // ignore
+        }
+    });
+
+    socket.on('disconnect', () => {
+        try {
+            const key = socket._identifiedFid;
+            if (!key) return;
+            const set = userSockets.get(key);
+            if (!set) return;
+            set.delete(socket.id);
+            if (set.size === 0) userSockets.delete(key);
+        } catch (e) {}
+    });
+});
+
 // socket events for digipog transfers
 socket.on('connect', () => {
     console.log('Connected to Formbar socket server');
@@ -228,6 +260,127 @@ app.post("/logout", (req, res) => {
     });
 });
 
+// ── Admin: Reset a user's data to default values ──────────────────────────
+app.post('/api/reset-user', express.json(), (req, res) => {
+    // Only allow admins to call this endpoint
+    if (!req.session || !req.session.user) return res.status(401).json({ error: 'not_authenticated' });
+    const callerFid = Number(req.session.user.fid || req.session.user.FID || 0);
+    const adminIds = [73,84,44,87,43];
+    if (!adminIds.includes(callerFid)) {
+        console.warn(`[RESET-USER] Forbidden: caller fid ${callerFid} not in admin list`);
+        return res.status(403).json({ error: 'forbidden', message: 'caller is not an admin' });
+    }
+
+    const body = req.body || {};
+    console.log('[RESET-USER] request payload from callerFid=%d: %o', callerFid, body);
+    const targetFid = body.fid ? Number(body.fid) : null;
+    const displayname = body.displayname || null;
+
+    if ((!targetFid || Number.isNaN(targetFid)) && !displayname) {
+        return res.status(400).json({ error: 'missing_target', message: 'target fid or displayname required' });
+    }
+
+    // Find the user row
+    const lookupSql = targetFid ? 'SELECT uid, displayname, fid FROM userSettings WHERE fid = ?' : 'SELECT uid, displayname, fid FROM userSettings WHERE displayname = ?';
+    const lookupParam = targetFid ? [targetFid] : [displayname];
+
+    usdb.get(lookupSql, lookupParam, (err, row) => {
+        if (err) {
+            console.error('Reset-user lookup error:', err);
+            return res.status(500).json({ error: 'db', message: String(err) });
+        }
+        if (!row) return res.status(404).json({ error: 'not_found', message: 'target user not found' });
+
+        const userUid = Number(row.uid);
+        const targetName = row.displayname;
+        const targetFidResolved = row.fid;
+
+        // Require explicit re-typed confirmation fid to match the target's fid
+        const confirmFid = body.confirmFid ? Number(body.confirmFid) : null;
+        if (confirmFid === null || Number.isNaN(confirmFid) || Number(confirmFid) !== Number(targetFidResolved)) {
+            console.warn(`[RESET-USER] Confirmation mismatch: typed=${body.confirmFid} expected=${targetFidResolved}`);
+            return res.status(400).json({ error: 'confirm_mismatch', message: 'Confirmation FID did not match target' });
+        }
+
+        // Ensure lastResetAt column exists before starting the transaction so we can set it atomically.
+        // This reduces the race window where a client's autosave could acceptably overwrite a reset.
+        usdb.run("ALTER TABLE userSettings ADD COLUMN lastResetAt INTEGER", [], () => {
+            // Begin transaction: delete per-instance inventory and reset userSettings fields to defaults
+            usdb.serialize(() => {
+                usdb.run('BEGIN TRANSACTION');
+
+                // delete inventory instances for the user
+                runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
+                    if (delErr) console.warn('[RESET-USER] Failed to delete inventory rows:', delErr);
+
+                    // Reset userSettings to the same defaults used by the reset script
+                    // Keep these in sync with data/resetUser.js
+                    const defaults = {
+                        theme: 'black',
+                        score: 0,
+                        inventory: JSON.stringify([]),
+                        Isize: 10,
+                        xp: 0,
+                        maxxp: 30,
+                        level: 1,
+                        income: 0,
+                        totalSold: 0,
+                        cratesOpened: 0,
+                        pogamount: JSON.stringify([]),
+                        // Use canonical achievements/tiers lists loaded at app startup
+                        achievements: JSON.stringify(achievements || []),
+                        tiers: JSON.stringify(tiers || []),
+                        mergeCount: 0,
+                        highestCombo: 0,
+                        wish: 0,
+                        crates: JSON.stringify([]),
+                        // do not overwrite pfp — preserve the user's existing avatar
+                    };
+
+                    // include lastResetAt in the same UPDATE so it is set atomically with the reset
+                    const updSql = `UPDATE userSettings SET
+                        score = ?, Isize = ?, xp = ?, maxxp = ?, level = ?, income = ?, totalSold = ?, cratesOpened = ?,
+                        pogamount = ?, achievements = ?, tiers = ?, mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, inventory = ?, lastResetAt = ?
+                        WHERE uid = ?`;
+
+                    const nowTs = Date.now();
+                    const params = [
+                        defaults.score, defaults.Isize, defaults.xp, defaults.maxxp, defaults.level, defaults.income, defaults.totalSold, defaults.cratesOpened,
+                        defaults.pogamount, defaults.achievements, defaults.tiers, defaults.mergeCount, defaults.highestCombo, defaults.wish, defaults.crates, defaults.inventory,
+                        nowTs,
+                        userUid
+                    ];
+
+                    usdb.run(updSql, params, function(updErr) {
+                        if (updErr) {
+                            console.error('[RESET-USER] Failed to update userSettings:', updErr);
+                            usdb.run('ROLLBACK');
+                            return res.status(500).json({ error: 'db_update', message: String(updErr) });
+                        }
+
+                        usdb.run('COMMIT');
+                        console.log(`[RESET-USER] Admin fid ${callerFid} reset user ${targetName} (uid ${userUid}, fid ${targetFidResolved}) lastResetAt=${nowTs}`);
+
+                        // Emit a force-reload to any connected sockets for the target fid
+                        try {
+                            const key = String(targetFidResolved);
+                            const set = userSockets.get(key);
+                            if (set && set.size > 0) {
+                                set.forEach(sid => {
+                                    try { io.to(sid).emit('force-reload', { reason: 'admin_reset', lastResetAt: nowTs }); } catch (e) {}
+                                });
+                            }
+                        } catch (e) {
+                            console.warn('[RESET-USER] Failed to emit force-reload to sockets:', e);
+                        }
+
+                        return res.json({ ok: true, lastResetAt: nowTs });
+                    });
+                });
+            });
+        });
+    });
+});
 // logged-out landing page
 app.get('/logged-out', (req, res) => {
     res.render('loggedout');
@@ -377,6 +530,8 @@ app.post('/datasave', (req, res) => {
         clarityPreviews: req.body.clarityPreviews,
         clarityResults: req.body.clarityResults,
         clarityUsedCount: req.body.clarityUsedCount
+        ,
+        clientSaveTime: req.body.clientSaveTime
     }
 
     // 2. Fetch the current DB row so we can compare for cheating
@@ -395,6 +550,18 @@ app.post('/datasave', (req, res) => {
             try { current.achievements = JSON.parse(row.achievements || '[]'); } catch (e) { current.achievements = []; }
             try { current.tiers = JSON.parse(row.tiers || '[]'); } catch (e) { current.tiers = []; }
             try { current.crates = JSON.parse(row.crates || '[]'); } catch (e) { current.crates = []; }
+        }
+
+        // ── Reject stale client saves if an admin reset happened recently
+        try {
+            const clientSaveTime = Number(req.body && req.body.clientSaveTime ? req.body.clientSaveTime : 0) || 0;
+            const lastResetAt = row && row.lastResetAt ? Number(row.lastResetAt) : 0;
+            if (lastResetAt && clientSaveTime && clientSaveTime < lastResetAt) {
+                console.warn(`[DATASAVE] Rejecting stale save for ${displayName}: clientSaveTime=${clientSaveTime} < lastResetAt=${lastResetAt}`);
+                return res.status(409).json({ error: 'stale_save', reload: true, lastResetAt });
+            }
+        } catch (e) {
+            // don't block saves on parse errors
         }
 
         // 3. Validate & sanitize
@@ -516,7 +683,9 @@ app.post('/datasave', (req, res) => {
                             cratesOpened: userSave.cratesOpened,
                             totalSold: userSave.totalSold,
                             mergeCount: userSave.mergeCount,
-                            highestCombo: userSave.highestCombo
+                            highestCombo: userSave.highestCombo,
+                            inventory: userSave.inventory,
+                            income: userSave.income
                         } : null
                     });
                 }

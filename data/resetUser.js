@@ -30,7 +30,7 @@ const defaults = {
   highestCombo: 0,
   wish: 0,
   crates: '[]',
-  pfp: 'static/icons/pfp/defaultpfp.png'
+  // do not overwrite pfp here unless explicitly desired
 };
 
 const params = [
@@ -51,13 +51,12 @@ const params = [
   defaults.highestCombo,
   defaults.wish,
   defaults.crates,
-  defaults.pfp
 ];
 
 let sql = `UPDATE userSettings SET
   theme = ?, score = ?, inventory = ?, Isize = ?, xp = ?, maxxp = ?, level = ?,
   income = ?, totalSold = ?, cratesOpened = ?, pogamount = ?, achievements = ?, tiers = ?,
-  mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, pfp = ?`;
+  mergeCount = ?, highestCombo = ?, wish = ?, crates = ?, lastResetAt = ?`;
 
 if (argv.fid) {
   sql += ' WHERE fid = ?';
@@ -68,6 +67,14 @@ if (argv.fid) {
 }
 
 console.log('Running:', sql, params);
+
+// Ensure lastResetAt column exists (ignore errors)
+db.run("ALTER TABLE userSettings ADD COLUMN lastResetAt INTEGER", [], function() {
+  // ignore
+});
+
+// append timestamp param
+params.push(Date.now());
 
 db.run(sql, params, function(err) {
   if (err) {

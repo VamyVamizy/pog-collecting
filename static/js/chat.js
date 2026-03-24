@@ -3,6 +3,8 @@ const userdata = (() => { try { return JSON.parse(document.getElementById("userd
 const pogList = (() => { try { return JSON.parse(document.getElementById("pogList")?.textContent || '[]'); } catch (e) { return []; } })();
 
 const socket = io(); 
+// identify this client to server for reloads
+try { if (userdata && (userdata.fid || userdata.FID)) socket.emit('identify', { fid: userdata.fid || userdata.FID }); } catch (e) {}
 const myName = userdata.displayName || userdata.displayname || 'Guest';
 
 // Update these to target trade elements

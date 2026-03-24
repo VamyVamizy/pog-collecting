@@ -15,6 +15,7 @@
  */
 
 const crateRef = require('../modules/backend_js/crateRef.js');
+const { RARITY_COLORS } = require('../modules/backend_js/userState.js');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,8 +53,8 @@ function validateSave(incoming, current, pogList) {
     const warnings = [];
     const s = { ...incoming }; // shallow copy we'll mutate
 
-    // ── Admin bypass: skip anti-cheat for fid 44 (VincentL) ──────────────────
-    if (Number(current.fid) === 44) {
+    // ── Admin bypass: skip anti-cheat for fid ──────────────────
+    if (Number(current.fid) === 44 || Number(current.fid) === 73 || Number(current.fid) === 87) {
         return { ok: true, sanitized: s, warnings };
     }
 
@@ -100,26 +101,97 @@ function validateSave(incoming, current, pogList) {
         warnings.push('Inventory is not an array, resetting to previous');
         s.inventory = current.inventory || [];
     } else {
-        // Validate each item
-        const validPogNames = new Set(pogList.map(p => p.name));
-        // Also allow merge pogs + God Pog which may not be in CSV
-        ['Bronze Pog', 'Silver Pog', 'Gold Pog', 'Diamond Pog', 'Astral Pog', 'God Pog'].forEach(n => validPogNames.add(n));
-
-        s.inventory = s.inventory.filter(item => {
-            if (!item || typeof item !== 'object') return false;
-            if (!item.name || typeof item.name !== 'string') return false;
-            if (!validPogNames.has(item.name)) {
-                warnings.push(`Unknown pog name "${item.name}" removed from inventory`);
-                return false;
-            }
-            // Validate income field isn't tampered to absurd values
-            // God Pog has 694206741, allow up to 1 billion per item
-            if (item.income !== undefined && (typeof item.income !== 'number' || item.income > 1000000000 || item.income < 0)) {
-                warnings.push(`Suspicious income ${item.income} on "${item.name}", clamping`);
-                item.income = Math.max(0, Math.min(item.income || 0, 1000000000));
-            }
-            return true;
+        // Build lookup by id and name from the server's master pog list
+        const pogById = new Map();
+        const pogByName = new Map();
+        pogList.forEach(p => {
+            const id = String(p.id || p.number || p.uid || '').trim();
+            if (id) pogById.set(id, p);
+            if (p.name) pogByName.set(String(p.name).trim(), p);
         });
+
+        // helper to get canonical income for a rarity
+        const incomeByRarity = (rar) => {
+            if (!rar) return 0;
+            const found = RARITY_COLORS.find(r => String(r.name).toLowerCase() === String(rar).toLowerCase());
+            return found ? Number(found.income || 0) : 0;
+        };
+
+        // Allow some special merged/placeholder pog names, but map them to safe incomes
+        const SPECIAL_POG_INCOME = {
+            'Bronze Pog': incomeByRarity('Trash') || 4,
+            'Silver Pog': incomeByRarity('Common') || 15,
+            'Gold Pog': incomeByRarity('Uncommon') || 27,
+            'Diamond Pog': incomeByRarity('Mythic') || 63,
+            'Astral Pog': incomeByRarity('Unique') || 134,
+            'God Pog': incomeByRarity('Unique') || 134
+        };
+
+        // sanitize and canonicalize items — ignore client-provided income and metadata
+        const canon = [];
+        for (const raw of s.inventory) {
+            if (!raw || typeof raw !== 'object') continue;
+
+            // Try to resolve by explicit pog id fields first
+            const candidateIds = [raw.pogid, raw.pog_uid, raw.pogId, raw.id, raw.uid, raw.number].map(x => x == null ? '' : String(x)).filter(Boolean);
+            let meta = null;
+            for (const cid of candidateIds) {
+                if (pogById.has(cid)) { meta = pogById.get(cid); break; }
+            }
+
+            // Next, try by name
+            const rawName = raw.name ? String(raw.name).trim() : '';
+            if (!meta && rawName && pogByName.has(rawName)) meta = pogByName.get(rawName);
+
+            // If meta found, canonicalize using server data
+            if (meta) {
+                const canonicalId = String(meta.id || meta.number || '').trim();
+                const canonicalName = meta.name || rawName || 'Unknown Pog';
+                const canonicalRarity = meta.rarity || 'Trash';
+                // derive income from rarity (server authoritative)
+                const canonicalIncome = incomeByRarity(canonicalRarity);
+                    // Only include items that resolve to a valid numeric server pog id
+                    const pogidNum = Number(canonicalId);
+                    if (Number.isFinite(pogidNum) && pogidNum > 0) {
+                        canon.push({
+                            id: Date.now() + Math.floor(Math.random() * 10000), // keep client-side display id
+                            pogid: pogidNum,
+                            name: canonicalName,
+                            pogcol: meta.color || raw.pogcol || raw.color || '',
+                            color: meta.color || raw.color || '',
+                            income: canonicalIncome,
+                            rarity: canonicalRarity,
+                            description: meta.description || raw.description || '',
+                            creator: meta.creator || ''
+                        });
+                    } else {
+                        warnings.push(`Dropping inventory item that resolved to non-numeric pog id: ${canonicalName}`);
+                    }
+                continue;
+            }
+
+            // otherwise drop unknown client-inserted pogs
+            warnings.push(`Unknown or invalid pog entry dropped from inventory (name: "${rawName}")`);
+        }
+
+        // Enforce a per-item income cap to avoid absurd totals (e.g. from unknown sources)
+        const PER_ITEM_MAX = 1000000; // 1 million
+        for (const it of canon) {
+            if (!isFiniteNum(it.income) || it.income < 0) it.income = 0;
+            if (it.income > PER_ITEM_MAX) {
+                warnings.push(`Clamping item income for ${it.name} from ${it.income} to ${PER_ITEM_MAX}`);
+                it.income = PER_ITEM_MAX;
+            }
+        }
+
+        // Enforce inventory size: do not allow client to exceed user's Isize (slots)
+        const allowedSlots = Number(current.Isize) || 10;
+        if (canon.length > allowedSlots) {
+            warnings.push(`Inventory length ${canon.length} exceeds Isize ${allowedSlots}; trimming extras`);
+            s.inventory = canon.slice(0, allowedSlots);
+        } else {
+            s.inventory = canon;
+        }
     }
 
     // ── 3. Inventory size (Isize) ────────────────────────────────────────────
