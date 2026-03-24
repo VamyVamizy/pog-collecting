@@ -68,6 +68,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Body parsers and cookie parser must be registered before route handlers so
+// POST handlers (like /login/confirm) can read req.body. They were previously
+// registered after routers which caused missing req.body on form posts.
+app.use(express.urlencoded({limit: '50mb', extended: true }));
+app.use(express.json({limit: '50mb'}));
+app.use(cookieParser());
+
 //routes
 const marketplaceRouter = require('./routes/marketplace_rt.js');
 app.use('/', marketplaceRouter);
@@ -117,9 +124,6 @@ This will prevent it from getting out and allowing people to hack your cookies.*
 app.set('view engine', 'ejs');
 app.set('trust proxy', true);
 app.use('/static', express.static('static'));
-app.use(express.urlencoded({limit: '50mb', extended: true }));
-app.use(express.json({limit: '50mb'}));
-app.use(cookieParser());
 
 app.use((req, res, next) => {
     try {
@@ -192,9 +196,29 @@ runMigrations(usdb).catch(err => {
 
 //logout
 app.post("/logout", (req, res) => {
+    // Defensive: clear token and user from session before destroying
+    try {
+        if (req.session) {
+            req.session.token = null;
+            req.session.user = null;
+        }
+    } catch (e) {
+        console.warn('Failed to clear session properties before destroy:', e);
+    }
+
     req.session.destroy(err => {
         if (err) return res.status(500).send("Logout failed");
-        res.clearCookie("connect.sid");
+        // Clear session cookie and explicitly expire the short-lived auth fallback cookie (fb_token)
+        try { res.clearCookie("connect.sid"); } catch(e) {}
+        try {
+            // Some browsers require matching path/domain to delete — set expired cookies on common paths
+            res.cookie('fb_token', '', { httpOnly: true, maxAge: 0, path: '/' });
+            // also explicitly expire on /login path in case the cookie was set there
+            res.cookie('fb_token', '', { httpOnly: true, maxAge: 0, path: '/login' });
+            console.log('Cleared fb_token fallback cookie on logout (paths: / and /login)');
+        } catch (e) {
+            try { res.clearCookie('fb_token'); } catch(e) {}
+        }
 
         const wantsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
         if (wantsJson) {
