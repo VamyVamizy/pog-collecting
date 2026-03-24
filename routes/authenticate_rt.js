@@ -9,10 +9,8 @@ const {
 } = require('../backend_data/pog_ref.js');
 
 // URL to take user to Formbar for authentication
-const AUTH_URL = process.env.AUTH_URL; // ... or the address to the instance of fbjs you wish to connect to
-
-//URL to take user back to after authentication
-const THIS_URL = process.env.THIS_URL; // ... or whatever the address to your application is
+const AUTH_URL = process.env.AUTH_URL;
+const THIS_URL = process.env.THIS_URL;
 
 //user declaration vars
 const achievements = require("../modules/backend_js/trophyList.js");
@@ -25,10 +23,8 @@ function isAuthenticated(req, res, next) {
 
     const makeAuthRedirect = (refreshToken) => {
         if (refreshToken && AUTH_URL) {
-            // NOTE: Formbar expects raw (non-encoded) redirectURL
             return `${AUTH_URL}/oauth?refreshToken=${refreshToken}&redirectURL=${THIS_URL}`;
         }
-        // No token at all — show local login page
         return '/login';
     };
 
@@ -36,13 +32,11 @@ function isAuthenticated(req, res, next) {
     if (!tokenData) {
         try {
             if (req.cookies && req.cookies.fb_token) {
-                // fb_token was stored as a JSON string of the token object.
                 const cookieVal = req.cookies.fb_token;
                 let parsed = null;
                 try { parsed = JSON.parse(cookieVal); } catch (e) { parsed = null; }
                 if (parsed) {
                     req.session.token = parsed;
-                    // remove fallback cookie after bootstrapping
                     res.clearCookie('fb_token');
                     console.log('Bootstrapped session.token from fb_token cookie');
                     return next();
@@ -52,17 +46,14 @@ function isAuthenticated(req, res, next) {
             console.error('Error while bootstrapping fb_token cookie:', err);
         }
 
-        // No token available; redirect to auth (or local login)
         const dest = makeAuthRedirect();
         console.log('[AUTH] No token, redirecting to:', dest);
         return res.redirect(dest);
     }
 
-    // We have tokenData — make sure it is valid before continuing.
     try {
         const currentTime = Math.floor(Date.now() / 1000);
         if (tokenData.exp && tokenData.exp < currentTime) {
-            // token expired, attempt refresh flow if refresh token exists
             const dest = makeAuthRedirect(tokenData.refreshToken);
             console.log('[AUTH] Token expired, redirecting to:', dest);
             return res.redirect(dest);
@@ -163,35 +154,97 @@ router.get('/', isAuthenticated, async (req, res) => {
             if (err) {
                 return console.error("Error querying user:", err.message);
             }
-            if (row) {
+                if (row) {
                 // parse tiers and ensure we have a populated tiers array; fall back to canonical if empty/malformed
                 let parsedTiers = [];
                 try { parsedTiers = JSON.parse(row.tiers); } catch (e) { parsedTiers = []; }
                 if (!Array.isArray(parsedTiers) || parsedTiers.length < (Array.isArray(tiers) ? tiers.length : 22)) parsedTiers = tiers;
 
-                req.session.user = {
-                    fid: id,
-                    displayName: displayName,
-                    theme: row.theme,
-                    score: row.score,
-                    inventory: JSON.parse(row.inventory),
-                    Isize: row.Isize,
-                    xp: row.xp,
-                    maxxp: row.maxxp,
-                    level: row.level,
-                    income: row.income,
-                    totalSold: row.totalSold,
-                    cratesOpened: row.cratesOpened,
-                    pogamount: JSON.parse(row.pogamount),
-                    achievements: JSON.parse(row.achievements),
-                    tiers: parsedTiers,
-                    mergeCount: row.mergeCount,
-                    highestCombo: row.comboHigh,
-                    wish: row.wish,
-                    crates: JSON.parse(row.crates),
-                    pfp: row.pfp
-                };
-                console.log(`User data loaded for '${displayName}'`);
+                // helper to enrich inventory instances from inventory table using pog list `results`
+                const { RARITY_COLORS } = require('../modules/backend_js/userState.js');
+                function enrichInvRow(invRow, pogList) {
+                    const match = (pogList || []).find(p => Number(p.id) === Number(invRow.pog_uid) || Number(p.number) === Number(invRow.pog_uid) || Number(p.uid) === Number(invRow.pog_uid));
+                    if (match) {
+                        const meta = RARITY_COLORS.find(r => String(r.name).toLowerCase() === String(match.rarity || '').toLowerCase()) || {};
+                        // derive pog color name and a visual color hex from rarity metadata as fallback
+                        const pogColorName = match.color || match.pogcol || match.pogCol || match.pog_color || '';
+                        const visualColor = meta.color || pogColorName || '';
+                        return {
+                            id: invRow.uid,
+                            pogid: Number(invRow.pog_uid),
+                            name: match.name || 'Unknown Pog',
+                            rarity: match.rarity || 'Trash',
+                            code2: match.code2 || match.code || 'unknown',
+                            income: meta.income || Number(match.income) || 0,
+                            description: match.description || '',
+                            creator: match.creator || '',
+                            locked: false,
+                            quantity: invRow.quantity || 1,
+                            pogcol: pogColorName,
+                            color: visualColor
+                        };
+                    }
+                    return {
+                        id: invRow.uid,
+                        pogid: Number(invRow.pog_uid),
+                        name: `Pog #${invRow.pog_uid}`,
+                        rarity: 'Trash',
+                        code2: 'unknown',
+                        income: 0,
+                        description: '',
+                        creator: '',
+                        locked: false,
+                        quantity: invRow.quantity || 1,
+                        pogcol: '',
+                        color: ''
+                    };
+                }
+
+                // attempt to load per-instance inventory rows for this user and enrich; fallback to legacy JSON
+                usdb.all('SELECT uid, pog_uid, quantity, legacy_id FROM inventory WHERE user_uid = ?', [row.uid], (invErr, invRows) => {
+                    let finalInventory = [];
+                    if (!invErr && Array.isArray(invRows) && invRows.length > 0) {
+                        finalInventory = invRows.map(r => enrichInvRow(r, results));
+                    } else {
+                        try {
+                            const legacy = JSON.parse(row.inventory || '[]');
+                            finalInventory = (Array.isArray(legacy) ? legacy : []).map(it => ({
+                                ...it,
+                                pogcol: it.pogcol || it.color || '',
+                                color: it.color || it.pogcol || ''
+                            }));
+                        } catch (e) { finalInventory = []; }
+                    }
+
+                    req.session.user = {
+                        fid: id,
+                        displayName: displayName,
+                        theme: row.theme,
+                        score: row.score,
+                        inventory: finalInventory,
+                        Isize: row.Isize,
+                        xp: row.xp,
+                        maxxp: row.maxxp,
+                        level: row.level,
+                        income: row.income,
+                        totalSold: row.totalSold,
+                        cratesOpened: row.cratesOpened,
+                        pogamount: (() => { try { return JSON.parse(row.pogamount || '[]'); } catch(e){ return []; } })(),
+                        achievements: (() => { try { return JSON.parse(row.achievements || '[]'); } catch(e){ return []; } })(),
+                        tiers: parsedTiers,
+                        mergeCount: row.mergeCount,
+                        highestCombo: row.comboHigh,
+                        wish: row.wish,
+                        crates: (() => { try { return JSON.parse(row.crates || '[]'); } catch(e){ return []; } })(),
+                        pfp: row.pfp
+                    };
+                    console.log(`User data loaded for '${displayName}'`);
+
+                    // Call insertUser and render collection now that session is populated
+                    insertUser();
+                    return res.render('collection.ejs', { userdata: req.session.user, token: req.session.token, maxPogs: pogCount, pogList: results });
+                });
+                return;
             } else {
                 // all starting values are HERE
                 req.session.user = {

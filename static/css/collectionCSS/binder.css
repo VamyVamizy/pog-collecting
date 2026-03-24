@@ -106,7 +106,7 @@
     border-radius: 10px;
     width: 35px;
     height: 35px;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #colors:hover {
@@ -122,7 +122,7 @@
     border-radius: 10px;
     width: 35px;
     height: 35px;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #perkBtn:hover {
@@ -138,7 +138,7 @@
     border-radius: 10px;
     width: 35px;
     height: 35px;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
 }
 
 #pogsBtn:hover {
@@ -231,7 +231,7 @@
             rgba(0, 0, 0, 0.08) 1px,
             transparent 1px,
             transparent 3px);
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     cursor: pointer;
 }
 
@@ -316,7 +316,7 @@
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.473);
     border: transparent;
-    transition: all 0.1s ease;
+    transition: all 0.2s ease;
     cursor: pointer;
 }
 

@@ -17,7 +17,7 @@
   text-transform: uppercase;
   overflow: hidden;
   border-radius: 10px;
-  transition: all 0.1s ease;
+  transition: all 0.2s ease;
   box-shadow: inset 0 0 12px rgba(149, 0, 255, 0.623);
   font-weight: bold;
   width: 350px;

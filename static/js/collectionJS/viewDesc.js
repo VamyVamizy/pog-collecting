@@ -20,7 +20,7 @@ document.getElementById("inventory").addEventListener("click", (e) => {
         item.pogid,
         item.pogcol,
         item.creator,
-        item.description,
+        (item.description || ''),
         item.income,
         sellvalue
     )
@@ -33,7 +33,7 @@ function viewDesc(index, name, locked, rarity, id, pogid, color, creator, desc, 
     panel.innerHTML = `
     <div id="headerName">
         <h3>${parseInt(index) + 1}: ${name}</h3>
-        <h5>${color}</h5>
+        <h5>${color || ''}</h5>
     </div>
     <div id="money-info">
         <div class="moneytxt">
