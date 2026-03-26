@@ -23,7 +23,7 @@ document.getElementById("inventory").addEventListener("click", (e) => {
         (item.description || ''),
         item.income,
         sellvalue
-    )
+    );
 });
 
 //might use pogid and their color and creator down the line, unsure yet

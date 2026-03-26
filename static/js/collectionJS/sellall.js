@@ -37,6 +37,7 @@ document.getElementById("sellAll").addEventListener("click", () => {
             
             console.log(`Item sold at index: ${i} (name: ${item.name}), and lock is: ${item.locked}`);
             sellItem(item.id, sellValue, item.locked);
+            save();
         }
     } else {
         const filteredItems = inventory.filter(item => item.name.toLowerCase().includes(itemSearched));
@@ -58,6 +59,7 @@ document.getElementById("sellAll").addEventListener("click", () => {
                 rarityBreakdown[rarity] = (rarityBreakdown[rarity] || 0) + 1;
                 
                 sellItem(item.id, sellValue, item.locked);
+                save();
             }
         }
     }
