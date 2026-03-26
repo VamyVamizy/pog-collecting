@@ -621,7 +621,8 @@ app.post('/datasave', (req, res) => {
                             if (it == null) return null;
                             if (typeof it === 'number') return { pog_uid: Number(it), quantity: 1 };
                             if (typeof it === 'string' && /^[0-9]+$/.test(it)) return { pog_uid: Number(it), quantity: 1 };
-                            const pogUid = Number(it.pogid || it.pog_uid || it.pog || it.uid || it.number || (it.pog && it.pog.uid) || NaN);
+                            // accept the newer camelCase pogUid from crate openings in addition to legacy keys
+                            const pogUid = Number(it.pogUid || it.pogid || it.pog_uid || it.pog || it.uid || it.number || (it.pog && it.pog.uid) || NaN);
                             if (!Number.isFinite(pogUid)) return null;
                             let q = Number(it.quantity || it.qty || it.count || 1);
                             if (!Number.isFinite(q) || q < 1) q = 1;
