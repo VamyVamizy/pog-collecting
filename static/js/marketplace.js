@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 const socket = io(); 
+// identify this client to server for reloads
+try { if (userdata && (userdata.fid || userdata.FID)) socket.emit('identify', { fid: userdata.fid || userdata.FID }); } catch (e) {}
 const myName = userdata.displayName || userdata.displayname || 'Guest';
 let pogContainer = document.getElementById('pogContainer');
 

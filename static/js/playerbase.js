@@ -132,6 +132,51 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     });
+
+    // reset user button (admins only as rendered by server)
+    document.querySelectorAll('.resetbtn').forEach(button => {
+        button.addEventListener('click', function () {
+            const playerCont = this.closest('.playerCont');
+            if (!playerCont) return;
+            const fid = playerCont.getAttribute('data-fid');
+            const name = playerCont.getAttribute('data-name');
+
+            // require typing the FID to confirm
+            const typed = window.prompt(`Type the numeric FID of ${name} to confirm reset (FID: ${fid}):`);
+            if (typed == null) return; // cancelled
+            if (String(typed).trim() !== String(fid).trim()) {
+                alert('Confirmation FID did not match. Reset cancelled.');
+                return;
+            }
+
+            fetch('/api/reset-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fid: fid, displayname: name, confirmFid: typed })
+            }).then(async r => {
+                // try to parse JSON body but fall back to text
+                let body;
+                const ct = r.headers.get('content-type') || '';
+                try {
+                    body = ct.includes('application/json') ? await r.json() : await r.text();
+                } catch (e) {
+                    body = await r.text().catch(() => null);
+                }
+                if (!r.ok) {
+                    console.error('Reset failed', r.status, body);
+                    const msg = body && (body.error || body.message) ? (body.error || body.message) : (typeof body === 'string' ? body : JSON.stringify(body));
+                    alert(`Failed to reset user: ${msg}`);
+                    return;
+                }
+                // success
+                alert(`Reset user ${name}`);
+                window.location.reload();
+            }).catch(err => {
+                console.error('Reset request failed', err);
+                alert('Failed to reset user: network error');
+            });
+        });
+    });
 });
 
 function hide() {
@@ -172,7 +217,7 @@ document.querySelectorAll(".infobtn").forEach(button => {
         info.innerHTML = ` 
         <div id="topWrap"><h1>Player Details</h1><button id="hideBtn" onclick="hide()" style="margin-bottom: 10px;">X</button></div>
         <img id="pfpimg" src="${player.pfp}" style="width: 100px; height: 100px; border-radius: 50%; margin-top: 20px; border: 4px solid ${player.theme}"><br>
-        <h2 style="margin-top: 20px;">${player.displayname}</h2>
+    <h2 style="margin-top: 20px;">${player.displayname} <span style="font-size:0.8rem;color:rgba(175, 175, 175, 0.75);margin-left:8px;">FID: ${player.fid}</span></h2>
         <div class="tagCont">
             <div class="tag" style="display: ${carterQ ? 'flex' : 'none'}; background-color: #4d7c4bff;"><img src="../static/icons/playerbase/hacker.png" width="10" height="10"><div id="admin-text">Owner</div></div>
             <div class="tag" style="display: ${vincentL ? 'flex' : 'none'}; background-color: #4d7c4bff;"><img src="../static/icons/playerbase/hacker.png" width="10" height="10"><div id="admin-text">Co-Owner</div></div>
@@ -182,7 +227,7 @@ document.querySelectorAll(".infobtn").forEach(button => {
             <div class="tag" style="display: ${betaTester ? 'flex' : 'none'}; background-color: #8d1b4aff;"><img src="../static/icons/playerbase/tester.png" width="10" height="10"><div id="admin-text">Beta Tester</div></div>
             <div title="Original cheater on the site" class="tag" style="display: ${OGcheater ? 'flex' : 'none'}; background-color: purple;"><div id="admin-text">OG Cheater</div></div>
             <div title="D1 Student to pmo" class="tag" style="display: ${rageBaiter ? 'flex' : 'none'}; background-color: orange;"><div id="admin-text">Rage Baiter</div></div>
-            <div class="tag" style="display: ${vincentL ? 'flex' : 'none'}; background-color: red;"><div id="admin-text">Gooner</div></div>
+            <div class="tag" style="display: ${vincentL ? 'flex' : 'none'}; background-color: #676767;"><div id="admin-text">Gooner</div></div>
             <div title="${tooltip}" class="tag" style="display: ${angryLego ? 'flex' : 'none'}; background-color: brown;"><div id="admin-text">Angry Lego</div></div>
             <div title="${tooltip}" class="tag" style="display: ${screamingTink ? 'flex' : 'none'}; background-color: olive;"><div id="admin-text">Screaming Tink</div></div>
             <div title="${tooltip}" class="tag" style="display: ${diddyblud ? 'flex' : 'none'}; background-color: magenta;"><div id="admin-text">Diddyblud</div></div>

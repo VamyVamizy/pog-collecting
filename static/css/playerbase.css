@@ -152,15 +152,19 @@ li {
 }
 
 .playerCont .purchases {
-    background: linear-gradient(130deg, rgb(81, 214, 81), rgb(83, 133, 83));
+    background: linear-gradient(130deg, rgb(81, 214, 81), rgb(83, 133, 83, 0.75));
 }
 
 .playerCont .infobtn {
-    background: linear-gradient(130deg, rgb(255, 230, 86), rgb(126, 120, 74));
+    background: linear-gradient(130deg, rgb(255, 230, 86), rgb(214, 231, 166, 0.75));
 }
 
 .playerCont .ban {
-    background: linear-gradient(130deg, rgb(252, 61, 61), rgb(145, 56, 56));
+    background: linear-gradient(130deg, rgb(252, 61, 61), rgb(255, 175, 175, 0.75));
+}
+
+.playerCont .resetbtn {
+    background: linear-gradient(130deg, rgb(41, 212, 255), rgba(240, 252, 255, 0.75));
 }
 
 /* Slightly darker grey for the unban (greyed) icon to improve contrast */

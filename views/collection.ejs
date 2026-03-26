@@ -221,6 +221,33 @@
     });
 </script>
 
+<!-- Socket reload: identify this client and listen for force-reload from server -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    (function(){
+        try {
+            const userdataEl = document.getElementById('userdata');
+            let userdata = {};
+            try { userdata = JSON.parse(userdataEl && (userdataEl.textContent || userdataEl.innerText) || '{}'); } catch (e) { userdata = {}; }
+            const fid = userdata && (userdata.fid || userdata.FID) ? userdata.fid : null;
+            const sock = io();
+            sock.on('connect', () => {
+                if (fid != null) sock.emit('identify', { fid: fid });
+            });
+            sock.on('force-reload', (payload) => {
+                try {
+                    console.warn('Received force-reload', payload);
+                    // small UX: notify then reload
+                    alert('Your account was modified by an administrator. The page will reload to apply changes.');
+                } catch (e) {}
+                window.location.reload();
+            });
+        } catch (e) {
+            console.warn('Socket reload init failed', e);
+        }
+    })();
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const icon = document.querySelector('.search-widget .sw-icon');

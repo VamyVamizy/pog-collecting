@@ -1,64 +1,89 @@
 function save() {
-    // fetch to /datasave
-    fetch('/datasave', {
+    const payload = {
+        lightMode: theme_col,
+        money: money,
+        inventory: inventory,
+        Isize: Isize,
+        xp: xp,
+        maxXP: maxXP,
+        level: level,
+        income: userIncome,
+        totalSold: totalSold,
+        cratesOpened: cratesOpened,
+        pogAmount: pogAmount,
+        achievements: window.achievements,
+        tiers: window.tiers,
+        mergeCount: window.mergeCount,
+        highestCombo: highestCombo,
+        wish: wish,
+        crates: crates,
+        pfp: pfpimg,
+
+        // wish state fields so players don't lose their buff when they refresh
+        incomeWishActive: incomeWishActive,
+        incomeWishEndTime: incomeWishEndTime,
+        dropRateWishActive: dropRateWishActive,
+        dropRateWishEndTime: dropRateWishEndTime,
+        clarityWishActive: clarityWishActive,
+        clarityWishEndTime: clarityWishEndTime,
+        clarityPreviews: clarityPreviews,
+        clarityResults: clarityResults,
+        clarityUsedCount: clarityUsedCount,
+
+        // client-side save timestamp (ms since epoch) used to detect stale saves
+        clientSaveTime: Date.now()
+    };
+
+    // Return a promise so callers can await save completion (or a timeout)
+    return fetch('/datasave', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            lightMode: theme_col,
-            money: money,
-            inventory: inventory,
-            Isize: Isize,
-            xp: xp,
-            maxXP: maxXP,
-            level: level,
-            income: userIncome,
-            totalSold: totalSold,
-            cratesOpened: cratesOpened,
-            pogAmount: pogAmount,
-            achievements: window.achievements,
-            tiers: window.tiers,
-            mergeCount: window.mergeCount,
-            highestCombo: window.highestCombo,
-            wish: wish,
-            crates: crates,
-            pfp: pfpimg,
-
-            // wish state fields so players don't lose their buff when they refresh
-            incomeWishActive: incomeWishActive,
-            incomeWishEndTime: incomeWishEndTime,
-            dropRateWishActive: dropRateWishActive,
-            dropRateWishEndTime: dropRateWishEndTime,
-            clarityWishActive: clarityWishActive,
-            clarityWishEndTime: clarityWishEndTime,
-            clarityPreviews: clarityPreviews,
-            clarityResults: clarityResults,
-            clarityUsedCount: clarityUsedCount
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
     })
-        .then(response => response.json())
-        .then((data) => {
-            // If server corrected any values (anti-cheat), apply them locally
-            if (data && data.corrected) {
-                const c = data.corrected;
-                if (c.money !== undefined)        money = c.money;
-                if (c.Isize !== undefined)        Isize = c.Isize;
-                if (c.wish !== undefined)         wish = c.wish;
-                if (c.xp !== undefined)           xp = c.xp;
-                if (c.maxXP !== undefined)        maxXP = c.maxXP;
-                if (c.level !== undefined)        level = c.level;
-                if (c.cratesOpened !== undefined)  cratesOpened = c.cratesOpened;
-                if (c.totalSold !== undefined)     totalSold = c.totalSold;
-                if (c.mergeCount !== undefined)    mergeCount = c.mergeCount;
-                if (c.highestCombo !== undefined)  highestCombo = c.highestCombo;
-                console.warn('[ANTI-CHEAT] Server corrected values:', c);
+    .then(async response => {
+        let data = null;
+        try { data = await response.json(); } catch (e) { data = null; }
+        return { ok: response.ok, status: response.status, data };
+    })
+    .then(({ ok, status, data }) => {
+        if (!ok && data && data.reload) {
+            console.warn('[DATASAVE] Server rejected stale save, reloading page');
+            window.location.reload();
+            return { ok, status, data };
+        }
+
+        // If server corrected any values (anti-cheat), apply them locally
+        if (data && data.corrected) {
+            const c = data.corrected;
+            if (c.money !== undefined)        money = c.money;
+            if (c.Isize !== undefined)        Isize = c.Isize;
+            if (c.wish !== undefined)         wish = c.wish;
+            if (c.xp !== undefined)           xp = c.xp;
+            if (c.maxXP !== undefined)        maxXP = c.maxXP;
+            if (c.level !== undefined)        level = c.level;
+            if (c.cratesOpened !== undefined)  cratesOpened = c.cratesOpened;
+            if (c.totalSold !== undefined)     totalSold = c.totalSold;
+            if (c.mergeCount !== undefined)    mergeCount = c.mergeCount;
+            if (c.highestCombo !== undefined)  highestCombo = c.highestCombo;
+            if (c.inventory !== undefined) {
+                // Replace client inventory with server-canonical inventory
+                try { inventory = Array.isArray(c.inventory) ? c.inventory : JSON.parse(c.inventory); } catch (e) { inventory = []; }
+                console.warn('[ANTI-CHEAT] Server corrected inventory; replaced client inventory');
             }
-        })
-        .catch(err => {
-            console.error("Error saving data:", err);
-        });
+            if (c.income !== undefined) {
+                userIncome = c.income;
+            }
+            console.warn('[ANTI-CHEAT] Server corrected values:', c);
+        }
+
+        // Return the result so callers can inspect the server response
+        return { ok, status, data };
+    })
+    .catch(err => {
+        console.error("Error saving data:", err);
+        return { ok: false, status: 0, data: null, err };
+    });
 }
 
 // parse server-rendered userdata safely and expose current user

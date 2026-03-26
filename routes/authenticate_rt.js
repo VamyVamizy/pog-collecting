@@ -30,22 +30,6 @@ function isAuthenticated(req, res, next) {
 
     const tokenData = req.session && req.session.token;
     if (!tokenData) {
-        try {
-            if (req.cookies && req.cookies.fb_token) {
-                const cookieVal = req.cookies.fb_token;
-                let parsed = null;
-                try { parsed = JSON.parse(cookieVal); } catch (e) { parsed = null; }
-                if (parsed) {
-                    req.session.token = parsed;
-                    res.clearCookie('fb_token');
-                    console.log('Bootstrapped session.token from fb_token cookie');
-                    return next();
-                }
-            }
-        } catch (err) {
-            console.error('Error while bootstrapping fb_token cookie:', err);
-        }
-
         const dest = makeAuthRedirect();
         console.log('[AUTH] No token, redirecting to:', dest);
         return res.redirect(dest);
