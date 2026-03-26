@@ -6,16 +6,11 @@ function update() {
     // update XP Txt
     document.getElementById("XPTxt").innerText = level;
     document.getElementById("mxtxt").innerText = `${xp} / ${maxXP} XP`
+    declareStars();
     //update pog / pog
     document.getElementById("pogCount").innerText = `${Math.round((pogAmount.length / maxBinder) * 100)}%`;
     //update pogs color
     document.getElementById("pogCount").style.color = pogAmount.length >= maxBinder ? "gold" : "white";
-    //update wish text
-    let star = '';
-    for (i = 0; i < wish; i++) {
-        star += '★'
-    }
-    document.getElementById("useWish").innerText = star;
     //sell all button
     document.getElementById("sellAll").innerText = `Sell All ${searching ? "(Searched)" : ""}`;
     //sell all width
@@ -58,3 +53,29 @@ setInterval(() => {
     bindb.value = pogAmount.length;
     bindb.max = maxBinder;
 }, 100);
+
+function declareStars() {
+    //update wish text
+    const wishCont = document.getElementById("useWish");
+    wishCont.innerHTML = "";
+    let dpogs = Math.floor(wish/7);
+    dpogs += wish % 7 !== 0 ? + 1 : + 0;
+    for (let i = 0; i < dpogs; i++) {
+        const pg = document.createElement('div');
+        pg.classList.add('wish');
+        wishCont.appendChild(pg);
+        if (i == pg - 1) {
+            let star = ''
+            for (let s = 0; s < wish % 7; s++) {
+                star = '★';
+                pg.innerText = star;
+            }
+        } else {
+            let star = ''
+            for (let s = 0; s < wish; s++) {
+                star = '★';
+                pg.innerText = star;
+            }
+        }
+    }
+}
