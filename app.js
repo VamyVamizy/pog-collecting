@@ -630,23 +630,82 @@ app.post('/datasave', (req, res) => {
 
                         const toSync = Array.isArray(userSave.inventory) ? userSave.inventory.map(normalize).filter(x => x) : [];
 
-                        // Get numeric user uid
+                        // Get numeric user uid and perform sync, then respond with canonical inventory
                         usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (uidErr, urow) => {
                             if (uidErr || !urow) {
                                 if (uidErr) console.warn('[DATASAVE] Could not lookup user uid to sync inventory:', uidErr);
-                                return;
+                                // respond anyway without canonical inventory
+                                return res.json({ message: 'Data saved successfully', corrected: warnings.length > 0 ? { inventory: userSave.inventory } : null });
                             }
                             const userUid = Number(urow.uid);
 
-                            // If there is nothing to sync, simply delete existing rows for the user.
+                            // Helper to finish by reading server-side inventory rows and returning canonicalized inventory
+                            const finishAndRespond = () => {
+                                usdb.all('SELECT uid, pog_uid, quantity FROM inventory WHERE user_uid = ?', [userUid], (invErr, invRows) => {
+                                    let enrichedInventory = [];
+                                    if (!invErr && Array.isArray(invRows) && invRows.length > 0) {
+                                        enrichedInventory = invRows.map(r => {
+                                            const match = results.find(p => Number(p.id) === Number(r.pog_uid) || Number(p.number) === Number(r.pog_uid) || Number(p.uid) === Number(r.pog_uid));
+                                            const meta = match || {};
+                                            const rarityMeta = RARITY_COLORS.find(rc => String(rc.name).toLowerCase() === String(meta.rarity || '').toLowerCase()) || {};
+                                            const pogColorName = (meta && (meta.color || meta.pogcol || meta.pogCol || meta.pog_color)) || '';
+                                            const visualColor = (rarityMeta && rarityMeta.color) || pogColorName || '';
+                                            return {
+                                                id: r.uid,
+                                                pogid: Number(r.pog_uid),
+                                                name: meta.name || `Pog #${r.pog_uid}`,
+                                                rarity: meta.rarity || 'Trash',
+                                                code2: meta.code2 || meta.code || 'unknown',
+                                                income: rarityMeta.income || Number(meta.income) || 0,
+                                                description: meta.description || '',
+                                                creator: meta.creator || '',
+                                                locked: false,
+                                                quantity: r.quantity || 1,
+                                                pogcol: pogColorName,
+                                                color: visualColor
+                                            };
+                                        });
+                                    } else {
+                                        // fall back to the sanitized userSave.inventory (already canonicalized)
+                                        try {
+                                            enrichedInventory = Array.isArray(userSave.inventory) ? userSave.inventory : JSON.parse(userSave.inventory || '[]');
+                                            enrichedInventory = enrichedInventory.map(it => ({ ...it, pogcol: it.pogcol || it.color || '', color: it.color || it.pogcol || '' }));
+                                        } catch (e) { enrichedInventory = []; }
+                                    }
+                                    // set canonical inventory into userSave so client gets authoritative list
+                                    userSave.inventory = enrichedInventory;
+                                    req.session.user = { ...req.session.user, ...userSave };
+
+                                    return res.json({
+                                        message: 'Data saved successfully',
+                                        corrected: warnings.length > 0 ? {
+                                            money: userSave.score,
+                                            Isize: userSave.Isize,
+                                            wish: userSave.wish,
+                                            xp: userSave.xp,
+                                            maxXP: userSave.maxxp,
+                                            level: userSave.level,
+                                            cratesOpened: userSave.cratesOpened,
+                                            totalSold: userSave.totalSold,
+                                            mergeCount: userSave.mergeCount,
+                                            highestCombo: userSave.highestCombo,
+                                            inventory: userSave.inventory,
+                                            income: userSave.income
+                                        } : null
+                                    });
+                                });
+                            };
+
+                            // If there is nothing to sync, simply delete existing rows for the user and finish
                             if (toSync.length === 0) {
                                 runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
                                     if (delErr) console.warn('[DATASAVE] Failed to clear inventory rows for user (empty):', delErr);
+                                    return finishAndRespond();
                                 });
                                 return;
                             }
 
-                            // Otherwise replace rows in a transaction
+                            // Otherwise replace rows in a transaction, then finish
                             usdb.serialize(() => {
                                 usdb.run('BEGIN TRANSACTION');
                                 runWithRetries(usdb, 'DELETE FROM inventory WHERE user_uid = ?', [userUid], 5, (delErr) => {
@@ -654,7 +713,10 @@ app.post('/datasave', (req, res) => {
 
                                     const insertNext = (idx) => {
                                         if (idx >= toSync.length) {
-                                            usdb.run('COMMIT');
+                                            usdb.run('COMMIT', [], (commitErr) => {
+                                                if (commitErr) console.warn('[DATASAVE] Commit failed after inventory sync:', commitErr);
+                                                return finishAndRespond();
+                                            });
                                             return;
                                         }
                                         const itm = toSync[idx];
@@ -670,24 +732,7 @@ app.post('/datasave', (req, res) => {
                     } catch (e) {
                         console.warn('[DATASAVE] Inventory sync failed:', e);
                     }
-
-                    return res.json({
-                        message: 'Data saved successfully',
-                        corrected: warnings.length > 0 ? {
-                            money: userSave.score,
-                            Isize: userSave.Isize,
-                            wish: userSave.wish,
-                            xp: userSave.xp,
-                            maxXP: userSave.maxxp,
-                            level: userSave.level,
-                            cratesOpened: userSave.cratesOpened,
-                            totalSold: userSave.totalSold,
-                            mergeCount: userSave.mergeCount,
-                            highestCombo: userSave.highestCombo,
-                            inventory: userSave.inventory,
-                            income: userSave.income
-                        } : null
-                    });
+                    // response will be returned after inventory sync completes (see finishAndRespond)
                 }
             );
         });
@@ -794,59 +839,258 @@ app.post('/api/trade-wish', express.json(), (req, res) => {
     }
 
     // Use inventory table: find the inventory instance by uid and ensure it belongs to the user and is a Dragon Ball
-    usdb.get('SELECT uid FROM userSettings WHERE displayname = ?', [displayName], (err, userRow) => {
+    // Also fetch the stored legacy `inventory` JSON so we can fallback to migrate a client-only item
+    usdb.get('SELECT uid, inventory FROM userSettings WHERE displayname = ?', [displayName], (err, userRow) => {
         if (err || !userRow) {
             console.error('Error fetching user uid for wish trade:', err);
             return res.status(500).json({ error: 'Database error' });
         }
         const userUid = userRow.uid;
 
+        // resolve the set of Dragon Ball pog ids once so we can use it for fallbacks
+        const dragonPogIds = (results || []).filter(p => String(p.name || '').toLowerCase() === 'dragon ball').map(p => Number(p.id));
+
         usdb.get('SELECT uid as iid, pog_uid, quantity FROM inventory WHERE uid = ? AND user_uid = ?', [dragonBallId, userUid], (invErr, invRow) => {
             if (invErr) {
                 console.error('Error reading inventory for wish trade:', invErr);
                 return res.status(500).json({ error: 'Database error' });
             }
-            if (!invRow) {
-                return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
-            }
 
-            // verify that the referenced pog_uid corresponds to a Dragon Ball using server's pog list (results)
-            const pogMeta = results.find(p => Number(p.id) === Number(invRow.pog_uid) || Number(p.uid) === Number(invRow.pog_uid));
-            const pogName = pogMeta ? pogMeta.name : null;
-            if (pogName !== 'Dragon Ball') {
-                return res.status(400).json({ error: 'Item is not a Dragon Ball' });
-            }
-
-            // delete the inventory instance and increment wish on userSettings
-            dbRunWithRetries = function(sql, params, cb) { // lightweight inline retry to avoid SQLITE_BUSY
-                let tries = 0;
-                function once() {
-                    usdb.run(sql, params, function(e) {
-                        if (e && e.code === 'SQLITE_BUSY' && tries < 5) { tries++; return setTimeout(once, 150); }
-                        return cb(e, this);
-                    });
-                }
-                once();
-            };
-
-            dbRunWithRetries('DELETE FROM inventory WHERE uid = ?', [dragonBallId], (delErr) => {
-                if (delErr) {
-                    console.error('Error deleting inventory instance for wish trade:', delErr);
-                    return res.status(500).json({ error: 'Database error' });
+            // Helper to proceed once we have a canonical inventory row and its effective uid
+            function proceedWithInventoryRow(dbInvRow, effectiveUid) {
+                const pogMeta = results.find(p => Number(p.id) === Number(dbInvRow.pog_uid) || Number(p.uid) === Number(dbInvRow.pog_uid));
+                const pogName = pogMeta ? pogMeta.name : null;
+                if (pogName !== 'Dragon Ball') {
+                    return res.status(400).json({ error: 'Item is not a Dragon Ball' });
                 }
 
-                // increment wish
-                usdb.get('SELECT wish FROM userSettings WHERE uid = ?', [userUid], (wishErr, wishRow) => {
-                    if (wishErr) { console.error('Error reading wish:', wishErr); return res.status(500).json({ error: 'Database error' }); }
-                    const currentWish = Number(wishRow && wishRow.wish) || 0;
-                    const newWish = currentWish + 1;
-                    dbRunWithRetries('UPDATE userSettings SET wish = ? WHERE uid = ?', [newWish, userUid], (updErr) => {
-                        if (updErr) { console.error('Error updating wish:', updErr); return res.status(500).json({ error: 'Database error' }); }
-                        console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (inv uid: ${dragonBallId}) for wish. Wishes: ${currentWish} → ${newWish}`);
-                        return res.json({ wish: newWish, removedInventoryId: dragonBallId });
+                // delete the inventory instance and increment wish on userSettings
+                dbRunWithRetries = function(sql, params, cb) { // lightweight inline retry to avoid SQLITE_BUSY
+                    let tries = 0;
+                    function once() {
+                        usdb.run(sql, params, function(e) {
+                            if (e && e.code === 'SQLITE_BUSY' && tries < 5) { tries++; return setTimeout(once, 150); }
+                            return cb(e, this);
+                        });
+                    }
+                    once();
+                };
+
+                dbRunWithRetries('DELETE FROM inventory WHERE uid = ?', [effectiveUid], (delErr) => {
+                    if (delErr) {
+                        console.error('Error deleting inventory instance for wish trade:', delErr);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+
+                    // increment wish
+                    usdb.get('SELECT wish FROM userSettings WHERE uid = ?', [userUid], (wishErr, wishRow) => {
+                        if (wishErr) { console.error('Error reading wish:', wishErr); return res.status(500).json({ error: 'Database error' }); }
+                        const currentWish = Number(wishRow && wishRow.wish) || 0;
+                        const newWish = currentWish + 1;
+                        dbRunWithRetries('UPDATE userSettings SET wish = ? WHERE uid = ?', [newWish, userUid], (updErr) => {
+                            if (updErr) { console.error('Error updating wish:', updErr); return res.status(500).json({ error: 'Database error' }); }
+                            console.log(`[TRADE-WISH] ${displayName} traded Dragon Ball (inv uid: ${effectiveUid}) for wish. Wishes: ${currentWish} → ${newWish}`);
+
+                            function enrichInvRow(invRow, pogList) {
+                                const match = (pogList || []).find(p => {
+                                    return Number(p.id) === Number(invRow.pog_uid) || Number(p.number) === Number(invRow.pog_uid) || Number(p.uid) === Number(invRow.pog_uid);
+                                });
+                                if (match) {
+                                    const meta = RARITY_COLORS.find(r => String(r.name).toLowerCase() === String(match.rarity || '').toLowerCase()) || {};
+                                    const pogColorName = match.color || match.pogcol || match.pogCol || match.pog_color || '';
+                                    const visualColor = meta.color || pogColorName || '';
+                                    return {
+                                        id: invRow.uid,
+                                        pogid: Number(invRow.pog_uid),
+                                        name: match.name || 'Unknown Pog',
+                                        rarity: match.rarity || 'Trash',
+                                        code2: match.code2 || match.code || 'unknown',
+                                        income: meta.income || Number(match.income) || 0,
+                                        description: match.description || '',
+                                        creator: match.creator || '',
+                                        locked: false,
+                                        quantity: invRow.quantity || 1,
+                                        pogcol: pogColorName,
+                                        color: visualColor
+                                    };
+                                }
+                                return {
+                                    id: invRow.uid,
+                                    pogid: Number(invRow.pog_uid),
+                                    name: `Pog #${invRow.pog_uid}`,
+                                    rarity: 'Trash',
+                                    code2: 'unknown',
+                                    income: 0,
+                                    description: '',
+                                    creator: '',
+                                    locked: false,
+                                    quantity: invRow.quantity || 1,
+                                    pogcol: '',
+                                    color: ''
+                                };
+                            }
+
+                            usdb.all('SELECT uid, pog_uid, quantity FROM inventory WHERE user_uid = ?', [userUid], (invErr, invRows) => {
+                                let enrichedInventory = [];
+                                if (!invErr && Array.isArray(invRows) && invRows.length > 0) {
+                                    enrichedInventory = invRows.map(r => enrichInvRow(r, results));
+                                } else {
+                                    if (invErr) console.error('Error loading inventory after wish trade:', invErr);
+                                    enrichedInventory = [];
+                                }
+
+                                // Ensure the traded item is not present in the response inventory
+                                enrichedInventory = enrichedInventory.filter(it => Number(it.id) !== Number(effectiveUid));
+
+                                // Persist authoritative inventory back to userSettings.inventory so the legacy JSON stays in sync
+                                try {
+                                    const invJson = JSON.stringify(enrichedInventory);
+                                    runWithRetries(usdb, 'UPDATE userSettings SET inventory = ? WHERE uid = ?', [invJson, userUid], 3, (syncErr) => {
+                                        if (syncErr) console.warn('[TRADE-WISH] Failed to sync inventory JSON after trade:', syncErr);
+                                    });
+                                    // also refresh session copy
+                                    try { req.session.user = { ...req.session.user, inventory: enrichedInventory }; } catch (e) {}
+                                } catch (e) {
+                                    console.warn('[TRADE-WISH] Could not stringify inventory for session sync:', e);
+                                }
+
+                                return res.json({ wish: newWish, removedInventoryId: effectiveUid, inventory: enrichedInventory });
+                            });
+                        });
                     });
                 });
-            });
+            }
+
+            if (!invRow) {
+                // try matching by legacy_id for older client-generated ids
+                usdb.get('SELECT uid as iid, pog_uid, quantity FROM inventory WHERE legacy_id = ? AND user_uid = ?', [dragonBallId, userUid], (legacyErr, legacyRow) => {
+                    if (legacyErr) {
+                        console.error('Error reading inventory (legacy lookup) for wish trade:', legacyErr);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    if (!legacyRow) {
+                        // If the requested id wasn't found, fall back to "any" Dragon Ball in the inventory table.
+                        // This catches cases where the client clicked a stale/timestamp id but the user still has
+                        // a Dragon Ball in the canonical inventory table.
+                        const queryFallback = () => {
+                            // As a final fallback, check the user's legacy JSON inventory (userSettings.inventory)
+                            // to see if the client clicked on an unsaved/timestamp id. If found, remove it from
+                            // the legacy JSON, insert a canonical inventory row, then proceed.
+                            try {
+                                let legacyInv = [];
+                                try { legacyInv = JSON.parse(userRow.inventory || '[]'); } catch (e) { legacyInv = []; }
+
+                                // Find by a few possible id fields the client might have sent
+                                const matchIndex = legacyInv.findIndex(it => {
+                                    if (!it) return false;
+                                    try {
+                                        return String(it.id) === String(dragonBallId) || String(it.displayId) === String(dragonBallId) || String(it.uid) === String(dragonBallId) || String(it.legacy_id) === String(dragonBallId);
+                                    } catch (e) { return false; }
+                                });
+
+                                let usedIndex = matchIndex;
+                                if (matchIndex === -1) {
+                                    // No exact match for the clicked id — try a permissive search for any Dragon Ball
+                                    usedIndex = legacyInv.findIndex(it => {
+                                        if (!it) return false;
+                                        const nameOk = String(it.name || '').toLowerCase() === 'dragon ball';
+                                        const pogMatch = Number(it.pogid || it.pog_uid || it.uid || it.number || NaN);
+                                        const pogOk = dragonPogIds.includes(pogMatch);
+                                        return (nameOk || pogOk) && !it.locked;
+                                    });
+                                }
+
+                                if (usedIndex === -1) {
+                                    console.warn(`[TRADE-WISH] Inventory not found for displayName=${displayName} dragonBallId=${dragonBallId} (queried user_uid=${userUid})`);
+                                    return res.status(400).json({ error: 'Dragon Ball not found in inventory' });
+                                }
+
+                                const matched = legacyInv[usedIndex];
+                                // Try to determine pog_uid from the legacy item shape
+                                const pogUid = Number(matched.pogid || matched.pog_uid || matched.pogUid || matched.pog || matched.uid || matched.number || matched.pogId || NaN);
+                                if (!Number.isFinite(pogUid) || Number(pogUid) <= 0) {
+                                    console.warn('[TRADE-WISH] Could not determine pog_uid from legacy inventory item:', matched);
+                                    return res.status(400).json({ error: 'Invalid legacy inventory item' });
+                                }
+
+                                // Remove the item from the stored JSON inventory so it doesn't reappear on next load
+                                const newLegacyInv = legacyInv.slice().filter(it => {
+                                    try {
+                                        const sameId = String(it.id) === String(matched.id) || String(it.displayId) === String(matched.displayId);
+                                        const samePog = Number(it.pogid || it.pog_uid || it.uid || it.number || NaN) === pogUid;
+                                        return !(sameId || samePog);
+                                    } catch (e) { return true; }
+                                });
+
+                                // Helper to insert remaining legacy items into the inventory table when it is empty
+                                const migrateRemainingIfEmpty = (cb) => {
+                                    usdb.get('SELECT COUNT(*) as c FROM inventory WHERE user_uid = ?', [userUid], (cntErr, cntRow) => {
+                                        if (cntErr) { console.warn('[TRADE-WISH] Count inventory failed during migration:', cntErr); return cb(); }
+                                        const count = Number(cntRow && cntRow.c) || 0;
+                                        if (count > 0) return cb();
+                                        const toInsert = Array.isArray(newLegacyInv) ? newLegacyInv : [];
+                                        let idx = 0;
+                                        const next = () => {
+                                            if (idx >= toInsert.length) return cb();
+                                            const itm = toInsert[idx++] || {};
+                                            const pogUidIns = Number(itm.pogid || itm.pog_uid || itm.pogUid || itm.pog || itm.uid || itm.number || itm.pogId || NaN);
+                                            if (!Number.isFinite(pogUidIns) || pogUidIns <= 0) return next();
+                                            const qtyIns = Number(itm.quantity || itm.qty || itm.count || 1);
+                                            runWithRetries(usdb, 'INSERT INTO inventory (user_uid, pog_uid, quantity, legacy_id) VALUES (?, ?, ?, ?)', [userUid, pogUidIns, qtyIns, itm.id || itm.displayId || itm.legacy_id || null], 5, () => next());
+                                        };
+                                        next();
+                                    });
+                                };
+
+                                runWithRetries(usdb, 'UPDATE userSettings SET inventory = ? WHERE uid = ?', [JSON.stringify(newLegacyInv), userUid], 5, (updErr) => {
+                                    if (updErr) console.warn('[TRADE-WISH] Failed to update userSettings.inventory while migrating legacy item:', updErr);
+
+                                    // If inventory table is empty, migrate the remaining legacy items so the client retains its full inventory
+                                    migrateRemainingIfEmpty(() => {
+                                        // Insert a proper inventory row for the Dragon Ball so proceedWithInventoryRow can delete it normally
+                                        usdb.run('INSERT INTO inventory (user_uid, pog_uid, quantity, legacy_id) VALUES (?, ?, ?, ?)', [userUid, pogUid, Number(matched.quantity || matched.qty || matched.count || 1), dragonBallId], function(finalErr) {
+                                            if (finalErr) {
+                                                console.error('[TRADE-WISH] Insert failed during legacy migration:', finalErr);
+                                                return res.status(500).json({ error: 'Database error' });
+                                            }
+                                            const newIid = this.lastID;
+                                            const fakeRow = { iid: newIid, pog_uid: pogUid, quantity: Number(matched.quantity || matched.qty || matched.count || 1) };
+                                            proceedWithInventoryRow(fakeRow, newIid);
+                                        });
+                                    });
+                                });
+                            } catch (e) {
+                                console.error('Error during legacy inventory fallback for wish trade:', e);
+                                return res.status(500).json({ error: 'Server error' });
+                            }
+                            return;
+                        };
+
+                        if (dragonPogIds.length > 0) {
+                            usdb.get('SELECT uid as iid, pog_uid, quantity FROM inventory WHERE user_uid = ? AND pog_uid IN (' + dragonPogIds.map(() => '?').join(',') + ') ORDER BY uid LIMIT 1', [userUid, ...dragonPogIds], (anyErr, anyRow) => {
+                                if (anyErr) {
+                                    console.error('Error finding fallback Dragon Ball row for wish trade:', anyErr);
+                                    return res.status(500).json({ error: 'Database error' });
+                                }
+
+                                if (anyRow) {
+                                    console.warn(`[TRADE-WISH] Fallback: deleting first Dragon Ball row uid=${anyRow.iid} for displayName=${displayName} (requested id ${dragonBallId})`);
+                                    proceedWithInventoryRow(anyRow, anyRow.iid);
+                                    return;
+                                }
+
+                                return queryFallback();
+                            });
+                        } else {
+                            return queryFallback();
+                        }
+                        return;
+                    }
+                    proceedWithInventoryRow(legacyRow, legacyRow.iid || legacyRow.uid || legacyRow.iid);
+                });
+            } else {
+                proceedWithInventoryRow(invRow, dragonBallId);
+            }
         });
     });
 });

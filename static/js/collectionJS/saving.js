@@ -34,7 +34,8 @@ function save() {
         clientSaveTime: Date.now()
     };
 
-    fetch('/datasave', {
+    // Return a promise so callers can await save completion (or a timeout)
+    return fetch('/datasave', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +50,7 @@ function save() {
         if (!ok && data && data.reload) {
             console.warn('[DATASAVE] Server rejected stale save, reloading page');
             window.location.reload();
-            return;
+            return { ok, status, data };
         }
 
         // If server corrected any values (anti-cheat), apply them locally
@@ -75,9 +76,13 @@ function save() {
             }
             console.warn('[ANTI-CHEAT] Server corrected values:', c);
         }
+
+        // Return the result so callers can inspect the server response
+        return { ok, status, data };
     })
     .catch(err => {
         console.error("Error saving data:", err);
+        return { ok: false, status: 0, data: null, err };
     });
 }
 

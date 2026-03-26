@@ -385,30 +385,106 @@ function lock(id) {
 }
 
 //trade for 1/7 wish — server-side
-function trade(id, locked) {
-    if (!locked) {
-        fetch('/api/trade-wish', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dragonBallId: id })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                console.warn('Trade failed:', data.error);
-                return;
+async function trade(id, locked) {
+    if (locked) return;
+    // If the client has a local representation of the item, print it so we can
+    // debug races where a timestamp-style id (displayId) hasn't been persisted.
+    try {
+        const localMatch = inventory && Array.isArray(inventory) ? inventory.find(it => String(it.id) === String(id) || String(it.displayId) === String(id)) : null;
+        console.log('[TRADE] requested dragonBallId=', id, 'localInventoryItem=', localMatch);
+    } catch (e) { console.warn('[TRADE] failed to inspect local inventory before trade', e); }
+
+    // Attempt a save first so newly-acquired items get canonical DB uids.
+    // Increase timeout to reduce race probability.
+    try {
+        if (typeof save === 'function') {
+            await Promise.race([
+                save(),
+                new Promise(resolve => setTimeout(resolve, 3000))
+            ]);
+        }
+    } catch (e) {
+        console.warn('Save before trade failed or timed out, proceeding to trade anyway', e);
+    }
+
+    // After a save attempt, prefer to trade against a server-canonical inventory id.
+    // If the exact id is gone, try to map to a Dragon Ball instance by pogid/name.
+    const findCanonicalId = () => {
+        if (!inventory || !Array.isArray(inventory)) return null;
+        // Prefer exact match first
+        let it = inventory.find(item => String(item.id) === String(id) || String(item.displayId) === String(id));
+        if (it) return it.id;
+        // Otherwise find an unlocked Dragon Ball pog in the inventory
+        it = inventory.find(item => (String(item.name || '').toLowerCase() === 'dragon ball' || String(item.pogid) === String(0)) && !item.locked);
+        if (it) return it.id;
+        // fallback: find by pogid matching known Dragon Ball pog id from pogList
+        try {
+            const dbMatch = pogList && pogList.find(p => String(p.name || '').toLowerCase() === 'dragon ball');
+            if (dbMatch) {
+                it = inventory.find(item => String(item.pogid) === String(dbMatch.id) && !item.locked);
+                if (it) return it.id;
             }
+        } catch (e) {}
+        return null;
+    };
+
+    let canonicalId = findCanonicalId();
+
+    // If not found, try one retry: save again and re-check (covers slow writes)
+    if (!canonicalId) {
+        console.warn('[TRADE] canonical id not found after first save; retrying save before failing (id=', id, ')');
+        try {
+            await Promise.race([
+                save(),
+                new Promise(resolve => setTimeout(resolve, 1500))
+            ]);
+        } catch (e) { console.warn('Retry save failed/timed out', e); }
+        canonicalId = findCanonicalId();
+    }
+
+    if (!canonicalId) {
+        console.warn('Trade failed: Dragon Ball not found in inventory (after save attempts)', id);
+        // Provide a visible UI hint if available
+        const _errorText = document.getElementById('errorText');
+        const _errorMessage = document.getElementById('errorMessage');
+        if (_errorText && _errorMessage) {
+            _errorText.innerText = 'Trade failed: Dragon Ball not found in inventory';
+            _errorMessage.style.display = 'block';
+            _errorMessage.style.opacity = '1';
+            setTimeout(() => { _errorMessage.style.opacity = '0'; setTimeout(() => { _errorMessage.style.display = 'none'; }, 400); }, 3000);
+        }
+        return;
+    }
+
+    // Execute trade against the canonical id
+    fetch('/api/trade-wish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dragonBallId: canonicalId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data && data.error) {
+            console.warn('Trade failed:', data.error);
+            return;
+        }
+        if (data) {
             // Apply server-authoritative values
-            wish = data.wish;
-            inventory = data.inventory;
+            if (data.wish !== undefined) wish = data.wish;
+            if (Array.isArray(data.inventory)) {
+                inventory = data.inventory.filter(it => String(it.id) !== String(canonicalId));
+            } else {
+                // Fallback: if server didn't send inventory, drop the traded item locally
+                inventory = (inventory || []).filter(it => String(it.id) !== String(canonicalId));
+            }
             userIncome = getTotalIncome();
             if (typeof refreshInventory === 'function') refreshInventory();
             const _descPanel = document.getElementById("descPanel");
             if (_descPanel) _descPanel.innerHTML = "";
-        })
-        .catch(err => console.error('Trade error:', err));
-    }
+        }
+    })
+    .catch(err => console.error('Trade error:', err));
 }
 
 // color key toggle (only if present on page)
