@@ -59,21 +59,21 @@ function declareStars() {
     const wishCont = document.getElementById("useWish");
     wishCont.innerHTML = "";
     let dpogs = Math.floor(wish/7);
-    dpogs += wish % 7 !== 0 ? + 1 : + 0;
+    dpogs
     for (let i = 0; i < dpogs; i++) {
         const pg = document.createElement('div');
         pg.classList.add('wish');
         wishCont.appendChild(pg);
-        if (i == pg - 1) {
+        if (i == 0 && wish % 7 !== 0) {
             let star = ''
             for (let s = 0; s < wish % 7; s++) {
-                star = '★';
+                star += '★';
                 pg.innerText = star;
             }
         } else {
             let star = ''
-            for (let s = 0; s < wish; s++) {
-                star = '★';
+            for (let s = 0; s < 7; s++) {
+                star += '★';
                 pg.innerText = star;
             }
         }

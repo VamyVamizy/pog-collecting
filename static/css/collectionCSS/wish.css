@@ -23,6 +23,10 @@
     box-shadow: 0 0 5px black;
     transition: all 0.2s ease;
     margin-left: -50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 #useWish:hover .wish {
