@@ -1,9 +1,9 @@
 /node_modules
 /.env
 *.env
-/usersettings.sqlite*
-/.sqlite*
-*.sqlite*
+/usersettings.sqlite
+/.sqlite
+*.sqlite
 /.vscode
 /usersettings.sqlite-shm
 /.sqlite-shm
