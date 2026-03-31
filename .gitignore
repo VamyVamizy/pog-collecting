@@ -4,7 +4,6 @@
 /usersettings.sqlite
 /.sqlite
 *.sqlite
-/*.sqlite*
 /.vscode
 /usersettings.sqlite-shm
 /.sqlite-shm
