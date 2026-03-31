@@ -5,10 +5,10 @@
 /.sqlite
 *.sqlite
 /.vscode
-/data/usersettings.sqlite-shm
+/usersettings.sqlite-shm
 /.sqlite-shm
 *.sqlite-shm
-/data/usersettings.sqlite-wal
+/usersettings.sqlite-wal
 /.sqlite-wal
 *.sqlite-wal
 /*migration.bak*
