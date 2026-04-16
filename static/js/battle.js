@@ -572,22 +572,64 @@ function drawFireCentered() {
 }
 
 
-canvas.addEventListener('click', function(e) {
-  const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
-  const btnX = 1650, btnY = 800, btnR = 60;
-  const dx = clickX - btnX, dy = clickY - btnY;
-  if (dx*dx + dy*dy <= btnR*btnR) {
-    // spawn projectile from red player pog (index 2) to first enemy (index 0)
-    spawnProjectile(fire, playerPogsPos[2], enemyPogsPos[0], {
-      duration: 700, arc: -200, size: 0.6,
-      onComplete: () => {
-        gameState.flash = { t: 0, dur: 200, x: enemyPogsPos[0].x, y: enemyPogsPos[0].y };
-      }
-    });
+
+// ultimate activiation
+function activateUltimate(characterIndex) {
+  const character = characters[characterIndex];
+  const ultimate = ultimates[characterIndex];
+
+  if (!ultimate.ready) return;
+
+  // reset ultimate energy
+  ultimate.energy = 0;
+  ultimate.ready = false;
+
+  // create special ultimate projectile effect
+  const startPos = character.position;
+  const targetPos = enemies.find(e => e.currentHp > 0)?.position || enemyPogsPos[0];
+
+  // different effects based on the character
+  switch(characterIndex) {
+    case 0: // Phoenix Strike
+        spawnProjectile(fire, startPos, targetPos, {
+                duration: 500,
+                arc: -300,
+                size: 1.5,
+                onComplete: () => {
+                  console.log("Phoenix Strike hits!");
+                  
+            }
+          });
+          break;
+        case 1: // Ice Storm
+        enemies.forEach((enemy, i) => {
+          if (enemy.currentHp > 0) {
+            spawnProjectile(fire, startPos, enemy.position, {
+              duration: 600 + 1 * 100,
+              arc: -200,
+              size: 1.2
+            });
+          }
+        });
+        break;
+        // more ultimate effects here later
+    }
   }
-});
+  // update ultimate energy over time
+  function updateUltimates(dt) {
+    ultimates.forEach((ultimate, index) => {
+        if (ultimate.energy < ultimate.maxEnergy) {
+            ultimate.energy += dt * 0.02; // Adjust charge rate
+            if (ultimate.energy >= ultimate.maxEnergy) {
+                ultimate.ready = true;
+                console.log(`Ultimate ready for character ${index + 1}!`);
+            }
+        }
+    });
+    updateUltimates(dt);
+}
+
+  // updat
 /*
                                                                                 
       # ###           ##### /          # ###          # ###         ##### ##    
@@ -619,7 +661,7 @@ const gameState = {
 const playerPogsPos = [
   { x: 200, y: 700 },
   { x: 500, y: 700 },
-  { x: 800, y: 700 }, // red pog: index 2 in your spawn call (but 2 -> check was used)
+  { x: 800, y: 700 }, 
   { x: 1100, y: 700 }
 ];
 
@@ -637,6 +679,122 @@ canvas.addEventListener('keydown', function(e) {
 });
 canvas.tabIndex = 0;
 canvas.focus();
+
+function drawAttackIcon(x, y, attackData, isSelected = false, keyBinding = '') {
+    const iconRadius = 30;
+    const bgColor = isSelected ? 'rgba(76, 175, 80, 0.8)' : 'rgba(40, 40, 60, 0.9)';
+    const borderColor = isSelected ? '#4CAF50' : 'rgba(255, 255, 255, 0.6)';
+    
+    roundRect(ctx, x - iconSize/2, y - iconSize/2, iconSize, iconSize, 8, bgColor, borderColor, 2);
+    
+    switch(attackData.type) {
+        case 'single':
+            drawSingleTargetAchievementStyle(x, y, iconSize * 0.7);
+            break;
+        case 'aoe':
+            drawAoEAchievementStyle(x, y, iconSize * 0.7);
+            break;
+        case 'blast':
+            drawBlastAchievementStyle(x, y, iconSize * 0.7);
+            break;
+        case 'heal':
+            drawHealAchievementStyle(x, y, iconSize * 0.7);
+            break;
+    }
+    
+    ctx.fillStyle = isSelected ? '#4CAF50' : '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(keyBinding, x, y - iconSize/2 - 5);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(attackData.name, x, y + iconSize/2 + 5);
+}
+
+// Single Target 
+function drawSingleTargetAchievementStyle(x, y, size) {
+    const radius = size * 0.4;
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x - size/2, y);
+    ctx.lineTo(x + size/2, y);
+    ctx.moveTo(x, y - size/2);
+    ctx.lineTo(x, y + size/2);
+    ctx.stroke();
+}
+
+// area of effect
+function drawAoEAchievementStyle(x, y, size) {
+    const circleRadius = size * 0.15;
+    const positions = [
+        {x: x, y: y}, // center
+        {x: x - size * 0.3, y: y - size * 0.3}, // top-left
+        {x: x + size * 0.3, y: y - size * 0.3}, // top-right
+        {x: x - size * 0.3, y: y + size * 0.3}, // bottom-left
+        {x: x + size * 0.3, y: y + size * 0.3}  // bottom-right
+    ];
+    
+    positions.forEach(pos => {
+        drawCircle(pos.x, pos.y, circleRadius, '#ffffff', '#ffffff');
+    });
+}
+
+// Blast
+function drawBlastAchievementStyle(x, y, size) {
+    ctx.fillStyle = '#ff6600';
+    ctx.font = `bold ${size * 0.3}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', x, y);
+    
+    const accentSize = size * 0.1;
+    const positions = [
+        {x: x - size * 0.3, y: y - size * 0.2},
+        {x: x + size * 0.3, y: y - size * 0.2},
+        {x: x - size * 0.2, y: y + size * 0.3},
+        {x: x + size * 0.2, y: y + size * 0.3}
+    ];
+    
+    ctx.fillStyle = '#ff9900';
+    positions.forEach(pos => {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, accentSize, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+// Heal
+function drawHealAchievementStyle(x, y, size) {
+    const boxWidth = size * 0.7;
+    const boxHeight = size * 0.5;
+    
+    // Main box 
+    roundRect(ctx, x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight, 4, 
+              'rgba(76, 175, 80, 0.8)', '#4CAF50', 2);
+    
+    // Plus symbol inside
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - boxWidth * 0.2, y);
+    ctx.lineTo(x + boxWidth * 0.2, y);
+    ctx.moveTo(x, y - boxHeight * 0.2);
+    ctx.lineTo(x, y + boxHeight * 0.2);
+    ctx.stroke();
+}
 
 function render() {
   // clear
@@ -656,8 +814,6 @@ function render() {
   drawTurnTimeline();
 
   // UI buttons (keep existing)
-  drawCircle(1650, 800, 60, '', '#ffffff');
-  drawCircle(1800, 700, 60, '', '#ffffff');
   drawCircle(1850, 50, 40, '', '#ffffff');
   drawCircle(1750, 50, 40, '', '#ffffff');
   drawCircle(1650, 50, 40, '', '#ffffff');
@@ -666,8 +822,7 @@ function render() {
   drawDoubleTriangleIcon(1750, 50, 40, '#ffffff', '#ffffff');
   drawAutoBattleIconA(1650, 50, 40, '#ffffff');
 
-  roundRect(ctx, 1613, 845, 75, 25, 40, 'black', 'white', 2, 'Basic', { color: '#ffffff', font: 'bold 14px sans-serif' });
-  roundRect(ctx, 1763, 745, 75, 25, 40, 'black', 'white', 2, 'Skill', { color: '#ffffff', font: 'bold 14px sans-serif' });
+  drawAttackTypeButtons();
 
   // Skill points (keep existing)
   drawFourPointStar(ctx, 1300, 800, 25, 5, 'white', '#ffffff', 1);
@@ -678,6 +833,7 @@ function render() {
 
   // draw projectiles on top
   for (const prj of gameState.projectiles) renderProjectile(prj);
+
   
 }
 
@@ -744,34 +900,91 @@ requestAnimationFrame(mainLoop);
 
 
 canvas.addEventListener('click', function(e) {
-  const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Debug logging
+    console.log(`Click detected at: ${clickX}, ${clickY}`);
 
-  const pauseX = 1850, pauseY = 50, pauseR = 40;
-  const pdx = clickX - pauseX, pdy = clickY - pauseY;
-  if (pdx * pdx + pdy * pdy <= pauseR * pauseR) {
-    const ok = confirm('Return to main page? Your current battle progress will be lost.');
-    if (ok) {
-      // navigate to the app root (main page)
-      window.location.href = '/';
-      return;
+    const pauseX = 1850, pauseY = 50, pauseR = 40;
+    const pdx = clickX - pauseX, pdy = clickY - pauseY;
+    if (pdx * pdx + pdy * pdy <= pauseR * pauseR) {
+        const ok = confirm('Return to main page? Your current battle progress will be lost.');
+        if (ok) {
+            window.location.href = '/';
+            return;
+        }
     }
-  }
 
-  const dx = clickX - 1650, dy = clickY - 800;
-  if (dx * dx + dy * dy <= 60 * 60) {
 
-    spawnProjectile(fire, playerPogsPos[2], enemyPogsPos[0], { duration: 700, arc: -200, size: 0.6,
-      onComplete: () => {
-        // impact effect: small flash
-        const flash = { t: 0, dur: 200, x: enemyPogsPos[0].x, y: enemyPogsPos[0].y };
+    const dx = clickX - 1650, dy = clickY - 800;
+    if (dx * dx + dy * dy <= 60 * 60) {
+        console.log('✅ Basic attack fired!');
+        spawnProjectile(fire, playerPogsPos[2], enemyPogsPos[0], {
+            duration: 700, arc: -200, size: 0.6,
+            onComplete: () => {
+                gameState.flash = { t: 0, dur: 200, x: enemyPogsPos[0].x, y: enemyPogsPos[0].y };
+            }
+        });
+        return;
+    }
 
-        gameState.flash = flash;
-      }
+    const buttonY = 820; 
+    const buttonWidth = 70;
+    const buttonHeight = 35;
+    const spacing = 80;
+    const startX = 1050;
+
+    Object.keys(attackTypes).forEach((type, index) => { 
+        const buttonX = startX + (index * spacing);
+        
+        console.log(`Checking button ${type}: x=${buttonX}-${buttonX + buttonWidth}, y=${buttonY}-${buttonY + buttonHeight}`);
+        
+        if (clickX >= buttonX && clickX <= buttonX + buttonWidth &&
+            clickY >= buttonY && clickY <= buttonY + buttonHeight) {
+            currentAttackType = type;
+            console.log(`✅ Selected attack type: ${type}`);
+            return;
+        }
     });
-  }
+
+    characters.forEach((character, index) => {
+        const ultX = character.position.x + 70;
+        const ultY = character.position.y;
+        const ultRadius = 15; 
+
+        const udx = clickX - ultX;
+        const udy = clickY - ultY;
+
+        if (udx*udx + udy*udy <= ultRadius*ultRadius) {
+            if (ultimates && ultimates[index] && ultimates[index].ready) {
+                console.log(`✅ Ultimate activated for ${character.name}!`);
+                activateUltimate(index);
+            } else {
+                console.log(`❌ Ultimate not ready for ${character.name}`);
+            }
+            return;
+        }
+    });
+
+    const attackPositions = [
+      { x: 1650, y: 800, radius: 60, type: 'single' },
+      { x: 1800, y: 700, radius: 60, type: 'aoe' }
+    ];
+
+    attackPositions.forEach(pos => {
+    const dx = clickX - pos.x;
+    const dy = clickY - pos.y;
+    
+    if (dx * dx + dy * dy <= pos.radius * pos.radius) {
+        currentAttackType = pos.type;
+        console.log(`✅ Selected attack type: ${pos.type}`);
+        return;
+    }
+  });
 });
+
 
 function spawnProjectile(img, startPos, endPos, opts = {}) {
   const prj = {
@@ -874,6 +1087,68 @@ const characters = [
         position: { x: 1100, y: 700 }
     }
 ];
+// attack type system
+const attackTypes = {
+    single: {
+      type: 'single',
+      name: "Single Target",
+      key: "Q",
+    },
+    aoe: {
+      type: 'aoe',
+      name: "Area of Effect",
+      key: "W"
+    },
+    blast: {
+      type: 'blast',
+      name: "Blast",
+      key: "E"
+    },
+    heal: {
+      type: 'heal',
+      name: "Support",
+      key: "R"
+    }
+  };
+// ultimate system
+const ultimates = [
+  {
+    name: "Phoenix Strike",
+    icon: "🔥",
+    energy: 0,
+    maxEnergy: 100,
+    ready: false,
+    cooldown: 0
+  },
+  {
+    name: "Ice Storm",
+    icon: "❄️",
+    energy: 0,
+    maxEnergy: 100,
+    ready: false,
+    cooldown: 0
+  },
+
+  {
+    name: "Lightning Bolt",
+    icon: "⚡",
+    energy: 0,
+    maxEnergy: 100,
+    ready: false,
+    cooldown: 0
+  },
+
+  {
+    name: "Healing Light",
+    icon: "✨",
+    energy: 0,
+    maxEnergy: 100,
+    ready: false,
+    cooldown: 0
+  }
+];
+// current selected attack type
+let currentAttackType = 'single';
 // enemy data structure 
 const enemies = [
   {
@@ -1035,16 +1310,16 @@ function drawEnergyBar(x, y, width, height, currentEnergy, maxEnergy) {
     }
 }
 
-// Draw character portrait circle with health info
+// drawing character panel with all the info and buttons and stuff
 function drawCharacterPanel(character, index) {
     const { position, color, name, currentHp, maxHp, currentEnergy, maxEnergy } = character;
     const { x, y } = position;
     
-    // Character pog image (using your existing system)
+    // Character pog image 
     const pogKey = playerPogKeys[index] || `pog${index + 1}`;
     drawPogImage(pogKey, x, y, 50, color);
     
-    // Add white border around pog
+    // white border around the pog
     drawCircle(x, y, 50, '', '#fff');
     
     // Health bar above character
@@ -1068,9 +1343,42 @@ function drawCharacterPanel(character, index) {
     ctx.textBaseline = 'top';
     ctx.fillText(name, x, y + 60);
     
-    // Status effects area (placeholder)
-    // will add stuff here later
+    // ultimate button
+    drawUltimateButton(x + 70, y, ultimates[index]);
 }
+
+// Draw ultimate button next to each character pog
+function drawUltimateButton(x, y, ultimate, characterIndex) {
+    const buttonSize = 30; // Smaller
+    const isReady = ultimate.energy >= ultimate.maxEnergy;
+    
+    //  circle design
+    const bgColor = isReady ? '#FFD700' : '#444';
+    const borderColor = isReady ? '#FFA500' : '#666';
+    
+    drawCircle(x, y, buttonSize/2, bgColor, borderColor);
+    
+    // ult text
+    ctx.fillStyle = isReady ? '#000' : '#fff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ULT', x, y);
+    
+    // Energy progress (small arc)
+    if (!isReady) {
+        const progress = ultimate.energy / ultimate.maxEnergy;
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + (2 * Math.PI * progress);
+        
+        ctx.beginPath();
+        ctx.arc(x, y, buttonSize/2 + 2, startAngle, endAngle);
+        ctx.strokeStyle = '#4CAF50';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
 
 // Draw entire character panel
 function drawCharacterPanelUI() {
@@ -1085,6 +1393,82 @@ function drawCharacterPanelUI() {
         drawCharacterPanel(character, index);
     });
 }
+
+
+function drawHealAchievementStyle(x, y, size) {
+    const boxWidth = size * 0.7;
+    const boxHeight = size * 0.5;
+    
+    roundRect(ctx, x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight, 4, 
+              'rgba(76, 175, 80, 0.8)', '#4CAF50', 2);
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - boxWidth * 0.2, y);
+    ctx.lineTo(x + boxWidth * 0.2, y);
+    ctx.moveTo(x, y - boxHeight * 0.2);
+    ctx.lineTo(x, y + boxHeight * 0.2);
+    ctx.stroke();
+}
+
+// function for drawing icons inside the circles
+function drawAttackIconInCircle(x, y, attackData, isSelected, keyBinding) {
+  const circleRadius = 60;
+
+  const bgColor = isSelected ? 'rgba(76, 175, 80, 0.8)' : 'rgba(40, 40, 60, 0.9)';
+  const borderColor = isSelected ? '#4CAF40' : '#ffffff';
+
+  drawCircle(x, y, circleRadius, bgColor, borderColor);
+
+  switch(attackData) {
+    case 'single':
+            drawSingleTargetAchievementStyle(x, y, circleRadius * 1.2);
+            break;
+        case 'aoe':
+            drawAoEAchievementStyle(x, y, circleRadius * 1.2);
+            break;
+        case 'blast':
+            drawBlastAchievementStyle(x, y, circleRadius * 1.2);
+            break;
+        case 'heal':
+            drawHealAchievementStyle(x, y, circleRadius * 1.2);
+            break;
+  }
+
+  ctx.fillStyle = isSelected ? '#4CAF50' : '#ffffff';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(keyBinding, x, y - circleRadius - 10);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(attackData.name, x, y + circleRadius + 10);
+}
+
+// updated attack type buttons
+function drawAttackTypeButtons() {
+    const positions = [
+      { x: 1650, y: 800 },
+      { x: 1800, y: 700 }
+    ];
+
+    const attackList = Object.entries(attackTypes);
+
+    positions.forEach((pos, index) => {
+      if (attackList[index]) {
+        const [type, data] = attackList[index];
+        const isSelected = currentAttackType === type;
+
+        drawAttackIconInCircle(pos.x, pos.y, data, isSelected, data.key)
+      }
+    });
+}
+
+
 /*
 ##### #     ##      ##### ###    # ###  ###  ### ##### ##    # ###        ##### /          ##### ##    
 ####  /#    #### / ######  /### /  /###/ ###/ #######  /### /  /###  /  ######  /        ######  /### / 
